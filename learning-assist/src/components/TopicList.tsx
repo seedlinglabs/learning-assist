@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
-import { FileText, ExternalLink, Plus, Edit, Trash2, Calendar } from 'lucide-react';
+import { FileText, ExternalLink, Plus, Edit, Trash2, Calendar, RefreshCw } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Topic } from '../types';
 import AddTopicModal from './AddTopicModal';
 import EditTopicModal from './EditTopicModal';
 
 const TopicList: React.FC = () => {
-  const { currentPath, openNotebookLM, deleteTopic } = useApp();
+  const { currentPath, openNotebookLM, deleteTopic, refreshTopics, loading, error, clearError } = useApp();
   const { school, class: cls, subject } = currentPath;
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingTopic, setEditingTopic] = useState<Topic | null>(null);
+  const [deletingTopicId, setDeletingTopicId] = useState<string | null>(null);
 
   if (!school || !cls || !subject) return null;
+
+  console.log('TopicList - Current subject:', subject.name, 'Topics:', subject.topics);
 
   const handleOpenNotebook = (topic: any) => {
     if (topic.notebookLMUrl) {
@@ -19,9 +22,16 @@ const TopicList: React.FC = () => {
     }
   };
 
-  const handleDeleteTopic = (topicId: string) => {
+  const handleDeleteTopic = async (topicId: string) => {
     if (window.confirm('Are you sure you want to delete this topic?')) {
-      deleteTopic(topicId);
+      try {
+        setDeletingTopicId(topicId);
+        await deleteTopic(topicId);
+      } catch (error) {
+        console.error('Failed to delete topic:', error);
+      } finally {
+        setDeletingTopicId(null);
+      }
     }
   };
 
@@ -40,14 +50,38 @@ const TopicList: React.FC = () => {
           <h1>Topics in {subject.name}</h1>
           <p>Click on a topic to open it in NotebookLM</p>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="btn btn-primary"
-        >
-          <Plus size={16} />
-          Add Topic
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button
+            onClick={refreshTopics}
+            className="btn btn-secondary"
+            disabled={loading}
+            title="Refresh topics"
+          >
+            <RefreshCw size={16} />
+          </button>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="btn btn-primary"
+            disabled={loading}
+          >
+            <Plus size={16} />
+            Add Topic
+          </button>
+        </div>
       </div>
+
+      {error && (
+        <div className="error-message" style={{ margin: '0 0 2rem 0', padding: '1rem', backgroundColor: '#fef2f2', color: '#dc2626', borderRadius: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>{error}</span>
+          <button onClick={clearError} style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: '1.25rem' }}>×</button>
+        </div>
+      )}
+
+      {loading && (
+        <div className="loading-message" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+          Loading topics...
+        </div>
+      )}
 
       <div className="topics-container">
         {subject.topics.map((topic) => (
@@ -93,8 +127,9 @@ const TopicList: React.FC = () => {
                 }}
                 className="btn btn-ghost btn-sm btn-danger"
                 title="Delete topic"
+                disabled={deletingTopicId === topic.id}
               >
-                <Trash2 size={14} />
+                {deletingTopicId === topic.id ? '...' : <Trash2 size={14} />}
               </button>
             </div>
           </div>

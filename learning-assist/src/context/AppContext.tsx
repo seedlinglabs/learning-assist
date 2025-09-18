@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { School, NavigationPath, Topic, Subject, Class, SearchResult } from '../types';
-import { mockSchools } from '../data/mockData';
+import { schools } from '../data';
+import { topicsAPI, CreateTopicRequest, ApiError } from '../services/api';
 
 interface AppContextType {
   schools: School[];
@@ -9,11 +10,15 @@ interface AppContextType {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   searchResults: SearchResult[];
-  addTopic: (subjectId: string, topic: Omit<Topic, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  updateTopic: (topicId: string, updates: Partial<Topic>) => void;
-  deleteTopic: (topicId: string) => void;
+  addTopic: (subjectId: string, topic: Omit<Topic, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateTopic: (topicId: string, updates: Partial<Topic>) => Promise<void>;
+  deleteTopic: (topicId: string) => Promise<void>;
   openNotebookLM: (url: string) => void;
   performSearch: (query: string) => SearchResult[];
+  refreshTopics: () => Promise<void>;
+  loading: boolean;
+  error: string | null;
+  clearError: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -31,68 +36,140 @@ interface AppProviderProps {
 }
 
 export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
-  const [schools, setSchools] = useState<School[]>(mockSchools);
+  const [schoolsData, setSchoolsData] = useState<School[]>(schools);
   const [currentPath, setCurrentPath] = useState<NavigationPath>({});
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const generateId = () => `id-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-  const addTopic = (subjectId: string, topicData: Omit<Topic, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const newTopic: Topic = {
-      ...topicData,
-      id: generateId(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    setSchools(prevSchools =>
-      prevSchools.map(school => ({
-        ...school,
-        classes: school.classes.map(cls => ({
-          ...cls,
-          subjects: cls.subjects.map(subject =>
-            subject.id === subjectId
-              ? { ...subject, topics: [...subject.topics, newTopic] }
-              : subject
-          )
-        }))
-      }))
-    );
+  // Load topics for a subject from API
+  const loadTopicsForSubject = async (subjectId: string): Promise<Topic[]> => {
+    try {
+      setLoading(true);
+      setError(null);
+      const topics = await topicsAPI.getBySubject(subjectId);
+      return topics;
+    } catch (err) {
+      const errorMessage = err instanceof ApiError ? err.message : 'Failed to load topics';
+      setError(errorMessage);
+      return [];
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const updateTopic = (topicId: string, updates: Partial<Topic>) => {
-    setSchools(prevSchools =>
-      prevSchools.map(school => ({
-        ...school,
-        classes: school.classes.map(cls => ({
-          ...cls,
-          subjects: cls.subjects.map(subject => ({
-            ...subject,
-            topics: subject.topics.map(topic =>
-              topic.id === topicId
-                ? { ...topic, ...updates, updatedAt: new Date() }
-                : topic
-            )
-          }))
-        }))
-      }))
-    );
+  // Load topics when navigating to a subject
+  useEffect(() => {
+    if (currentPath.subject) {
+      console.log('Loading topics for subject:', currentPath.subject.id);
+      loadTopicsForSubject(currentPath.subject.id)
+        .then(topics => {
+          console.log('Loaded topics:', topics);
+          const nextSchools = schoolsData.map(school => ({
+            ...school,
+            classes: school.classes.map(cls => ({
+              ...cls,
+              subjects: cls.subjects.map(subject => {
+                if (subject.id === currentPath.subject?.id) {
+                  return { ...subject, topics };
+                }
+                return subject;
+              })
+            }))
+          }));
+          setSchoolsData(nextSchools);
+          reseatCurrentPath(nextSchools);
+        })
+        .catch(error => {
+          console.error('Error in useEffect loading topics:', error);
+        });
+    }
+  }, [currentPath.subject?.id]);
+
+  const addTopic = async (subjectId: string, topicData: Omit<Topic, 'id' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Find the school, class, and subject for the API call
+      let schoolId = '';
+      let classId = '';
+      
+      for (const school of schoolsData) {
+        for (const cls of school.classes) {
+          for (const subject of cls.subjects) {
+            if (subject.id === subjectId) {
+              schoolId = school.id;
+              classId = cls.id;
+              break;
+            }
+          }
+        }
+      }
+
+      const createRequest: CreateTopicRequest = {
+        name: topicData.name,
+        description: topicData.description,
+        notebookLMUrl: topicData.notebookLMUrl,
+        subject_id: subjectId,
+        school_id: schoolId,
+        class_id: classId,
+      };
+
+      const newTopic = await topicsAPI.create(createRequest);
+
+      // Refresh topics from API to ensure consistency
+      await refreshTopics();
+    } catch (err) {
+      const errorMessage = err instanceof ApiError ? err.message : 'Failed to add topic';
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const deleteTopic = (topicId: string) => {
-    setSchools(prevSchools =>
-      prevSchools.map(school => ({
-        ...school,
-        classes: school.classes.map(cls => ({
-          ...cls,
-          subjects: cls.subjects.map(subject => ({
-            ...subject,
-            topics: subject.topics.filter(topic => topic.id !== topicId)
-          }))
-        }))
-      }))
-    );
+  const updateTopic = async (topicId: string, updates: Partial<Topic>) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const updateRequest = {
+        name: updates.name,
+        description: updates.description,
+        notebookLMUrl: updates.notebookLMUrl,
+      };
+
+      const updatedTopic = await topicsAPI.update(topicId, updateRequest);
+
+      // Refresh topics from API to ensure consistency
+      await refreshTopics();
+    } catch (err) {
+      const errorMessage = err instanceof ApiError ? err.message : 'Failed to update topic';
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteTopic = async (topicId: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      await topicsAPI.delete(topicId);
+
+      // Refresh topics from API to ensure consistency
+      await refreshTopics();
+    } catch (err) {
+      const errorMessage = err instanceof ApiError ? err.message : 'Failed to delete topic';
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
   };
 
   const openNotebookLM = (url: string) => {
@@ -107,7 +184,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     const results: SearchResult[] = [];
     const searchTerm = query.toLowerCase();
 
-    schools.forEach(school => {
+    schoolsData.forEach(school => {
       // Search schools
       if (school.name.toLowerCase().includes(searchTerm) || 
           school.description?.toLowerCase().includes(searchTerm)) {
@@ -159,8 +236,55 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     return results;
   };
 
+  const clearError = () => setError(null);
+
+  // Reseat currentPath references after immutable schoolsData updates
+  const reseatCurrentPath = (nextSchools: School[]) => {
+    if (!currentPath.school) return;
+    const schoolId = currentPath.school.id;
+    const classId = currentPath.class?.id;
+    const subjectId = currentPath.subject?.id;
+
+    const nextSchool = nextSchools.find(s => s.id === schoolId);
+    if (!nextSchool) return;
+
+    let nextClass: Class | undefined = undefined;
+    let nextSubject: Subject | undefined = undefined;
+
+    if (classId) {
+      nextClass = nextSchool.classes.find(c => c.id === classId);
+      if (nextClass && subjectId) {
+        nextSubject = nextClass.subjects.find(sub => sub.id === subjectId);
+      }
+    }
+
+    setCurrentPath({ school: nextSchool, class: nextClass, subject: nextSubject, topic: currentPath.topic });
+  };
+
+  // Refresh topics for current subject
+  const refreshTopics = async (): Promise<void> => {
+    if (currentPath.subject) {
+      console.log('Refreshing topics for subject:', currentPath.subject.id);
+      const topics = await loadTopicsForSubject(currentPath.subject.id);
+      const nextSchools = schoolsData.map(school => ({
+        ...school,
+        classes: school.classes.map(cls => ({
+          ...cls,
+          subjects: cls.subjects.map(subject => {
+            if (subject.id === currentPath.subject?.id) {
+              return { ...subject, topics };
+            }
+            return subject;
+          })
+        }))
+      }));
+      setSchoolsData(nextSchools);
+      reseatCurrentPath(nextSchools);
+    }
+  };
+
   const contextValue: AppContextType = {
-    schools,
+    schools: schoolsData,
     currentPath,
     setCurrentPath,
     searchQuery,
@@ -171,6 +295,10 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     deleteTopic,
     openNotebookLM,
     performSearch,
+    refreshTopics,
+    loading,
+    error,
+    clearError,
   };
 
   return (

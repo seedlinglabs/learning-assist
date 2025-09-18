@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Learning Assistant - Topic Integration Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            background: #f8fafc;
+        }
+        .test-container {
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+        .test-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            margin-bottom: 2rem;
+        }
+        .test-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #5a6fd8;
+        }
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #64748b;
+        }
+        .btn-secondary:hover {
+            background: #cbd5e1;
+        }
+        .test-output {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.875rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-bottom: 2rem;
+        }
+        .instructions {
+            background: #fef3c7;
+            border: 1px solid #fbbf24;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 2rem;
+        }
+        .step {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            border-left: 4px solid #667eea;
+            background: #f8fafc;
+        }
+        .manual-test {
+            background: #f0f9ff;
+            border: 1px solid #0ea5e9;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-header">
+        <h1>🧪 Learning Assistant - Topic Integration Test</h1>
+        <p>This test will create a topic in Class 1 Science, verify it's stored in the backend, and check if it appears in the UI.</p>
+    </div>
+
+    <div class="test-container">
+        <h2>🤖 Automated Backend Test</h2>
+        <p>This test will automatically create, verify, and clean up a test topic via API calls.</p>
+        
+        <div class="test-controls">
+            <button id="runTest" class="btn btn-primary">Run Backend Test</button>
+            <button id="clearOutput" class="btn btn-secondary">Clear Output</button>
+        </div>
+
+        <div id="testOutput" class="test-output">Click "Run Backend Test" to start the automated test...</div>
+    </div>
+
+    <div class="test-container manual-test">
+        <h2>👤 Manual UI Test Instructions</h2>
+        <p>After running the backend test, follow these steps to test the UI:</p>
+        
+        <div class="step">
+            <strong>Step 1:</strong> Open the main app at <a href="http://localhost:3000" target="_blank">http://localhost:3000</a>
+        </div>
+        
+        <div class="step">
+            <strong>Step 2:</strong> Navigate to: Sri Vidyaniketan Educational Institutions → Class 1 → Science
+        </div>
+        
+        <div class="step">
+            <strong>Step 3:</strong> Click "Add Topic" and create a topic with:
+            <ul>
+                <li>Name: "Test Topic"</li>
+                <li>Description: "This is a test topic"</li>
+                <li>NotebookLM URL: "https://notebooklm.google.com/notebook/test"</li>
+            </ul>
+        </div>
+        
+        <div class="step">
+            <strong>Step 4:</strong> Verify the topic appears in the list immediately after creation
+        </div>
+        
+        <div class="step">
+            <strong>Step 5:</strong> Navigate away (e.g., go back to Class 1) and then return to Science
+        </div>
+        
+        <div class="step">
+            <strong>Step 6:</strong> Verify the topic is still there (loaded from backend)
+        </div>
+        
+        <div class="step">
+            <strong>Step 7:</strong> Click on the topic to test NotebookLM integration
+        </div>
+        
+        <div class="step">
+            <strong>Step 8:</strong> Test edit and delete functionality
+        </div>
+    </div>
+
+    <div class="instructions">
+        <strong>💡 Pro Tip:</strong> Open your browser's Developer Console (F12) to see detailed logs during both tests.
+    </div>
+
+    <script>
+        const API_BASE_URL = 'https://xvq11x0421.execute-api.us-west-2.amazonaws.com/pre-prod';
+        
+        class TopicIntegrationTest {
+            constructor() {
+                this.results = [];
+                this.createdTopicId = null;
+                this.outputElement = document.getElementById('testOutput');
+            }
+
+            log(message) {
+                console.log(message);
+                this.outputElement.textContent += message + '\n';
+                this.outputElement.scrollTop = this.outputElement.scrollHeight;
+            }
+
+            async runTest() {
+                this.log('🚀 Starting Topic Integration Test...\n');
+                this.results = [];
+                this.createdTopicId = null;
+
+                try {
+                    await this.step1_CreateTopic();
+                    await this.step2_VerifyTopicExists();
+                    await this.step3_RetrieveTopicsBySubject();
+                    await this.step4_CleanupTestData();
+                    
+                    this.printResults();
+                } catch (error) {
+                    this.log(`❌ Test failed with error: ${error.message}`);
+                    this.printResults();
+                }
+            }
+
+            async step1_CreateTopic() {
+                this.log('📝 Step 1: Creating "Test Topic" in Class 1 Science...');
+                
+                const topicData = {
+                    name: 'Test Topic',
+                    description: 'This is a test topic for automated testing',
+                    notebookLMUrl: 'https://notebooklm.google.com/notebook/test-integration',
+                    subject_id: 'subject-class-1-science',
+                    school_id: 'school-1',
+                    class_id: 'class-1'
+                };
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/topics`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(topicData)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+                    }
+
+                    const createdTopic = await response.json();
+                    this.createdTopicId = createdTopic.id;
+
+                    this.results.push({
+                        step: 'Create Topic',
+                        success: true,
+                        data: {
+                            topicId: createdTopic.id,
+                            name: createdTopic.name,
+                            subject_id: createdTopic.subject_id
+                        }
+                    });
+
+                    this.log('✅ Topic created successfully!');
+                    this.log(`   Topic ID: ${createdTopic.id}`);
+                    this.log(`   Name: ${createdTopic.name}`);
+                    this.log('');
+
+                } catch (error) {
+                    this.results.push({
+                        step: 'Create Topic',
+                        success: false,
+                        error: error.message
+                    });
+                    throw error;
+                }
+            }
+
+            async step2_VerifyTopicExists() {
+                this.log('🔍 Step 2: Verifying topic exists by ID...');
+
+                if (!this.createdTopicId) {
+                    throw new Error('No topic ID available from previous step');
+                }
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/topics/${this.createdTopicId}`);
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+                    }
+
+                    const topic = await response.json();
+
+                    this.results.push({
+                        step: 'Verify Topic Exists',
+                        success: true,
+                        data: {
+                            found: true,
+                            name: topic.name,
+                            description: topic.description
+                        }
+                    });
+
+                    this.log('✅ Topic found by ID!');
+                    this.log(`   Name: ${topic.name}`);
+                    this.log(`   Description: ${topic.description}`);
+                    this.log('');
+
+                } catch (error) {
+                    this.results.push({
+                        step: 'Verify Topic Exists',
+                        success: false,
+                        error: error.message
+                    });
+                    throw error;
+                }
+            }
+
+            async step3_RetrieveTopicsBySubject() {
+                this.log('📚 Step 3: Retrieving all topics for Class 1 Science...');
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/topics?subject_id=subject-class-1-science`);
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+                    }
+
+                    const topics = await response.json();
+                    const testTopic = topics.find(t => t.id === this.createdTopicId);
+
+                    if (!testTopic) {
+                        throw new Error('Test topic not found in subject topics list');
+                    }
+
+                    this.results.push({
+                        step: 'Retrieve Topics by Subject',
+                        success: true,
+                        data: {
+                            totalTopics: topics.length,
+                            testTopicFound: true,
+                            testTopicName: testTopic.name
+                        }
+                    });
+
+                    this.log('✅ Topics retrieved successfully!');
+                    this.log(`   Total topics in Class 1 Science: ${topics.length}`);
+                    this.log(`   Test topic found: ${testTopic.name}`);
+                    this.log('');
+
+                } catch (error) {
+                    this.results.push({
+                        step: 'Retrieve Topics by Subject',
+                        success: false,
+                        error: error.message
+                    });
+                    throw error;
+                }
+            }
+
+            async step4_CleanupTestData() {
+                this.log('🧹 Step 4: Cleaning up test data...');
+
+                if (!this.createdTopicId) {
+                    this.log('⚠️  No topic ID to clean up');
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/topics/${this.createdTopicId}`, {
+                        method: 'DELETE'
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+                    }
+
+                    this.results.push({
+                        step: 'Cleanup Test Data',
+                        success: true,
+                        data: { deleted: true }
+                    });
+
+                    this.log('✅ Test data cleaned up successfully!');
+                    this.log('');
+
+                } catch (error) {
+                    this.results.push({
+                        step: 'Cleanup Test Data',
+                        success: false,
+                        error: error.message
+                    });
+                    this.log(`⚠️  Failed to cleanup test data: ${error.message}`);
+                }
+            }
+
+            printResults() {
+                this.log('📊 TEST RESULTS SUMMARY');
+                this.log('========================');
+                
+                let passedSteps = 0;
+                let totalSteps = this.results.length;
+
+                this.results.forEach((result, index) => {
+                    const status = result.success ? '✅ PASS' : '❌ FAIL';
+                    this.log(`${index + 1}. ${result.step}: ${status}`);
+                    
+                    if (result.success) {
+                        passedSteps++;
+                        if (result.data) {
+                            this.log(`   Data: ${JSON.stringify(result.data, null, 2)}`);
+                        }
+                    } else {
+                        this.log(`   Error: ${result.error}`);
+                    }
+                    this.log('');
+                });
+
+                this.log(`Overall Result: ${passedSteps}/${totalSteps} steps passed`);
+                
+                if (passedSteps === totalSteps) {
+                    this.log('🎉 ALL TESTS PASSED! Topic integration is working correctly.');
+                    this.log('');
+                    this.log('✨ Now test the UI manually using the instructions above!');
+                } else {
+                    this.log('⚠️  Some tests failed. Check the errors above.');
+                }
+            }
+        }
+
+        // Initialize test runner
+        const testRunner = new TopicIntegrationTest();
+
+        document.getElementById('runTest').addEventListener('click', () => {
+            testRunner.runTest();
+        });
+
+        document.getElementById('clearOutput').addEventListener('click', () => {
+            document.getElementById('testOutput').textContent = 'Output cleared. Click "Run Backend Test" to start testing...\n';
+        });
+    </script>
+</body>
+</html>

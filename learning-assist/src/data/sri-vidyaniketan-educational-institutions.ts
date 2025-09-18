@@ -1,26 +1,14 @@
 import { School } from '../types';
 
-const createSubjects = (classId: string) => {
-  const topics = classId === 'class-6' ? [
-    {
-      id: 'topic-class6-science-matter',
-      name: 'Matter',
-      description: 'Understanding the properties and states of matter',
-      notebookLMUrl: 'https://notebooklm.google.com/notebook/b066683b-a190-45a0-ade9-a2ae690618b3',
-      createdAt: new Date('2024-09-17'),
-      updatedAt: new Date('2024-09-17'),
-    }
-  ] : [];
-
-  return [
-    {
-      id: `subject-${classId}-science`,
-      name: 'Science',
-      description: 'General Science curriculum',
-      createdAt: new Date('2024-01-01'),
-      updatedAt: new Date('2024-09-01'),
-      topics: topics
-    },
+const createSubjects = (classId: string) => [
+  {
+    id: `subject-${classId}-science`,
+    name: 'Science',
+    description: 'General Science curriculum',
+    createdAt: new Date('2024-01-01'),
+    updatedAt: new Date('2024-09-01'),
+    topics: []
+  },
   {
     id: `subject-${classId}-social`,
     name: 'Social Studies',
@@ -61,8 +49,7 @@ const createSubjects = (classId: string) => {
     updatedAt: new Date('2024-09-01'),
     topics: []
   }
-  ];
-};
+];
 
 const createClasses = () => {
   const classes = [];
@@ -79,13 +66,11 @@ const createClasses = () => {
   return classes;
 };
 
-export const mockSchools: School[] = [
-  {
-    id: 'school-1',
-    name: 'Sri Vidyaniketan Educational Institutions',
-    description: 'A premier educational institution committed to excellence in learning and character development',
-    createdAt: new Date('2024-01-01'),
-    updatedAt: new Date('2024-09-01'),
-    classes: createClasses()
-  }
-];
+export const sriVidyaniketanEducationalInstitutions: School = {
+  id: 'school-1',
+  name: 'Sri Vidyaniketan Educational Institutions',
+  description: 'A premier educational institution committed to excellence in learning and character development',
+  createdAt: new Date('2024-01-01'),
+  updatedAt: new Date('2024-09-01'),
+  classes: createClasses()
+};

@@ -9,14 +9,14 @@ interface EditTopicModalProps {
 }
 
 const EditTopicModal: React.FC<EditTopicModalProps> = ({ topic, onClose }) => {
-  const { updateTopic } = useApp();
+  const { updateTopic, loading, error, clearError } = useApp();
   const [formData, setFormData] = useState({
     name: topic.name,
     description: topic.description || '',
     notebookLMUrl: topic.notebookLMUrl || ''
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.name.trim()) {
@@ -24,13 +24,17 @@ const EditTopicModal: React.FC<EditTopicModalProps> = ({ topic, onClose }) => {
       return;
     }
 
-    updateTopic(topic.id, {
-      name: formData.name.trim(),
-      description: formData.description.trim() || undefined,
-      notebookLMUrl: formData.notebookLMUrl.trim() || undefined
-    });
-
-    onClose();
+    try {
+      await updateTopic(topic.id, {
+        name: formData.name.trim(),
+        description: formData.description.trim() || undefined,
+        notebookLMUrl: formData.notebookLMUrl.trim() || undefined
+      });
+      onClose();
+    } catch (error) {
+      // Error is handled by the context, just stay on the modal
+      console.error('Failed to update topic:', error);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -40,15 +44,26 @@ const EditTopicModal: React.FC<EditTopicModalProps> = ({ topic, onClose }) => {
     }));
   };
 
+  const handleClose = () => {
+    clearError();
+    onClose();
+  };
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={handleClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Edit Topic</h2>
-          <button onClick={onClose} className="modal-close">
+          <button onClick={handleClose} className="modal-close" disabled={loading}>
             <X size={20} />
           </button>
         </div>
+
+        {error && (
+          <div className="error-message" style={{ margin: '1rem 1.5rem 0', padding: '0.75rem', backgroundColor: '#fef2f2', color: '#dc2626', borderRadius: '0.5rem', fontSize: '0.875rem' }}>
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="modal-form">
           <div className="form-group">
@@ -90,11 +105,11 @@ const EditTopicModal: React.FC<EditTopicModalProps> = ({ topic, onClose }) => {
           </div>
 
           <div className="modal-actions">
-            <button type="button" onClick={onClose} className="btn btn-secondary">
+            <button type="button" onClick={handleClose} className="btn btn-secondary" disabled={loading}>
               Cancel
             </button>
-            <button type="submit" className="btn btn-primary">
-              Update Topic
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              {loading ? 'Updating...' : 'Update Topic'}
             </button>
           </div>
         </form>
