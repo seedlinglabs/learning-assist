@@ -1,0 +1,137 @@
+import React, { useState } from 'react';
+import { FileText, Plus, Search, Calendar } from 'lucide-react';
+import { Topic } from '../types';
+import AddTopicModal from './AddTopicModal';
+
+interface TopicSidebarProps {
+  topics: Topic[];
+  selectedTopic?: Topic;
+  onTopicSelect: (topic: Topic) => void;
+  subjectId: string;
+  subjectName: string;
+}
+
+const TopicSidebar: React.FC<TopicSidebarProps> = ({ 
+  topics, 
+  selectedTopic, 
+  onTopicSelect, 
+  subjectId, 
+  subjectName 
+}) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
+
+  const formatDate = (date: Date) => {
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric'
+    }).format(new Date(date));
+  };
+
+  const filteredTopics = topics.filter(topic =>
+    topic.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (topic.description && topic.description.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  return (
+    <div className="topic-sidebar">
+      <div className="sidebar-header">
+        <div className="sidebar-title">
+          <h3>{subjectName} Topics</h3>
+          <span className="topic-count">{topics.length}</span>
+        </div>
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="btn btn-primary btn-sm"
+          title="Add new topic"
+        >
+          <Plus size={16} />
+        </button>
+      </div>
+
+      <div className="sidebar-search">
+        <div className="search-input-container">
+          <Search size={16} />
+          <input
+            type="text"
+            placeholder="Search topics..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="search-input"
+          />
+        </div>
+      </div>
+
+      <div className="sidebar-content">
+        {filteredTopics.length === 0 ? (
+          <div className="empty-sidebar">
+            {searchQuery ? (
+              <div className="no-results">
+                <Search size={32} />
+                <p>No topics found matching "{searchQuery}"</p>
+              </div>
+            ) : (
+              <div className="no-topics">
+                <FileText size={32} />
+                <p>No topics yet</p>
+                <button
+                  onClick={() => setShowAddModal(true)}
+                  className="btn btn-primary btn-sm"
+                >
+                  <Plus size={16} />
+                  Add First Topic
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="topic-list">
+            {filteredTopics.map((topic) => (
+              <div
+                key={topic.id}
+                className={`topic-item ${selectedTopic?.id === topic.id ? 'selected' : ''}`}
+                onClick={() => onTopicSelect(topic)}
+              >
+                <div className="topic-item-header">
+                  <FileText size={16} />
+                  <span className="topic-name">{topic.name}</span>
+                </div>
+                {topic.description && (
+                  <p className="topic-preview">
+                    {topic.description.length > 60 
+                      ? `${topic.description.substring(0, 60)}...`
+                      : topic.description
+                    }
+                  </p>
+                )}
+                {topic.summary && (
+                  <div className="topic-summary-badge">
+                    ✨ Has AI Summary
+                  </div>
+                )}
+                <div className="topic-item-meta">
+                  <Calendar size={12} />
+                  <span>{formatDate(topic.updatedAt)}</span>
+                  {topic.documentLinks && topic.documentLinks.length > 0 && (
+                    <span className="doc-count">
+                      {topic.documentLinks.length} doc{topic.documentLinks.length !== 1 ? 's' : ''}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {showAddModal && (
+        <AddTopicModal
+          subjectId={subjectId}
+          onClose={() => setShowAddModal(false)}
+        />
+      )}
+    </div>
+  );
+};
+
+export default TopicSidebar;
