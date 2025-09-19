@@ -160,6 +160,21 @@ def lambda_handler(event, context):
             'body': json.dumps({'error': str(e)})
         }
 
+def generate_name_from_url(url: str) -> str:
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        path = parsed.path or ''
+        last = [seg for seg in path.split('/') if seg][-1] if path else ''
+        base = last.split('?')[0].split('#')[0]
+        base = base.rsplit('.', 1)[0] if '.' in base else (base or parsed.netloc)
+        base = base.replace('-', ' ').replace('_', ' ')
+        words = [w for w in base.split(' ') if w]
+        titled = ' '.join([w.upper() if len(w) <= 3 else (w[0].upper() + w[1:]) for w in words])
+        return titled or parsed.netloc
+    except Exception:
+        return url[:60]
+
 def create_topic(table, topic_data):
     """Create a new topic"""
     try:
@@ -181,11 +196,24 @@ def create_topic(table, topic_data):
         current_time = datetime.utcnow().isoformat()
         
         # Prepare item for DynamoDB
+        # Normalize document links to objects with name and url.
+        raw_links = topic_data.get('documentLinks') or topic_data.get('document_links') or []
+        normalized_links = []
+        for link in raw_links:
+            if isinstance(link, dict):
+                url = link.get('url') or ''
+                name = link.get('name') or generate_name_from_url(url)
+                if url:
+                    normalized_links.append({'name': name, 'url': url})
+            elif isinstance(link, str):
+                if link:
+                    normalized_links.append({'name': generate_name_from_url(link), 'url': link})
+
         item = {
             'id': topic_id,
             'name': topic_data['name'],
             'description': topic_data.get('description', ''),
-            'notebook_lm_url': topic_data.get('notebookLMUrl', ''),
+            'document_links': normalized_links,
             'subject_id': topic_data['subject_id'],
             'school_id': topic_data['school_id'],
             'class_id': topic_data['class_id'],
@@ -347,9 +375,10 @@ def update_topic(table, topic_id, update_data):
         expression_values = {':updated_at': datetime.utcnow().isoformat()}
         
         # Add fields to update
-        updatable_fields = ['name', 'description', 'notebook_lm_url']
+        updatable_fields = ['name', 'description', 'document_links']
         field_mapping = {
-            'notebookLMUrl': 'notebook_lm_url'  # Handle frontend field name mapping
+            'documentLinks': 'document_links',
+            'document_links': 'document_links'
         }
         
         for field in updatable_fields:
@@ -361,8 +390,22 @@ def update_topic(table, topic_id, update_data):
                     break
             
             if frontend_field in update_data:
+                # Normalize document links to array of {name,url}
+                value = update_data[frontend_field]
+                if field == 'document_links':
+                    norm = []
+                    for link in (value or []):
+                        if isinstance(link, dict):
+                            url = link.get('url') or ''
+                            name = link.get('name') or generate_name_from_url(url)
+                            if url:
+                                norm.append({'name': name, 'url': url})
+                        elif isinstance(link, str):
+                            if link:
+                                norm.append({'name': generate_name_from_url(link), 'url': link})
+                    value = norm
                 update_expression += f", {field} = :{field}"
-                expression_values[f':{field}'] = update_data[frontend_field]
+                expression_values[f':{field}'] = value
         
         # Perform update
         response = table.update_item(

@@ -1,8 +1,13 @@
+export interface DocumentLink {
+  name: string;
+  url: string;
+}
+
 export interface Topic {
   id: string;
   name: string;
   description?: string;
-  notebookLMUrl?: string;
+  documentLinks?: DocumentLink[]; // List of source document links
   createdAt: Date;
   updatedAt: Date;
 }

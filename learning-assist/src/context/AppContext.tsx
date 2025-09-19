@@ -111,7 +111,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       const createRequest: CreateTopicRequest = {
         name: topicData.name,
         description: topicData.description,
-        notebookLMUrl: topicData.notebookLMUrl,
+        documentLinks: topicData.documentLinks,
         subject_id: subjectId,
         school_id: schoolId,
         class_id: classId,
@@ -138,7 +138,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       const updateRequest = {
         name: updates.name,
         description: updates.description,
-        notebookLMUrl: updates.notebookLMUrl,
+        documentLinks: updates.documentLinks,
       };
 
       const updatedTopic = await topicsAPI.update(topicId, updateRequest);
@@ -172,11 +172,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     }
   };
 
-  const openNotebookLM = (url: string) => {
-    if (url) {
-      window.open(url, '_blank', 'noopener,noreferrer');
-    }
-  };
+  // Removed NotebookLM opener; topics now support multiple document links
+  const openNotebookLM = (_url: string) => {};
 
   const performSearch = (query: string): SearchResult[] => {
     if (!query.trim()) return [];

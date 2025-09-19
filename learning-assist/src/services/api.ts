@@ -1,11 +1,11 @@
-import { Topic } from '../types';
+import { Topic, DocumentLink } from '../types';
 
 const API_BASE_URL = 'https://xvq11x0421.execute-api.us-west-2.amazonaws.com/pre-prod';
 
 export interface CreateTopicRequest {
   name: string;
   description?: string;
-  notebookLMUrl?: string;
+  documentLinks?: DocumentLink[];
   subject_id: string;
   school_id: string;
   class_id: string;
@@ -14,14 +14,14 @@ export interface CreateTopicRequest {
 export interface UpdateTopicRequest {
   name?: string;
   description?: string;
-  notebookLMUrl?: string;
+  documentLinks?: DocumentLink[];
 }
 
 export interface ApiTopic {
   id: string;
   name: string;
   description: string;
-  notebook_lm_url: string;
+  document_links?: { name?: string; url: string }[];
   subject_id: string;
   school_id: string;
   class_id: string;
@@ -34,20 +34,51 @@ const transformApiTopicToTopic = (apiTopic: any): Topic => ({
   id: apiTopic.id,
   name: apiTopic.name,
   description: apiTopic.description || undefined,
-  notebookLMUrl: apiTopic.notebook_lm_url || undefined,
+  documentLinks: Array.isArray(apiTopic.document_links)
+    ? apiTopic.document_links.map((l: any) => ({ name: l.name || generateNameFromUrl(l.url), url: l.url }))
+    : undefined,
   createdAt: new Date(apiTopic.created_at),
   updatedAt: new Date(apiTopic.updated_at)
 });
 
 // Transform frontend Topic to API format
-const transformTopicToApiTopic = (topic: CreateTopicRequest): CreateTopicRequest => ({
+const transformTopicToApiTopic = (topic: CreateTopicRequest): any => ({
   name: topic.name,
   description: topic.description,
-  notebookLMUrl: topic.notebookLMUrl,
+  document_links: Array.isArray(topic.documentLinks)
+    ? topic.documentLinks.map(l => ({ name: l.name, url: l.url }))
+    : undefined,
   subject_id: topic.subject_id,
   school_id: topic.school_id,
   class_id: topic.class_id
 });
+
+// Heuristic to generate a human-readable name from a URL
+export function generateNameFromUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    const pathname = u.pathname; // /path/to/file-name_v2.pdf
+    let lastSegment = pathname.split('/').filter(Boolean).pop() || u.hostname;
+    // Strip query/hash
+    lastSegment = lastSegment.split('?')[0].split('#')[0];
+    // Remove extension
+    lastSegment = lastSegment.replace(/\.[a-zA-Z0-9]{1,6}$/i, '');
+    // Replace separators with spaces
+    lastSegment = lastSegment.replace(/[-_]+/g, ' ');
+    // Title case simple words
+    lastSegment = lastSegment
+      .split(' ')
+      .map(w => (w.length <= 3 ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1)))
+      .join(' ');
+    // Fallback to hostname if too short
+    if (lastSegment.trim().length < 2) return u.hostname;
+    return lastSegment.trim();
+  } catch {
+    // Fallback: trim and return raw url tail
+    const tail = url.split('/').filter(Boolean).pop() || url;
+    return tail.slice(0, 60);
+  }
+}
 
 class ApiError extends Error {
   constructor(public status: number, message: string) {

@@ -13,7 +13,9 @@ const EditTopicModal: React.FC<EditTopicModalProps> = ({ topic, onClose }) => {
   const [formData, setFormData] = useState({
     name: topic.name,
     description: topic.description || '',
-    notebookLMUrl: topic.notebookLMUrl || ''
+    documentLinkInput: '',
+    documentLinkNameInput: '',
+    documentLinks: topic.documentLinks ? [...topic.documentLinks] : [] as { name: string; url: string }[],
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,7 +30,7 @@ const EditTopicModal: React.FC<EditTopicModalProps> = ({ topic, onClose }) => {
       await updateTopic(topic.id, {
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
-        notebookLMUrl: formData.notebookLMUrl.trim() || undefined
+        documentLinks: formData.documentLinks
       });
       onClose();
     } catch (error) {
@@ -42,6 +44,19 @@ const EditTopicModal: React.FC<EditTopicModalProps> = ({ topic, onClose }) => {
       ...prev,
       [e.target.name]: e.target.value
     }));
+  };
+
+  const addDocumentLink = () => {
+    const url = formData.documentLinkInput.trim();
+    if (!url) return;
+    try { new URL(url); } catch { alert('Please enter a valid URL'); return; }
+    if (formData.documentLinks.some(l => l.url === url)) return;
+    const name = formData.documentLinkNameInput.trim() || url;
+    setFormData(prev => ({ ...prev, documentLinks: [...prev.documentLinks, { name, url }], documentLinkInput: '', documentLinkNameInput: '' }));
+  };
+
+  const removeDocumentLink = (url: string) => {
+    setFormData(prev => ({ ...prev, documentLinks: prev.documentLinks.filter(l => l.url !== url) }));
   };
 
   const handleClose = () => {
@@ -93,15 +108,36 @@ const EditTopicModal: React.FC<EditTopicModalProps> = ({ topic, onClose }) => {
           </div>
 
           <div className="form-group">
-            <label htmlFor="notebookLMUrl">NotebookLM URL</label>
-            <input
-              type="url"
-              id="notebookLMUrl"
-              name="notebookLMUrl"
-              value={formData.notebookLMUrl}
-              onChange={handleChange}
-              placeholder="https://notebooklm.google.com/notebook/..."
-            />
+            <label>Document Links</label>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <input
+                type="url"
+                id="documentLinkInput"
+                name="documentLinkInput"
+                value={formData.documentLinkInput}
+                onChange={handleChange}
+                placeholder="https://example.com/doc.pdf"
+              />
+              <input
+                type="text"
+                id="documentLinkNameInput"
+                name="documentLinkNameInput"
+                value={formData.documentLinkNameInput}
+                onChange={handleChange}
+                placeholder="Optional name"
+              />
+              <button type="button" className="btn btn-secondary" onClick={addDocumentLink} disabled={loading}>Add</button>
+            </div>
+            {formData.documentLinks.length > 0 && (
+              <ul style={{ marginTop: '0.75rem', paddingLeft: '1rem' }}>
+                {formData.documentLinks.map((link) => (
+                  <li key={link.url} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                    <a href={link.url} target="_blank" rel="noreferrer" style={{ color: '#2563eb', wordBreak: 'break-all' }}>{link.name}</a>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => removeDocumentLink(link.url)}>Remove</button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           <div className="modal-actions">

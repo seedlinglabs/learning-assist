@@ -86,7 +86,7 @@ const TopicList: React.FC = () => {
       <div className="topics-container">
         {subject.topics.map((topic) => (
           <div key={topic.id} className="topic-card">
-            <div className="topic-main" onClick={() => handleOpenNotebook(topic)}>
+            <div className="topic-main">
               <div className="topic-icon">
                 <FileText size={24} />
               </div>
@@ -100,10 +100,13 @@ const TopicList: React.FC = () => {
                     <Calendar size={14} />
                     <span>Updated {formatDate(topic.updatedAt)}</span>
                   </div>
-                  {topic.notebookLMUrl && (
-                    <div className="topic-link">
-                      <ExternalLink size={14} />
-                      <span>NotebookLM</span>
+                  {Array.isArray(topic.documentLinks) && topic.documentLinks.length > 0 && (
+                    <div className="topic-link" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      {topic.documentLinks.map((link) => (
+                        <a key={link.url} href={link.url} target="_blank" rel="noreferrer" style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                          <ExternalLink size={14} /> {link.name}
+                        </a>
+                      ))}
                     </div>
                   )}
                 </div>
