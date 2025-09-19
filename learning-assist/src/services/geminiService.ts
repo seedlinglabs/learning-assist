@@ -2,7 +2,7 @@ import { DocumentLink } from '../types';
 
 // You'll need to set your Gemini API key as an environment variable
 const GEMINI_API_KEY = process.env.REACT_APP_GEMINI_API_KEY;
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
 export interface SummaryRequest {
   documentLinks: DocumentLink[];
@@ -70,6 +70,7 @@ Please provide only the summary text without any additional formatting or explan
             topK: 40,
             topP: 0.95,
             maxOutputTokens: 1024,
+            candidateCount: 1,
           },
           safetySettings: [
             {
