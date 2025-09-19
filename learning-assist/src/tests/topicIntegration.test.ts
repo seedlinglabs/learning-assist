@@ -40,7 +40,16 @@ class TopicIntegrationTest {
     const topicData = {
       name: 'Test Topic',
       description: 'This is a test topic for automated testing',
-      notebookLMUrl: 'https://notebooklm.google.com/notebook/test-integration',
+      documentLinks: [
+        {
+          name: 'Test Document 1',
+          url: 'https://example.com/doc1'
+        },
+        {
+          name: 'Auto-named Document',
+          url: 'https://docs.google.com/document/d/test-doc-2'
+        }
+      ],
       subject_id: 'subject-class-1-science',
       school_id: 'school-1',
       class_id: 'class-1'
