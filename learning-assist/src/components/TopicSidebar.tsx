@@ -1,25 +1,27 @@
 import React, { useState } from 'react';
 import { FileText, Plus, Search, Calendar } from 'lucide-react';
 import { Topic } from '../types';
-import AddTopicModal from './AddTopicModal';
 
 interface TopicSidebarProps {
   topics: Topic[];
   selectedTopic?: Topic;
   onTopicSelect: (topic: Topic) => void;
+  onNewTopicClick: () => void;
   subjectId: string;
   subjectName: string;
+  isCreatingNewTopic?: boolean;
 }
 
 const TopicSidebar: React.FC<TopicSidebarProps> = ({ 
   topics, 
   selectedTopic, 
   onTopicSelect, 
+  onNewTopicClick,
   subjectId, 
-  subjectName 
+  subjectName,
+  isCreatingNewTopic = false
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [showAddModal, setShowAddModal] = useState(false);
 
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {
@@ -41,8 +43,8 @@ const TopicSidebar: React.FC<TopicSidebarProps> = ({
           <span className="topic-count">{topics.length}</span>
         </div>
         <button
-          onClick={() => setShowAddModal(true)}
-          className="btn btn-primary btn-sm"
+          onClick={onNewTopicClick}
+          className={`btn btn-primary btn-sm ${isCreatingNewTopic ? 'active' : ''}`}
           title="Add new topic"
         >
           <Plus size={16} />
@@ -75,7 +77,7 @@ const TopicSidebar: React.FC<TopicSidebarProps> = ({
                 <FileText size={32} />
                 <p>No topics yet</p>
                 <button
-                  onClick={() => setShowAddModal(true)}
+                  onClick={onNewTopicClick}
                   className="btn btn-primary btn-sm"
                 >
                   <Plus size={16} />
@@ -89,7 +91,7 @@ const TopicSidebar: React.FC<TopicSidebarProps> = ({
             {filteredTopics.map((topic) => (
               <div
                 key={topic.id}
-                className={`topic-item ${selectedTopic?.id === topic.id ? 'selected' : ''}`}
+                className={`topic-item ${selectedTopic?.id === topic.id && !isCreatingNewTopic ? 'selected' : ''}`}
                 onClick={() => onTopicSelect(topic)}
               >
                 <div className="topic-item-header">
@@ -124,12 +126,6 @@ const TopicSidebar: React.FC<TopicSidebarProps> = ({
         )}
       </div>
 
-      {showAddModal && (
-        <AddTopicModal
-          subjectId={subjectId}
-          onClose={() => setShowAddModal(false)}
-        />
-      )}
     </div>
   );
 };

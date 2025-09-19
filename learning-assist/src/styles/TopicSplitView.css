@@ -211,6 +211,50 @@
   margin: 0;
 }
 
+/* New Topic Info */
+.new-topic-info {
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.new-topic-info h4 {
+  margin: 0 0 0.5rem 0;
+  color: #0369a1;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.new-topic-info p {
+  margin: 0;
+  color: #0284c7;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.summary-help {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: #f8fafc;
+  border-radius: 6px;
+  border-left: 3px solid #3b82f6;
+}
+
+.summary-help p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.btn.active {
+  background: #1e40af !important;
+  border-color: #1e40af !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+}
+
 /* Topic Detail Panel */
 .topic-detail-panel {
   display: flex;
