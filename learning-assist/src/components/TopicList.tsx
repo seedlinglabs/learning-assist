@@ -4,14 +4,12 @@ import { useApp } from '../context/AppContext';
 import { Topic } from '../types';
 import AddTopicModal from './AddTopicModal';
 import EditTopicModal from './EditTopicModal';
-import TopicDetailsModal from './TopicDetailsModal';
 
 const TopicList: React.FC = () => {
   const { currentPath, deleteTopic, refreshTopics, loading, error, clearError } = useApp();
   const { school, class: cls, subject } = currentPath;
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingTopic, setEditingTopic] = useState<Topic | null>(null);
-  const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
   const [deletingTopicId, setDeletingTopicId] = useState<string | null>(null);
 
   if (!school || !cls || !subject) return null;
@@ -44,7 +42,7 @@ const TopicList: React.FC = () => {
       <div className="content-header">
         <div>
           <h1>Topics in {subject.name}</h1>
-          <p>Click on a topic to view details, or click a document link to open it directly</p>
+          <p>Click on a topic to edit it, or click a document link to open it directly</p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button
@@ -84,7 +82,7 @@ const TopicList: React.FC = () => {
           <div
             key={topic.id}
             className="topic-card"
-            onClick={() => setSelectedTopic(topic)}
+            onClick={() => setEditingTopic(topic)}
             style={{ cursor: 'pointer', transition: 'all 0.2s ease-in-out' }}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'translateY(-2px)';
@@ -184,12 +182,6 @@ const TopicList: React.FC = () => {
         />
       )}
 
-      {selectedTopic && (
-        <TopicDetailsModal
-          topic={selectedTopic}
-          onClose={() => setSelectedTopic(null)}
-        />
-      )}
     </div>
   );
 };
