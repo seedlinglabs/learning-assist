@@ -250,6 +250,7 @@ def create_topic(table, topic_data):
             'name': topic_data['name'],
             'description': topic_data.get('description', ''),
             'document_links': normalized_links,
+            'summary': topic_data.get('summary', ''),
             'subject_id': topic_data['subject_id'],
             'school_id': topic_data['school_id'],
             'class_id': topic_data['class_id'],
@@ -435,7 +436,7 @@ def update_topic(table, topic_id, update_data):
         expression_values = {':updated_at': datetime.utcnow().isoformat()}
         
         # Add fields to update
-        updatable_fields = ['name', 'description', 'document_links']
+        updatable_fields = ['name', 'description', 'document_links', 'summary']
         field_mapping = {
             'documentLinks': 'document_links',
             'document_links': 'document_links'

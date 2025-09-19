@@ -102,6 +102,16 @@ const TopicList: React.FC = () => {
                 {topic.description && (
                   <p className="topic-description">{topic.description}</p>
                 )}
+                {topic.summary && (
+                  <div className="topic-summary" style={{ marginTop: '0.5rem', padding: '0.75rem', backgroundColor: '#f8fafc', borderRadius: '0.5rem', borderLeft: '3px solid #3b82f6' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <span>✨ AI Summary</span>
+                    </div>
+                    <p style={{ fontSize: '0.875rem', color: '#374151', lineHeight: '1.4', margin: 0 }}>
+                      {topic.summary.length > 200 ? `${topic.summary.substring(0, 200)}...` : topic.summary}
+                    </p>
+                  </div>
+                )}
                 <div className="topic-meta">
                   <div className="topic-date">
                     <Calendar size={14} />

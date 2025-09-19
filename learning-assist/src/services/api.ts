@@ -6,6 +6,7 @@ export interface CreateTopicRequest {
   name: string;
   description?: string;
   documentLinks?: DocumentLink[];
+  summary?: string;
   subject_id: string;
   school_id: string;
   class_id: string;
@@ -15,6 +16,7 @@ export interface UpdateTopicRequest {
   name?: string;
   description?: string;
   documentLinks?: DocumentLink[];
+  summary?: string;
 }
 
 export interface ApiTopic {
@@ -37,6 +39,7 @@ const transformApiTopicToTopic = (apiTopic: any): Topic => ({
   documentLinks: Array.isArray(apiTopic.document_links)
     ? apiTopic.document_links.map((l: any) => ({ name: l.name || generateNameFromUrl(l.url), url: l.url }))
     : undefined,
+  summary: apiTopic.summary || undefined,
   createdAt: new Date(apiTopic.created_at),
   updatedAt: new Date(apiTopic.updated_at)
 });
@@ -48,6 +51,7 @@ const transformTopicToApiTopic = (topic: CreateTopicRequest): any => ({
   document_links: Array.isArray(topic.documentLinks)
     ? topic.documentLinks.map(l => ({ name: l.name, url: l.url }))
     : undefined,
+  summary: topic.summary,
   subject_id: topic.subject_id,
   school_id: topic.school_id,
   class_id: topic.class_id
