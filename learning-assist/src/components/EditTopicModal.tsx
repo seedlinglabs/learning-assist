@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Sparkles } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Topic } from '../types';
+import { GeminiService } from '../services/geminiService';
 
 interface EditTopicModalProps {
   topic: Topic;
@@ -13,10 +14,13 @@ const EditTopicModal: React.FC<EditTopicModalProps> = ({ topic, onClose }) => {
   const [formData, setFormData] = useState({
     name: topic.name,
     description: topic.description || '',
+    summary: topic.summary || '',
     documentLinkInput: '',
     documentLinkNameInput: '',
     documentLinks: topic.documentLinks ? [...topic.documentLinks] : [] as { name: string; url: string }[],
   });
+  const [generatingSummary, setGeneratingSummary] = useState(false);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,7 +34,8 @@ const EditTopicModal: React.FC<EditTopicModalProps> = ({ topic, onClose }) => {
       await updateTopic(topic.id, {
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
-        documentLinks: formData.documentLinks
+        documentLinks: formData.documentLinks,
+        summary: formData.summary.trim() || undefined,
       });
       onClose();
     } catch (error) {
@@ -57,6 +62,37 @@ const EditTopicModal: React.FC<EditTopicModalProps> = ({ topic, onClose }) => {
 
   const removeDocumentLink = (url: string) => {
     setFormData(prev => ({ ...prev, documentLinks: prev.documentLinks.filter(l => l.url !== url) }));
+  };
+
+  const generateSummary = async () => {
+    if (!formData.documentLinks || formData.documentLinks.length === 0) {
+      setSummaryError('Please add at least one document link before generating a summary.');
+      return;
+    }
+
+    setGeneratingSummary(true);
+    setSummaryError(null);
+
+    try {
+      const result = await GeminiService.generateSummary({
+        documentLinks: formData.documentLinks,
+        topicName: formData.name
+      });
+
+      if (result.success) {
+        setFormData(prev => ({
+          ...prev,
+          summary: result.summary
+        }));
+      } else {
+        setSummaryError(result.error || 'Failed to generate summary');
+      }
+    } catch (error) {
+      setSummaryError('An error occurred while generating the summary');
+      console.error('Summary generation error:', error);
+    } finally {
+      setGeneratingSummary(false);
+    }
   };
 
   const handleClose = () => {
@@ -138,6 +174,36 @@ const EditTopicModal: React.FC<EditTopicModalProps> = ({ topic, onClose }) => {
                 ))}
               </ul>
             )}
+          </div>
+
+          <div className="form-group">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <label htmlFor="summary">AI Summary</label>
+              <button
+                type="button"
+                onClick={generateSummary}
+                disabled={generatingSummary || loading || formData.documentLinks.length === 0}
+                className="btn btn-secondary btn-sm"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+              >
+                <Sparkles size={14} />
+                {generatingSummary ? 'Generating...' : 'Generate Summary'}
+              </button>
+            </div>
+            {summaryError && (
+              <div style={{ color: '#dc2626', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                {summaryError}
+              </div>
+            )}
+            <textarea
+              id="summary"
+              name="summary"
+              value={formData.summary}
+              onChange={handleChange}
+              placeholder="AI-generated summary will appear here, or you can write your own..."
+              rows={6}
+              disabled={generatingSummary}
+            />
           </div>
 
           <div className="modal-actions">

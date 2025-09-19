@@ -108,14 +108,15 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         }
       }
 
-      const createRequest: CreateTopicRequest = {
-        name: topicData.name,
-        description: topicData.description,
-        documentLinks: topicData.documentLinks,
-        subject_id: subjectId,
-        school_id: schoolId,
-        class_id: classId,
-      };
+        const createRequest: CreateTopicRequest = {
+          name: topicData.name,
+          description: topicData.description,
+          documentLinks: topicData.documentLinks,
+          summary: topicData.summary,
+          subject_id: subjectId,
+          school_id: schoolId,
+          class_id: classId,
+        };
 
       const newTopic = await topicsAPI.create(createRequest);
 

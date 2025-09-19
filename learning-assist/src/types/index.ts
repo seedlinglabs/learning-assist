@@ -8,6 +8,7 @@ export interface Topic {
   name: string;
   description?: string;
   documentLinks?: DocumentLink[]; // List of source document links
+  summary?: string; // AI-generated summary from document links
   createdAt: Date;
   updatedAt: Date;
 }
