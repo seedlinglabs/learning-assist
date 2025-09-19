@@ -4,12 +4,14 @@ import { useApp } from '../context/AppContext';
 import { Topic } from '../types';
 import AddTopicModal from './AddTopicModal';
 import EditTopicModal from './EditTopicModal';
+import TopicDetailsModal from './TopicDetailsModal';
 
 const TopicList: React.FC = () => {
   const { currentPath, deleteTopic, refreshTopics, loading, error, clearError } = useApp();
   const { school, class: cls, subject } = currentPath;
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingTopic, setEditingTopic] = useState<Topic | null>(null);
+  const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
   const [deletingTopicId, setDeletingTopicId] = useState<string | null>(null);
 
   if (!school || !cls || !subject) return null;
@@ -42,7 +44,7 @@ const TopicList: React.FC = () => {
       <div className="content-header">
         <div>
           <h1>Topics in {subject.name}</h1>
-          <p>Click on a document link to open it in a new tab</p>
+          <p>Click on a topic to view details, or click a document link to open it directly</p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button
@@ -79,7 +81,20 @@ const TopicList: React.FC = () => {
 
       <div className="topics-container">
         {subject.topics.map((topic) => (
-          <div key={topic.id} className="topic-card">
+          <div
+            key={topic.id}
+            className="topic-card"
+            onClick={() => setSelectedTopic(topic)}
+            style={{ cursor: 'pointer', transition: 'all 0.2s ease-in-out' }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'none';
+              e.currentTarget.style.boxShadow = 'none';
+            }}
+          >
             <div className="topic-main">
               <div className="topic-icon">
                 <FileText size={24} />
@@ -97,7 +112,14 @@ const TopicList: React.FC = () => {
                   {Array.isArray(topic.documentLinks) && topic.documentLinks.length > 0 && (
                     <div className="topic-link" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                       {topic.documentLinks.map((link) => (
-                        <a key={link.url} href={link.url} target="_blank" rel="noreferrer" style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                        <a
+                          key={link.url}
+                          href={link.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ color: '#2563eb', textDecoration: 'underline' }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <ExternalLink size={14} /> {link.name}
                         </a>
                       ))}
@@ -159,6 +181,13 @@ const TopicList: React.FC = () => {
         <EditTopicModal
           topic={editingTopic}
           onClose={() => setEditingTopic(null)}
+        />
+      )}
+
+      {selectedTopic && (
+        <TopicDetailsModal
+          topic={selectedTopic}
+          onClose={() => setSelectedTopic(null)}
         />
       )}
     </div>
