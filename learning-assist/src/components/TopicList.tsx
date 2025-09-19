@@ -6,7 +6,7 @@ import AddTopicModal from './AddTopicModal';
 import EditTopicModal from './EditTopicModal';
 
 const TopicList: React.FC = () => {
-  const { currentPath, openNotebookLM, deleteTopic, refreshTopics, loading, error, clearError } = useApp();
+  const { currentPath, deleteTopic, refreshTopics, loading, error, clearError } = useApp();
   const { school, class: cls, subject } = currentPath;
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingTopic, setEditingTopic] = useState<Topic | null>(null);
@@ -15,12 +15,6 @@ const TopicList: React.FC = () => {
   if (!school || !cls || !subject) return null;
 
   console.log('TopicList - Current subject:', subject.name, 'Topics:', subject.topics);
-
-  const handleOpenNotebook = (topic: any) => {
-    if (topic.notebookLMUrl) {
-      openNotebookLM(topic.notebookLMUrl);
-    }
-  };
 
   const handleDeleteTopic = async (topicId: string) => {
     if (window.confirm('Are you sure you want to delete this topic?')) {
@@ -48,7 +42,7 @@ const TopicList: React.FC = () => {
       <div className="content-header">
         <div>
           <h1>Topics in {subject.name}</h1>
-          <p>Click on a topic to open it in NotebookLM</p>
+          <p>Click on a document link to open it in a new tab</p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button

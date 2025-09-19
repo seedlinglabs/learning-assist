@@ -175,6 +175,18 @@ def generate_name_from_url(url: str) -> str:
     except Exception:
         return url[:60]
 
+def validate_document_link(link):
+    """Validate a document link object"""
+    if not isinstance(link, dict):
+        return False, "Document link must be an object"
+    if 'url' not in link:
+        return False, "Document link must have a URL"
+    if not isinstance(link['url'], str) or not link['url'].strip():
+        return False, "Document link URL must be a non-empty string"
+    if 'name' in link and (not isinstance(link['name'], str) or not link['name'].strip()):
+        return False, "If provided, document link name must be a non-empty string"
+    return True, None
+
 def create_topic(table, topic_data):
     """Create a new topic"""
     try:
@@ -190,6 +202,30 @@ def create_topic(table, topic_data):
                     },
                     'body': json.dumps({'error': f'Missing required field: {field}'})
                 }
+        
+        # Validate document links if present
+        if 'documentLinks' in topic_data or 'document_links' in topic_data:
+            links = topic_data.get('documentLinks') or topic_data.get('document_links')
+            if not isinstance(links, list):
+                return {
+                    'statusCode': 400,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': json.dumps({'error': 'Document links must be an array'})
+                }
+            for link in links:
+                is_valid, error = validate_document_link(link)
+                if not is_valid:
+                    return {
+                        'statusCode': 400,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'body': json.dumps({'error': error})
+                    }
         
         # Generate unique ID and timestamps
         topic_id = str(uuid.uuid4())
@@ -369,6 +405,30 @@ def update_topic(table, topic_id, update_data):
                 },
                 'body': json.dumps({'error': 'Topic not found'})
             }
+        
+        # Validate document links if present
+        if 'documentLinks' in update_data or 'document_links' in update_data:
+            links = update_data.get('documentLinks') or update_data.get('document_links')
+            if not isinstance(links, list):
+                return {
+                    'statusCode': 400,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': json.dumps({'error': 'Document links must be an array'})
+                }
+            for link in links:
+                is_valid, error = validate_document_link(link)
+                if not is_valid:
+                    return {
+                        'statusCode': 400,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'body': json.dumps({'error': error})
+                    }
         
         # Prepare update expression
         update_expression = "SET updated_at = :updated_at"
