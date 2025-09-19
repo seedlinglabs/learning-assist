@@ -113,6 +113,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           description: topicData.description,
           documentLinks: topicData.documentLinks,
           summary: topicData.summary,
+          interactiveContent: topicData.interactiveContent,
           subject_id: subjectId,
           school_id: schoolId,
           class_id: classId,

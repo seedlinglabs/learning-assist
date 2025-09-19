@@ -9,6 +9,7 @@ export interface Topic {
   description?: string;
   documentLinks?: DocumentLink[]; // List of source document links
   summary?: string; // AI-generated summary from document links
+  interactiveContent?: string; // AI-generated interactive activities for students
   createdAt: Date;
   updatedAt: Date;
 }

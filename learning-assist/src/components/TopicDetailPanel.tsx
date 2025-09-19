@@ -14,10 +14,13 @@ const TopicDetailPanel: React.FC<TopicDetailPanelProps> = ({ topic, onTopicDelet
   const [isEditing, setIsEditing] = useState(false);
   const [generatingSummary, setGeneratingSummary] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
+  const [generatingInteractive, setGeneratingInteractive] = useState(false);
+  const [interactiveError, setInteractiveError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: topic.name,
     description: topic.description || '',
     summary: topic.summary || '',
+    interactiveContent: topic.interactiveContent || '',
     documentLinkInput: '',
     documentLinkNameInput: '',
     documentLinks: topic.documentLinks ? [...topic.documentLinks] : [] as { name: string; url: string }[],
@@ -91,6 +94,39 @@ const TopicDetailPanel: React.FC<TopicDetailPanelProps> = ({ topic, onTopicDelet
     }
   };
 
+  const generateInteractiveContent = async () => {
+    if (!formData.summary && (!formData.documentLinks || formData.documentLinks.length === 0)) {
+      setInteractiveError('Please generate a summary first or add document links before creating interactive content.');
+      return;
+    }
+
+    setGeneratingInteractive(true);
+    setInteractiveError(null);
+
+    try {
+      const result = await GeminiService.generateInteractiveContent({
+        topicName: formData.name,
+        summary: formData.summary,
+        documentLinks: formData.documentLinks,
+        description: formData.description
+      });
+
+      if (result.success) {
+        setFormData(prev => ({
+          ...prev,
+          interactiveContent: result.interactiveContent
+        }));
+      } else {
+        setInteractiveError(result.error || 'Failed to generate interactive content');
+      }
+    } catch (error) {
+      setInteractiveError('An error occurred while generating interactive content');
+      console.error('Interactive content generation error:', error);
+    } finally {
+      setGeneratingInteractive(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!formData.name.trim()) {
       alert('Please enter a topic name');
@@ -103,6 +139,7 @@ const TopicDetailPanel: React.FC<TopicDetailPanelProps> = ({ topic, onTopicDelet
         description: formData.description.trim() || undefined,
         documentLinks: formData.documentLinks,
         summary: formData.summary.trim() || undefined,
+        interactiveContent: formData.interactiveContent.trim() || undefined,
       });
       setIsEditing(false);
     } catch (error) {
@@ -115,12 +152,14 @@ const TopicDetailPanel: React.FC<TopicDetailPanelProps> = ({ topic, onTopicDelet
       name: topic.name,
       description: topic.description || '',
       summary: topic.summary || '',
+      interactiveContent: topic.interactiveContent || '',
       documentLinkInput: '',
       documentLinkNameInput: '',
       documentLinks: topic.documentLinks ? [...topic.documentLinks] : [],
     });
     setIsEditing(false);
     setSummaryError(null);
+    setInteractiveError(null);
     clearError();
   };
 
@@ -302,6 +341,51 @@ const TopicDetailPanel: React.FC<TopicDetailPanelProps> = ({ topic, onTopicDelet
                 </div>
               ) : (
                 <p className="no-summary">No summary available. Add document links and generate a summary.</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="topic-detail-section">
+          <div className="summary-header">
+            <h3>Interactive Activities</h3>
+            {isEditing && (
+              <button
+                type="button"
+                onClick={generateInteractiveContent}
+                disabled={generatingInteractive || loading || (!formData.summary && formData.documentLinks.length === 0)}
+                className="btn btn-secondary btn-sm"
+              >
+                <Sparkles size={14} />
+                {generatingInteractive ? 'Generating...' : 'Generate Activities'}
+              </button>
+            )}
+          </div>
+          {interactiveError && (
+            <div className="summary-error">
+              {interactiveError}
+            </div>
+          )}
+          {isEditing ? (
+            <textarea
+              name="interactiveContent"
+              value={formData.interactiveContent}
+              onChange={handleChange}
+              placeholder="AI-generated interactive activities will appear here, or you can write your own..."
+              rows={12}
+              disabled={generatingInteractive}
+            />
+          ) : (
+            <div className="summary-display">
+              {topic.interactiveContent ? (
+                <div className="summary-content">
+                  <div className="summary-badge">🎯 Interactive Activities</div>
+                  <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
+                    {topic.interactiveContent}
+                  </div>
+                </div>
+              ) : (
+                <p className="no-summary">No interactive activities available. Generate a summary first, then create interactive content.</p>
               )}
             </div>
           )}
