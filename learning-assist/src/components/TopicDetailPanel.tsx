@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { FileText, Calendar, ExternalLink, Trash2, X, Sparkles, Check, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { FileText, Calendar, ExternalLink, Trash2, Save, Sparkles } from 'lucide-react';
 import { Topic } from '../types';
 import { useApp } from '../context/AppContext';
 import { GeminiService } from '../services/geminiService';
@@ -15,10 +15,6 @@ const TopicDetailPanel: React.FC<TopicDetailPanelProps> = ({ topic, onTopicDelet
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [generatingInteractive, setGeneratingInteractive] = useState(false);
   const [interactiveError, setInteractiveError] = useState<string | null>(null);
-  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error' | 'idle'>('saved');
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastSavedDataRef = useRef<string>('');
   const [formData, setFormData] = useState({
     name: topic.name,
     description: topic.description || '',
@@ -31,7 +27,7 @@ const TopicDetailPanel: React.FC<TopicDetailPanelProps> = ({ topic, onTopicDelet
 
   // Update form data when topic changes
   useEffect(() => {
-    const newFormData = {
+    setFormData({
       name: topic.name,
       description: topic.description || '',
       summary: topic.summary || '',
@@ -39,88 +35,8 @@ const TopicDetailPanel: React.FC<TopicDetailPanelProps> = ({ topic, onTopicDelet
       documentLinkInput: '',
       documentLinkNameInput: '',
       documentLinks: topic.documentLinks ? [...topic.documentLinks] : [],
-    };
-    setFormData(newFormData);
-    
-    // Update the last saved data reference
-    lastSavedDataRef.current = JSON.stringify({
-      name: newFormData.name,
-      description: newFormData.description,
-      summary: newFormData.summary,
-      interactiveContent: newFormData.interactiveContent,
-      documentLinks: newFormData.documentLinks,
     });
-    
-    setSaveStatus('saved');
-    setHasUnsavedChanges(false);
   }, [topic]);
-
-  // Autosave function with debouncing
-  const performAutoSave = useCallback(async (data: typeof formData) => {
-    if (!data.name.trim()) {
-      return; // Don't save if name is empty
-    }
-
-    try {
-      setSaveStatus('saving');
-      await updateTopic(topic.id, {
-        name: data.name.trim(),
-        description: data.description.trim() || undefined,
-        documentLinks: data.documentLinks,
-        summary: data.summary.trim() || undefined,
-        interactiveContent: data.interactiveContent.trim() || undefined,
-      });
-      
-      // Update the last saved data reference
-      lastSavedDataRef.current = JSON.stringify({
-        name: data.name,
-        description: data.description,
-        summary: data.summary,
-        interactiveContent: data.interactiveContent,
-        documentLinks: data.documentLinks,
-      });
-      
-      setSaveStatus('saved');
-      setHasUnsavedChanges(false);
-    } catch (error) {
-      console.error('Autosave failed:', error);
-      setSaveStatus('error');
-    }
-  }, [updateTopic, topic.id]);
-
-  // Debounced autosave effect
-  useEffect(() => {
-    const currentDataString = JSON.stringify({
-      name: formData.name,
-      description: formData.description,
-      summary: formData.summary,
-      interactiveContent: formData.interactiveContent,
-      documentLinks: formData.documentLinks,
-    });
-
-    // Check if data has actually changed
-    if (currentDataString !== lastSavedDataRef.current) {
-      setHasUnsavedChanges(true);
-      setSaveStatus('idle');
-
-      // Clear existing timeout
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-
-      // Set new timeout for autosave (2 seconds after user stops typing)
-      saveTimeoutRef.current = setTimeout(() => {
-        performAutoSave(formData);
-      }, 2000);
-    }
-
-    // Cleanup timeout on unmount
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
-  }, [formData, performAutoSave]);
 
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {
@@ -223,6 +139,25 @@ const TopicDetailPanel: React.FC<TopicDetailPanelProps> = ({ topic, onTopicDelet
     }
   };
 
+  const handleSave = async () => {
+    if (!formData.name.trim()) {
+      alert('Please enter a topic name');
+      return;
+    }
+
+    try {
+      await updateTopic(topic.id, {
+        name: formData.name.trim(),
+        description: formData.description.trim() || undefined,
+        documentLinks: formData.documentLinks,
+        summary: formData.summary.trim() || undefined,
+        interactiveContent: formData.interactiveContent.trim() || undefined,
+      });
+    } catch (error) {
+      console.error('Failed to update topic:', error);
+    }
+  };
+
 
 
   const handleDelete = async () => {
@@ -251,28 +186,10 @@ const TopicDetailPanel: React.FC<TopicDetailPanelProps> = ({ topic, onTopicDelet
           />
         </div>
         <div className="topic-detail-actions">
-          <div className="save-status">
-            {saveStatus === 'saving' && (
-              <span className="save-indicator saving" title="Saving changes...">
-                <div className="spinner" />
-              </span>
-            )}
-            {saveStatus === 'saved' && (
-              <span className="save-indicator saved" title="All changes saved">
-                <Check size={18} />
-              </span>
-            )}
-            {saveStatus === 'error' && (
-              <span className="save-indicator error" title="Save failed - please try again">
-                <AlertCircle size={18} />
-              </span>
-            )}
-            {saveStatus === 'idle' && hasUnsavedChanges && (
-              <span className="save-indicator unsaved" title="You have unsaved changes">
-                <div className="unsaved-dot" />
-              </span>
-            )}
-          </div>
+          <button onClick={handleSave} className="btn btn-primary btn-sm" disabled={loading}>
+            <Save size={16} />
+            {loading ? 'Saving...' : 'Save Changes'}
+          </button>
         </div>
       </div>
 
