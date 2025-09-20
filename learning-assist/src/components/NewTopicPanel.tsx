@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { FileText, Save, X, Sparkles } from 'lucide-react';
+import { FileText, Save, X, Search, Plus } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { GeminiService } from '../services/geminiService';
+import { DocumentLink } from '../types';
 
 interface NewTopicPanelProps {
   subjectId: string;
@@ -16,7 +17,10 @@ const NewTopicPanel: React.FC<NewTopicPanelProps> = ({
   onCancel, 
   onTopicCreated 
 }) => {
-  const { addTopic, loading, error, clearError } = useApp();
+  const { addTopic, loading, error, clearError, currentPath } = useApp();
+  const [discoveringDocuments, setDiscoveringDocuments] = useState(false);
+  const [discoveryError, setDiscoveryError] = useState<string | null>(null);
+  const [suggestedDocuments, setSuggestedDocuments] = useState<DocumentLink[]>([]);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -49,6 +53,49 @@ const NewTopicPanel: React.FC<NewTopicPanelProps> = ({
     setFormData(prev => ({ 
       ...prev, 
       documentLinks: prev.documentLinks.filter(l => l.url !== url) 
+    }));
+  };
+
+  const discoverDocuments = async () => {
+    if (!formData.name.trim()) {
+      setDiscoveryError('Please enter a topic name before discovering documents.');
+      return;
+    }
+
+    const classLevel = currentPath.class?.name || 'Class 1';
+
+    setDiscoveringDocuments(true);
+    setDiscoveryError(null);
+    setSuggestedDocuments([]);
+
+    try {
+      const result = await GeminiService.discoverDocuments({
+        topicName: formData.name,
+        description: formData.description,
+        classLevel: classLevel,
+        existingDocuments: formData.documentLinks.length > 0 ? formData.documentLinks : undefined
+      });
+
+      if (result.success) {
+        setSuggestedDocuments(result.suggestedDocuments);
+      } else {
+        setDiscoveryError(result.error || 'Failed to discover documents');
+      }
+    } catch (error) {
+      setDiscoveryError('An error occurred while discovering documents');
+      console.error('Document discovery error:', error);
+    } finally {
+      setDiscoveringDocuments(false);
+    }
+  };
+
+  const addSuggestedDocument = (document: DocumentLink) => {
+    if (formData.documentLinks.some(l => l.url === document.url)) {
+      return; // Already added
+    }
+    setFormData(prev => ({
+      ...prev,
+      documentLinks: [...prev.documentLinks, document]
     }));
   };
 
@@ -128,43 +175,97 @@ const NewTopicPanel: React.FC<NewTopicPanelProps> = ({
         </div>
 
         <div className="topic-detail-section">
-          <h3>Document Links</h3>
-          <div className="document-link-form">
-            <input
-              type="url"
-              name="documentLinkInput"
-              value={formData.documentLinkInput}
-              onChange={handleChange}
-              placeholder="https://example.com/document.pdf"
-            />
-            <input
-              type="text"
-              name="documentLinkNameInput"
-              value={formData.documentLinkNameInput}
-              onChange={handleChange}
-              placeholder="Optional name"
-            />
-            <button type="button" className="btn btn-secondary" onClick={addDocumentLink}>
-              Add
+          <div className="document-section-header">
+            <h3>Document Links</h3>
+            <button
+              type="button"
+              onClick={discoverDocuments}
+              disabled={discoveringDocuments || loading || !formData.name.trim()}
+              className="btn btn-primary btn-sm"
+            >
+              <Search size={14} />
+              {discoveringDocuments ? 'Finding Documents...' : 'Find Documents with AI'}
             </button>
           </div>
+
+          {discoveryError && (
+            <div className="error-message" style={{ margin: '1rem 0' }}>
+              <span>{discoveryError}</span>
+              <button onClick={() => setDiscoveryError(null)}>×</button>
+            </div>
+          )}
+
+          {suggestedDocuments.length > 0 && (
+            <div className="suggested-documents">
+              <h4>🤖 AI-Suggested Documents</h4>
+              <p>Click to add relevant educational resources for your topic:</p>
+              <div className="suggested-documents-list">
+                {suggestedDocuments.map((doc, index) => (
+                  <div key={doc.url} className="suggested-document-item">
+                    <div className="suggested-document-info">
+                      <strong>{doc.name}</strong>
+                      <a href={doc.url} target="_blank" rel="noreferrer" className="suggested-document-url">
+                        {doc.url}
+                      </a>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => addSuggestedDocument(doc)}
+                      disabled={formData.documentLinks.some(l => l.url === doc.url)}
+                      className="btn btn-secondary btn-sm"
+                    >
+                      <Plus size={14} />
+                      {formData.documentLinks.some(l => l.url === doc.url) ? 'Added' : 'Add'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="manual-document-section">
+            <h4>Add Document Manually</h4>
+            <div className="document-link-form">
+              <input
+                type="url"
+                name="documentLinkInput"
+                value={formData.documentLinkInput}
+                onChange={handleChange}
+                placeholder="https://example.com/document.pdf"
+              />
+              <input
+                type="text"
+                name="documentLinkNameInput"
+                value={formData.documentLinkNameInput}
+                onChange={handleChange}
+                placeholder="Optional name"
+              />
+              <button type="button" className="btn btn-secondary" onClick={addDocumentLink}>
+                Add
+              </button>
+            </div>
+          </div>
+
           {formData.documentLinks.length > 0 && (
-            <div className="document-links-list">
-              {formData.documentLinks.map((link) => (
-                <div key={link.url} className="document-link-item">
-                  <a href={link.url} target="_blank" rel="noreferrer">
-                    <span>🔗</span>
-                    {link.name}
-                  </a>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-sm"
-                    onClick={() => removeDocumentLink(link.url)}
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
+            <div className="current-documents">
+              <h4>Selected Documents ({formData.documentLinks.length})</h4>
+              <div className="document-links-list">
+                {formData.documentLinks.map((link) => (
+                  <div key={link.url} className="document-link-item">
+                    <a href={link.url} target="_blank" rel="noreferrer">
+                      <span>🔗</span>
+                      {link.name}
+                    </a>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => removeDocumentLink(link.url)}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
