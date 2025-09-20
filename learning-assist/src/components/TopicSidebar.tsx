@@ -106,9 +106,9 @@ const TopicSidebar: React.FC<TopicSidebarProps> = ({
                     }
                   </p>
                 )}
-                {topic.summary && (
+                {topic.aiContent && (topic.aiContent.summary || topic.aiContent.interactiveActivities || topic.aiContent.lessonPlan) && (
                   <div className="topic-summary-badge">
-                    ✨ Has AI Summary
+                    ✨ Has AI Content
                   </div>
                 )}
                 <div className="topic-item-meta">

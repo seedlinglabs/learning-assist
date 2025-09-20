@@ -17,15 +17,9 @@ const NewTopicPanel: React.FC<NewTopicPanelProps> = ({
   onTopicCreated 
 }) => {
   const { addTopic, loading, error, clearError } = useApp();
-  const [generatingSummary, setGeneratingSummary] = useState(false);
-  const [summaryError, setSummaryError] = useState<string | null>(null);
-  const [generatingInteractive, setGeneratingInteractive] = useState(false);
-  const [interactiveError, setInteractiveError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    summary: '',
-    interactiveContent: '',
     documentLinkInput: '',
     documentLinkNameInput: '',
     documentLinks: [] as { name: string; url: string }[],
@@ -58,79 +52,6 @@ const NewTopicPanel: React.FC<NewTopicPanelProps> = ({
     }));
   };
 
-  const generateSummary = async () => {
-    if (!formData.documentLinks || formData.documentLinks.length === 0) {
-      setSummaryError('Please add at least one document link before generating a summary.');
-      return;
-    }
-
-    if (!formData.name.trim()) {
-      setSummaryError('Please enter a topic name before generating a summary.');
-      return;
-    }
-
-    setGeneratingSummary(true);
-    setSummaryError(null);
-
-    try {
-      const result = await GeminiService.generateSummary({
-        documentLinks: formData.documentLinks,
-        topicName: formData.name
-      });
-
-      if (result.success) {
-        setFormData(prev => ({
-          ...prev,
-          summary: result.summary
-        }));
-      } else {
-        setSummaryError(result.error || 'Failed to generate summary');
-      }
-    } catch (error) {
-      setSummaryError('An error occurred while generating the summary');
-      console.error('Summary generation error:', error);
-    } finally {
-      setGeneratingSummary(false);
-    }
-  };
-
-  const generateInteractiveContent = async () => {
-    if (!formData.summary && (!formData.documentLinks || formData.documentLinks.length === 0)) {
-      setInteractiveError('Please generate a summary first or add document links before creating interactive content.');
-      return;
-    }
-
-    if (!formData.name.trim()) {
-      setInteractiveError('Please enter a topic name before generating interactive content.');
-      return;
-    }
-
-    setGeneratingInteractive(true);
-    setInteractiveError(null);
-
-    try {
-      const result = await GeminiService.generateInteractiveContent({
-        topicName: formData.name,
-        summary: formData.summary,
-        documentLinks: formData.documentLinks,
-        description: formData.description
-      });
-
-      if (result.success) {
-        setFormData(prev => ({
-          ...prev,
-          interactiveContent: result.interactiveContent
-        }));
-      } else {
-        setInteractiveError(result.error || 'Failed to generate interactive content');
-      }
-    } catch (error) {
-      setInteractiveError('An error occurred while generating interactive content');
-      console.error('Interactive content generation error:', error);
-    } finally {
-      setGeneratingInteractive(false);
-    }
-  };
 
   const handleSave = async () => {
     if (!formData.name.trim()) {
@@ -143,8 +64,6 @@ const NewTopicPanel: React.FC<NewTopicPanelProps> = ({
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
         documentLinks: formData.documentLinks.length > 0 ? formData.documentLinks : undefined,
-        summary: formData.summary.trim() || undefined,
-        interactiveContent: formData.interactiveContent.trim() || undefined,
       });
       onTopicCreated();
     } catch (error) {
@@ -153,8 +72,6 @@ const NewTopicPanel: React.FC<NewTopicPanelProps> = ({
   };
 
   const handleCancel = () => {
-    setSummaryError(null);
-    setInteractiveError(null);
     clearError();
     onCancel();
   };
@@ -253,64 +170,15 @@ const NewTopicPanel: React.FC<NewTopicPanelProps> = ({
         </div>
 
         <div className="topic-detail-section">
-          <div className="summary-header">
-            <h3>AI Summary</h3>
-            <button
-              type="button"
-              onClick={generateSummary}
-              disabled={generatingSummary || loading || formData.documentLinks.length === 0 || !formData.name.trim()}
-              className="btn btn-secondary btn-sm"
-            >
-              <Sparkles size={14} />
-              {generatingSummary ? 'Generating...' : 'Generate Summary'}
-            </button>
-          </div>
-          {summaryError && (
-            <div className="summary-error">
-              {summaryError}
-            </div>
-          )}
-          <textarea
-            name="summary"
-            value={formData.summary}
-            onChange={handleChange}
-            placeholder="AI-generated summary will appear here, or you can write your own..."
-            rows={8}
-            disabled={generatingSummary}
-          />
-          <div className="summary-help">
-            <p><strong>Tip:</strong> Add document links and a topic name, then click "Generate Summary" to create an AI-powered summary of your documents.</p>
-          </div>
-        </div>
-
-        <div className="topic-detail-section">
-          <div className="summary-header">
-            <h3>Interactive Activities</h3>
-            <button
-              type="button"
-              onClick={generateInteractiveContent}
-              disabled={generatingInteractive || loading || (!formData.summary && formData.documentLinks.length === 0) || !formData.name.trim()}
-              className="btn btn-secondary btn-sm"
-            >
-              <Sparkles size={14} />
-              {generatingInteractive ? 'Generating...' : 'Generate Activities'}
-            </button>
-          </div>
-          {interactiveError && (
-            <div className="summary-error">
-              {interactiveError}
-            </div>
-          )}
-          <textarea
-            name="interactiveContent"
-            value={formData.interactiveContent}
-            onChange={handleChange}
-            placeholder="AI-generated interactive activities will appear here, or you can write your own..."
-            rows={10}
-            disabled={generatingInteractive}
-          />
-          <div className="summary-help">
-            <p><strong>Tip:</strong> Generate a summary first, then create interactive activities that include discussion questions, quizzes, hands-on activities, and creative projects for your students.</p>
+          <div className="ai-generation-info">
+            <h3>🤖 AI Content Generation</h3>
+            <p>After creating this topic, you can generate comprehensive AI content including:</p>
+            <ul>
+              <li><strong>Summary</strong> - Concise overview for students</li>
+              <li><strong>Interactive Activities</strong> - Quizzes, discussions, and hands-on exercises</li>
+              <li><strong>40-Minute Lesson Plan</strong> - Complete lesson structure with timing</li>
+            </ul>
+            <p>Simply add your document links now, and use the "Generate AI Content" button after creating the topic.</p>
           </div>
         </div>
       </div>
