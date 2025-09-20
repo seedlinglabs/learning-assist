@@ -346,6 +346,8 @@ Please format each section clearly with headings and organize the content for ea
 
       const fullContent = data.candidates[0].content.parts[0].text.trim();
       
+      console.log('DEBUG: Full AI response:', fullContent);
+      
       // Parse the response to extract different sections
       const aiContent: AIContent = {
         generatedAt: new Date(),
@@ -356,23 +358,35 @@ Please format each section clearly with headings and organize the content for ea
       const summaryMatch = fullContent.match(/\*\*1\.\s*SUMMARY\*\*([\s\S]*?)\*\*2\.\s*INTERACTIVE ACTIVITIES\*\*/);
       if (summaryMatch) {
         aiContent.summary = summaryMatch[1].trim();
+        console.log('DEBUG: Extracted summary:', aiContent.summary.substring(0, 100) + '...');
+      } else {
+        console.log('DEBUG: No summary match found');
       }
 
       // Extract interactive activities (between **2. INTERACTIVE ACTIVITIES** and **3. LESSON PLAN**)
       const activitiesMatch = fullContent.match(/\*\*2\.\s*INTERACTIVE ACTIVITIES\*\*([\s\S]*?)\*\*3\.\s*LESSON PLAN\*\*/);
       if (activitiesMatch) {
         aiContent.interactiveActivities = activitiesMatch[1].trim();
+        console.log('DEBUG: Extracted activities:', aiContent.interactiveActivities.substring(0, 100) + '...');
+      } else {
+        console.log('DEBUG: No activities match found');
       }
 
       // Extract lesson plan (after **3. LESSON PLAN**)
       const lessonPlanMatch = fullContent.match(/\*\*3\.\s*LESSON PLAN\*\*([\s\S]*?)$/);
       if (lessonPlanMatch) {
         aiContent.lessonPlan = lessonPlanMatch[1].trim();
+        console.log('DEBUG: Extracted lesson plan:', aiContent.lessonPlan.substring(0, 100) + '...');
+      } else {
+        console.log('DEBUG: No lesson plan match found');
       }
+
+      console.log('DEBUG: Final aiContent object:', aiContent);
 
       // Fallback: if parsing fails, put everything in summary
       if (!aiContent.summary && !aiContent.interactiveActivities && !aiContent.lessonPlan) {
         aiContent.summary = fullContent;
+        console.log('DEBUG: Using fallback - putting everything in summary');
       }
 
       return {

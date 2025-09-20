@@ -97,6 +97,8 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
       });
 
       if (result.success) {
+        console.log('DEBUG: Generated AI content:', result.aiContent);
+        
         // Update the topic with the new AI content
         await updateTopic(topic.id, {
           name: formData.name.trim(),
@@ -104,6 +106,8 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
           documentLinks: formData.documentLinks,
           aiContent: result.aiContent,
         });
+        
+        console.log('DEBUG: Topic update sent with aiContent:', result.aiContent);
       } else {
         setAiError(result.error || 'Failed to generate AI content');
       }

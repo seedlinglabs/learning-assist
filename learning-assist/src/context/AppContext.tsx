@@ -143,6 +143,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         aiContent: updates.aiContent,
       };
 
+      console.log('DEBUG: Update request being sent:', updateRequest);
+      console.log('DEBUG: AI Content in request:', updates.aiContent);
+
       const updatedTopic = await topicsAPI.update(topicId, updateRequest);
 
       // Refresh topics from API to ensure consistency
