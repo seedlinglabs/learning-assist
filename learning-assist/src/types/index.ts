@@ -3,13 +3,21 @@ export interface DocumentLink {
   url: string;
 }
 
+export interface AIContent {
+  summary?: string;
+  interactiveActivities?: string;
+  lessonPlan?: string;
+  // Future AI content types can be added here
+  generatedAt?: Date;
+  classLevel?: string;
+}
+
 export interface Topic {
   id: string;
   name: string;
   description?: string;
   documentLinks?: DocumentLink[]; // List of source document links
-  summary?: string; // AI-generated summary from document links
-  interactiveContent?: string; // AI-generated interactive activities for students
+  aiContent?: AIContent; // Consolidated AI-generated content
   createdAt: Date;
   updatedAt: Date;
 }

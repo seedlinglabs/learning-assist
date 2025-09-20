@@ -112,8 +112,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           name: topicData.name,
           description: topicData.description,
           documentLinks: topicData.documentLinks,
-          summary: topicData.summary,
-          interactiveContent: topicData.interactiveContent,
+          aiContent: topicData.aiContent,
           subject_id: subjectId,
           school_id: schoolId,
           class_id: classId,
@@ -141,8 +140,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         name: updates.name,
         description: updates.description,
         documentLinks: updates.documentLinks,
-        summary: updates.summary,
-        interactiveContent: updates.interactiveContent,
+        aiContent: updates.aiContent,
       };
 
       const updatedTopic = await topicsAPI.update(topicId, updateRequest);

@@ -275,13 +275,15 @@ def create_topic(table, topic_data):
                 if link:
                     normalized_links.append({'name': generate_name_from_url(link), 'url': link})
 
+        # Handle AI content (consolidated JSON)
+        ai_content = topic_data.get('aiContent') or topic_data.get('ai_content') or {}
+        
         item = {
             'id': topic_id,
             'name': topic_data['name'],
             'description': topic_data.get('description', ''),
             'document_links': normalized_links,
-            'summary': topic_data.get('summary', ''),
-            'interactive_content': topic_data.get('interactiveContent', '') or topic_data.get('interactive_content', ''),
+            'ai_content': ai_content,
             'subject_id': topic_data['subject_id'],
             'school_id': topic_data['school_id'],
             'class_id': topic_data['class_id'],
@@ -468,12 +470,12 @@ def update_topic(table, topic_id, update_data):
         expression_names = {}
         
         # Add fields to update
-        updatable_fields = ['name', 'description', 'document_links', 'summary', 'interactive_content']
+        updatable_fields = ['name', 'description', 'document_links', 'ai_content']
         field_mapping = {
             'documentLinks': 'document_links',
             'document_links': 'document_links',
-            'interactiveContent': 'interactive_content',
-            'interactive_content': 'interactive_content'
+            'aiContent': 'ai_content',
+            'ai_content': 'ai_content'
         }
         
         # Reserved keywords that need expression attribute names

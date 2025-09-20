@@ -1,4 +1,4 @@
-import { Topic, DocumentLink } from '../types';
+import { Topic, DocumentLink, AIContent } from '../types';
 
 const API_BASE_URL = 'https://xvq11x0421.execute-api.us-west-2.amazonaws.com/pre-prod';
 
@@ -6,8 +6,7 @@ export interface CreateTopicRequest {
   name: string;
   description?: string;
   documentLinks?: DocumentLink[];
-  summary?: string;
-  interactiveContent?: string;
+  aiContent?: AIContent;
   subject_id: string;
   school_id: string;
   class_id: string;
@@ -17,8 +16,7 @@ export interface UpdateTopicRequest {
   name?: string;
   description?: string;
   documentLinks?: DocumentLink[];
-  summary?: string;
-  interactiveContent?: string;
+  aiContent?: AIContent;
 }
 
 export interface ApiTopic {
@@ -41,8 +39,13 @@ const transformApiTopicToTopic = (apiTopic: any): Topic => ({
   documentLinks: Array.isArray(apiTopic.document_links)
     ? apiTopic.document_links.map((l: any) => ({ name: l.name || generateNameFromUrl(l.url), url: l.url }))
     : undefined,
-  summary: apiTopic.summary || undefined,
-  interactiveContent: apiTopic.interactive_content || undefined,
+  aiContent: apiTopic.ai_content ? {
+    summary: apiTopic.ai_content.summary,
+    interactiveActivities: apiTopic.ai_content.interactiveActivities,
+    lessonPlan: apiTopic.ai_content.lessonPlan,
+    generatedAt: apiTopic.ai_content.generatedAt ? new Date(apiTopic.ai_content.generatedAt) : undefined,
+    classLevel: apiTopic.ai_content.classLevel,
+  } : undefined,
   createdAt: new Date(apiTopic.created_at),
   updatedAt: new Date(apiTopic.updated_at)
 });
@@ -54,8 +57,7 @@ const transformTopicToApiTopic = (topic: CreateTopicRequest): any => ({
   document_links: Array.isArray(topic.documentLinks)
     ? topic.documentLinks.map(l => ({ name: l.name, url: l.url }))
     : undefined,
-  summary: topic.summary,
-  interactiveContent: topic.interactiveContent,
+  aiContent: topic.aiContent,
   subject_id: topic.subject_id,
   school_id: topic.school_id,
   class_id: topic.class_id
