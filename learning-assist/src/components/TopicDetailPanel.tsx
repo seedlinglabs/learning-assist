@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FileText, Calendar, ExternalLink, Edit, Trash2, Save, X, Sparkles } from 'lucide-react';
 import { Topic } from '../types';
 import { useApp } from '../context/AppContext';
@@ -11,7 +11,6 @@ interface TopicDetailPanelProps {
 
 const TopicDetailPanel: React.FC<TopicDetailPanelProps> = ({ topic, onTopicDeleted }) => {
   const { updateTopic, deleteTopic, loading, error, clearError } = useApp();
-  const [isEditing, setIsEditing] = useState(false);
   const [generatingSummary, setGeneratingSummary] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [generatingInteractive, setGeneratingInteractive] = useState(false);
@@ -25,6 +24,19 @@ const TopicDetailPanel: React.FC<TopicDetailPanelProps> = ({ topic, onTopicDelet
     documentLinkNameInput: '',
     documentLinks: topic.documentLinks ? [...topic.documentLinks] : [] as { name: string; url: string }[],
   });
+
+  // Update form data when topic changes
+  useEffect(() => {
+    setFormData({
+      name: topic.name,
+      description: topic.description || '',
+      summary: topic.summary || '',
+      interactiveContent: topic.interactiveContent || '',
+      documentLinkInput: '',
+      documentLinkNameInput: '',
+      documentLinks: topic.documentLinks ? [...topic.documentLinks] : [],
+    });
+  }, [topic]);
 
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {
@@ -141,13 +153,12 @@ const TopicDetailPanel: React.FC<TopicDetailPanelProps> = ({ topic, onTopicDelet
         summary: formData.summary.trim() || undefined,
         interactiveContent: formData.interactiveContent.trim() || undefined,
       });
-      setIsEditing(false);
     } catch (error) {
       console.error('Failed to update topic:', error);
     }
   };
 
-  const handleCancel = () => {
+  const handleReset = () => {
     setFormData({
       name: topic.name,
       description: topic.description || '',
@@ -157,7 +168,6 @@ const TopicDetailPanel: React.FC<TopicDetailPanelProps> = ({ topic, onTopicDelet
       documentLinkNameInput: '',
       documentLinks: topic.documentLinks ? [...topic.documentLinks] : [],
     });
-    setIsEditing(false);
     setSummaryError(null);
     setInteractiveError(null);
     clearError();
@@ -179,43 +189,28 @@ const TopicDetailPanel: React.FC<TopicDetailPanelProps> = ({ topic, onTopicDelet
       <div className="topic-detail-header">
         <div className="topic-detail-title">
           <FileText size={24} />
-          {isEditing ? (
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              className="topic-name-input"
-              placeholder="Topic name"
-            />
-          ) : (
-            <h2>{topic.name}</h2>
-          )}
+          <input
+            type="text"
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            className="topic-name-input"
+            placeholder="Topic name"
+          />
         </div>
         <div className="topic-detail-actions">
-          {isEditing ? (
-            <>
-              <button onClick={handleSave} className="btn btn-primary btn-sm" disabled={loading}>
-                <Save size={16} />
-                {loading ? 'Saving...' : 'Save'}
-              </button>
-              <button onClick={handleCancel} className="btn btn-secondary btn-sm">
-                <X size={16} />
-                Cancel
-              </button>
-            </>
-          ) : (
-            <>
-              <button onClick={() => setIsEditing(true)} className="btn btn-secondary btn-sm">
-                <Edit size={16} />
-                Edit
-              </button>
-              <button onClick={handleDelete} className="btn btn-danger btn-sm" disabled={loading}>
-                <Trash2 size={16} />
-                Delete
-              </button>
-            </>
-          )}
+          <button onClick={handleSave} className="btn btn-primary btn-sm" disabled={loading}>
+            <Save size={16} />
+            {loading ? 'Saving...' : 'Save Changes'}
+          </button>
+          <button onClick={handleReset} className="btn btn-secondary btn-sm" disabled={loading}>
+            <X size={16} />
+            Reset
+          </button>
+          <button onClick={handleDelete} className="btn btn-danger btn-sm" disabled={loading}>
+            <Trash2 size={16} />
+            Delete
+          </button>
         </div>
       </div>
 
@@ -229,166 +224,113 @@ const TopicDetailPanel: React.FC<TopicDetailPanelProps> = ({ topic, onTopicDelet
       <div className="topic-detail-content">
         <div className="topic-detail-section">
           <h3>Description</h3>
-          {isEditing ? (
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              placeholder="Enter topic description (optional)"
-              rows={3}
-            />
-          ) : (
-            <p className="topic-description">
-              {topic.description || 'No description provided.'}
-            </p>
-          )}
+          <textarea
+            name="description"
+            value={formData.description}
+            onChange={handleChange}
+            placeholder="Enter topic description (optional)"
+            rows={3}
+          />
         </div>
 
         <div className="topic-detail-section">
           <h3>Document Links</h3>
-          {isEditing ? (
-            <>
-              <div className="document-link-form">
-                <input
-                  type="url"
-                  name="documentLinkInput"
-                  value={formData.documentLinkInput}
-                  onChange={handleChange}
-                  placeholder="https://example.com/document.pdf"
-                />
-                <input
-                  type="text"
-                  name="documentLinkNameInput"
-                  value={formData.documentLinkNameInput}
-                  onChange={handleChange}
-                  placeholder="Optional name"
-                />
-                <button type="button" className="btn btn-secondary" onClick={addDocumentLink}>
-                  Add
-                </button>
-              </div>
-              {formData.documentLinks.length > 0 && (
-                <div className="document-links-list">
-                  {formData.documentLinks.map((link) => (
-                    <div key={link.url} className="document-link-item">
-                      <a href={link.url} target="_blank" rel="noreferrer">
-                        <ExternalLink size={14} />
-                        {link.name}
-                      </a>
-                      <button
-                        type="button"
-                        className="btn btn-ghost btn-sm"
-                        onClick={() => removeDocumentLink(link.url)}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="document-links-display">
-              {topic.documentLinks && topic.documentLinks.length > 0 ? (
-                topic.documentLinks.map((link) => (
-                  <a key={link.url} href={link.url} target="_blank" rel="noreferrer" className="document-link">
-                    <ExternalLink size={16} />
-                    <span>{link.name}</span>
+          <div className="document-link-form">
+            <input
+              type="url"
+              name="documentLinkInput"
+              value={formData.documentLinkInput}
+              onChange={handleChange}
+              placeholder="https://example.com/document.pdf"
+            />
+            <input
+              type="text"
+              name="documentLinkNameInput"
+              value={formData.documentLinkNameInput}
+              onChange={handleChange}
+              placeholder="Optional name"
+            />
+            <button type="button" className="btn btn-secondary" onClick={addDocumentLink}>
+              Add
+            </button>
+          </div>
+          {formData.documentLinks.length > 0 ? (
+            <div className="document-links-list">
+              {formData.documentLinks.map((link) => (
+                <div key={link.url} className="document-link-item">
+                  <a href={link.url} target="_blank" rel="noreferrer">
+                    <ExternalLink size={14} />
+                    {link.name}
                   </a>
-                ))
-              ) : (
-                <p className="no-links">No document links added.</p>
-              )}
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => removeDocumentLink(link.url)}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
             </div>
+          ) : (
+            <p className="no-links">No document links added yet.</p>
           )}
         </div>
 
         <div className="topic-detail-section">
           <div className="summary-header">
             <h3>AI Summary</h3>
-            {isEditing && (
-              <button
-                type="button"
-                onClick={generateSummary}
-                disabled={generatingSummary || loading || formData.documentLinks.length === 0}
-                className="btn btn-secondary btn-sm"
-              >
-                <Sparkles size={14} />
-                {generatingSummary ? 'Generating...' : 'Generate Summary'}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={generateSummary}
+              disabled={generatingSummary || loading || formData.documentLinks.length === 0}
+              className="btn btn-secondary btn-sm"
+            >
+              <Sparkles size={14} />
+              {generatingSummary ? 'Generating...' : 'Generate Summary'}
+            </button>
           </div>
           {summaryError && (
             <div className="summary-error">
               {summaryError}
             </div>
           )}
-          {isEditing ? (
-            <textarea
-              name="summary"
-              value={formData.summary}
-              onChange={handleChange}
-              placeholder="AI-generated summary will appear here, or you can write your own..."
-              rows={8}
-              disabled={generatingSummary}
-            />
-          ) : (
-            <div className="summary-display">
-              {topic.summary ? (
-                <div className="summary-content">
-                  <div className="summary-badge">✨ AI Generated</div>
-                  <p>{topic.summary}</p>
-                </div>
-              ) : (
-                <p className="no-summary">No summary available. Add document links and generate a summary.</p>
-              )}
-            </div>
-          )}
+          <textarea
+            name="summary"
+            value={formData.summary}
+            onChange={handleChange}
+            placeholder="AI-generated summary will appear here, or you can write your own..."
+            rows={8}
+            disabled={generatingSummary}
+          />
         </div>
 
         <div className="topic-detail-section">
           <div className="summary-header">
             <h3>Interactive Activities</h3>
-            {isEditing && (
-              <button
-                type="button"
-                onClick={generateInteractiveContent}
-                disabled={generatingInteractive || loading || (!formData.summary && formData.documentLinks.length === 0)}
-                className="btn btn-secondary btn-sm"
-              >
-                <Sparkles size={14} />
-                {generatingInteractive ? 'Generating...' : 'Generate Activities'}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={generateInteractiveContent}
+              disabled={generatingInteractive || loading || (!formData.summary && formData.documentLinks.length === 0)}
+              className="btn btn-secondary btn-sm"
+            >
+              <Sparkles size={14} />
+              {generatingInteractive ? 'Generating...' : 'Generate Activities'}
+            </button>
           </div>
           {interactiveError && (
             <div className="summary-error">
               {interactiveError}
             </div>
           )}
-          {isEditing ? (
-            <textarea
-              name="interactiveContent"
-              value={formData.interactiveContent}
-              onChange={handleChange}
-              placeholder="AI-generated interactive activities will appear here, or you can write your own..."
-              rows={12}
-              disabled={generatingInteractive}
-            />
-          ) : (
-            <div className="summary-display">
-              {topic.interactiveContent ? (
-                <div className="summary-content">
-                  <div className="summary-badge">🎯 Interactive Activities</div>
-                  <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
-                    {topic.interactiveContent}
-                  </div>
-                </div>
-              ) : (
-                <p className="no-summary">No interactive activities available. Generate a summary first, then create interactive content.</p>
-              )}
-            </div>
-          )}
+          <textarea
+            name="interactiveContent"
+            value={formData.interactiveContent}
+            onChange={handleChange}
+            placeholder="AI-generated interactive activities will appear here, or you can write your own..."
+            rows={12}
+            disabled={generatingInteractive}
+          />
         </div>
 
         <div className="topic-detail-section">
