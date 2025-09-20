@@ -86,6 +86,11 @@ def lambda_handler(event, context):
         path = event.get('path', '')
         body = event.get('body', '{}')
         
+        # Debug logging
+        print(f"DEBUG: HTTP Method: {http_method}")
+        print(f"DEBUG: Path: {path}")
+        print(f"DEBUG: Body: {body[:200] if body else 'None'}...")  # First 200 chars
+        
         if body:
             try:
                 body = json.loads(body)
@@ -134,20 +139,36 @@ def lambda_handler(event, context):
         
         elif http_method == 'PUT' and '/topics/' in path:
             topic_id = path.split('/topics/')[-1]
+            print(f"DEBUG: PUT request for topic_id: {topic_id}")
             return update_topic(table, topic_id, body)
         
         elif http_method == 'DELETE' and '/topics/' in path:
             topic_id = path.split('/topics/')[-1]
+            print(f"DEBUG: DELETE request for topic_id: {topic_id}")
             return delete_topic(table, topic_id)
         
         else:
+            print(f"DEBUG: No route matched - Method: {http_method}, Path: {path}")
             return {
                 'statusCode': 404,
                 'headers': {
                     'Content-Type': 'application/json',
                     'Access-Control-Allow-Origin': '*'
                 },
-                'body': json.dumps({'error': 'Endpoint not found'})
+                'body': json.dumps({
+                    'error': 'Endpoint not found',
+                    'debug': {
+                        'method': http_method,
+                        'path': path,
+                        'available_routes': [
+                            'GET /topics',
+                            'GET /topics/{id}',
+                            'POST /topics',
+                            'PUT /topics/{id}',
+                            'DELETE /topics/{id}'
+                        ]
+                    }
+                })
             }
     
     except Exception as e:
