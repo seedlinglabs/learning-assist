@@ -462,9 +462,10 @@ def update_topic(table, topic_id, update_data):
                         'body': json.dumps({'error': error})
                     }
         
-        # Prepare update expression
+        # Prepare update expression with expression attribute names for reserved keywords
         update_expression = "SET updated_at = :updated_at"
         expression_values = {':updated_at': datetime.utcnow().isoformat()}
+        expression_names = {}
         
         # Add fields to update
         updatable_fields = ['name', 'description', 'document_links', 'summary', 'interactive_content']
@@ -474,6 +475,9 @@ def update_topic(table, topic_id, update_data):
             'interactiveContent': 'interactive_content',
             'interactive_content': 'interactive_content'
         }
+        
+        # Reserved keywords that need expression attribute names
+        reserved_keywords = ['name', 'description', 'summary']
         
         for field in updatable_fields:
             frontend_field = field
@@ -498,16 +502,30 @@ def update_topic(table, topic_id, update_data):
                             if link:
                                 norm.append({'name': generate_name_from_url(link), 'url': link})
                     value = norm
-                update_expression += f", {field} = :{field}"
+                
+                # Use expression attribute names for reserved keywords
+                if field in reserved_keywords:
+                    attr_name = f"#{field}"
+                    expression_names[attr_name] = field
+                    update_expression += f", {attr_name} = :{field}"
+                else:
+                    update_expression += f", {field} = :{field}"
+                
                 expression_values[f':{field}'] = value
         
         # Perform update
-        response = table.update_item(
-            Key={'id': topic_id},
-            UpdateExpression=update_expression,
-            ExpressionAttributeValues=expression_values,
-            ReturnValues="ALL_NEW"
-        )
+        update_params = {
+            'Key': {'id': topic_id},
+            'UpdateExpression': update_expression,
+            'ExpressionAttributeValues': expression_values,
+            'ReturnValues': "ALL_NEW"
+        }
+        
+        # Only add ExpressionAttributeNames if we have reserved keywords
+        if expression_names:
+            update_params['ExpressionAttributeNames'] = expression_names
+        
+        response = table.update_item(**update_params)
         
         return {
             'statusCode': 200,
