@@ -224,20 +224,6 @@ const TopicDetailPanel: React.FC<TopicDetailPanelProps> = ({ topic, onTopicDelet
   };
 
 
-  const handleReset = () => {
-    setFormData({
-      name: topic.name,
-      description: topic.description || '',
-      summary: topic.summary || '',
-      interactiveContent: topic.interactiveContent || '',
-      documentLinkInput: '',
-      documentLinkNameInput: '',
-      documentLinks: topic.documentLinks ? [...topic.documentLinks] : [],
-    });
-    setSummaryError(null);
-    setInteractiveError(null);
-    clearError();
-  };
 
   const handleDelete = async () => {
     if (window.confirm('Are you sure you want to delete this topic?')) {
@@ -267,33 +253,26 @@ const TopicDetailPanel: React.FC<TopicDetailPanelProps> = ({ topic, onTopicDelet
         <div className="topic-detail-actions">
           <div className="save-status">
             {saveStatus === 'saving' && (
-              <span className="save-indicator saving">
+              <span className="save-indicator saving" title="Saving changes...">
                 <div className="spinner" />
-                Saving...
               </span>
             )}
             {saveStatus === 'saved' && (
-              <span className="save-indicator saved">
-                <Check size={16} />
-                Saved
+              <span className="save-indicator saved" title="All changes saved">
+                <Check size={18} />
               </span>
             )}
             {saveStatus === 'error' && (
-              <span className="save-indicator error">
-                <AlertCircle size={16} />
-                Save failed
+              <span className="save-indicator error" title="Save failed - please try again">
+                <AlertCircle size={18} />
               </span>
             )}
             {saveStatus === 'idle' && hasUnsavedChanges && (
-              <span className="save-indicator unsaved">
-                Unsaved changes
+              <span className="save-indicator unsaved" title="You have unsaved changes">
+                <div className="unsaved-dot" />
               </span>
             )}
           </div>
-          <button onClick={handleReset} className="btn btn-secondary btn-sm" disabled={loading}>
-            <X size={16} />
-            Reset
-          </button>
         </div>
       </div>
 
