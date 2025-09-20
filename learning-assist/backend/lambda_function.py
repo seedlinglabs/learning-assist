@@ -81,10 +81,24 @@ def lambda_handler(event, context):
         # Create table if it doesn't exist
         table = create_table_if_not_exists()
         
-        # Parse the request
-        http_method = event.get('httpMethod', '')
-        path = event.get('path', '')
+        # Parse the request - handle both proxy and non-proxy integration
+        http_method = event.get('httpMethod', '') or event.get('requestContext', {}).get('httpMethod', '')
+        path = event.get('path', '') or event.get('requestContext', {}).get('resourcePath', '')
         body = event.get('body', '{}')
+        
+        # Handle API Gateway v2 format as well
+        if not http_method and 'requestContext' in event:
+            request_context = event['requestContext']
+            if 'http' in request_context:
+                http_method = request_context['http'].get('method', '')
+                path = request_context['http'].get('path', '')
+        
+        # Debug logging
+        print(f"DEBUG: Full event keys: {list(event.keys())}")
+        print(f"DEBUG: HTTP Method: {http_method}")
+        print(f"DEBUG: Path: {path}")
+        print(f"DEBUG: Body: {body[:200] if body else 'None'}...")  # First 200 chars
+        print(f"DEBUG: Request Context: {event.get('requestContext', {})}")
         
         if body:
             try:
@@ -134,20 +148,36 @@ def lambda_handler(event, context):
         
         elif http_method == 'PUT' and '/topics/' in path:
             topic_id = path.split('/topics/')[-1]
+            print(f"DEBUG: PUT request for topic_id: {topic_id}")
             return update_topic(table, topic_id, body)
         
         elif http_method == 'DELETE' and '/topics/' in path:
             topic_id = path.split('/topics/')[-1]
+            print(f"DEBUG: DELETE request for topic_id: {topic_id}")
             return delete_topic(table, topic_id)
         
         else:
+            print(f"DEBUG: No route matched - Method: {http_method}, Path: {path}")
             return {
                 'statusCode': 404,
                 'headers': {
                     'Content-Type': 'application/json',
                     'Access-Control-Allow-Origin': '*'
                 },
-                'body': json.dumps({'error': 'Endpoint not found'})
+                'body': json.dumps({
+                    'error': 'Endpoint not found',
+                    'debug': {
+                        'method': http_method,
+                        'path': path,
+                        'available_routes': [
+                            'GET /topics',
+                            'GET /topics/{id}',
+                            'POST /topics',
+                            'PUT /topics/{id}',
+                            'DELETE /topics/{id}'
+                        ]
+                    }
+                })
             }
     
     except Exception as e:
@@ -245,12 +275,15 @@ def create_topic(table, topic_data):
                 if link:
                     normalized_links.append({'name': generate_name_from_url(link), 'url': link})
 
+        # Handle AI content (consolidated JSON)
+        ai_content = topic_data.get('aiContent') or topic_data.get('ai_content') or {}
+        
         item = {
             'id': topic_id,
             'name': topic_data['name'],
             'description': topic_data.get('description', ''),
             'document_links': normalized_links,
-            'summary': topic_data.get('summary', ''),
+            'ai_content': ai_content,
             'subject_id': topic_data['subject_id'],
             'school_id': topic_data['school_id'],
             'class_id': topic_data['class_id'],
@@ -431,16 +464,22 @@ def update_topic(table, topic_id, update_data):
                         'body': json.dumps({'error': error})
                     }
         
-        # Prepare update expression
+        # Prepare update expression with expression attribute names for reserved keywords
         update_expression = "SET updated_at = :updated_at"
         expression_values = {':updated_at': datetime.utcnow().isoformat()}
+        expression_names = {}
         
         # Add fields to update
-        updatable_fields = ['name', 'description', 'document_links', 'summary']
+        updatable_fields = ['name', 'description', 'document_links', 'ai_content']
         field_mapping = {
             'documentLinks': 'document_links',
-            'document_links': 'document_links'
+            'document_links': 'document_links',
+            'aiContent': 'ai_content',
+            'ai_content': 'ai_content'
         }
+        
+        # Reserved keywords that need expression attribute names
+        reserved_keywords = ['name', 'description', 'summary']
         
         for field in updatable_fields:
             frontend_field = field
@@ -465,16 +504,30 @@ def update_topic(table, topic_id, update_data):
                             if link:
                                 norm.append({'name': generate_name_from_url(link), 'url': link})
                     value = norm
-                update_expression += f", {field} = :{field}"
+                
+                # Use expression attribute names for reserved keywords
+                if field in reserved_keywords:
+                    attr_name = f"#{field}"
+                    expression_names[attr_name] = field
+                    update_expression += f", {attr_name} = :{field}"
+                else:
+                    update_expression += f", {field} = :{field}"
+                
                 expression_values[f':{field}'] = value
         
         # Perform update
-        response = table.update_item(
-            Key={'id': topic_id},
-            UpdateExpression=update_expression,
-            ExpressionAttributeValues=expression_values,
-            ReturnValues="ALL_NEW"
-        )
+        update_params = {
+            'Key': {'id': topic_id},
+            'UpdateExpression': update_expression,
+            'ExpressionAttributeValues': expression_values,
+            'ReturnValues': "ALL_NEW"
+        }
+        
+        # Only add ExpressionAttributeNames if we have reserved keywords
+        if expression_names:
+            update_params['ExpressionAttributeNames'] = expression_names
+        
+        response = table.update_item(**update_params)
         
         return {
             'statusCode': 200,

@@ -1,9 +1,23 @@
-import { DocumentLink } from '../types';
+import { DocumentLink, AIContent } from '../types';
 
 // You'll need to set your Gemini API key as an environment variable
 const GEMINI_API_KEY = process.env.REACT_APP_GEMINI_API_KEY;
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
+export interface AIContentRequest {
+  documentLinks: DocumentLink[];
+  topicName: string;
+  description?: string;
+  classLevel: string; // e.g., "Class 6", "Grade 10"
+}
+
+export interface AIContentResponse {
+  aiContent: AIContent;
+  success: boolean;
+  error?: string;
+}
+
+// Legacy interfaces for backward compatibility
 export interface SummaryRequest {
   documentLinks: DocumentLink[];
   topicName: string;
@@ -15,7 +29,185 @@ export interface SummaryResponse {
   error?: string;
 }
 
+export interface InteractiveContentRequest {
+  topicName: string;
+  summary: string;
+  documentLinks?: DocumentLink[];
+  description?: string;
+}
+
+export interface InteractiveContentResponse {
+  interactiveContent: string;
+  success: boolean;
+  error?: string;
+}
+
 export class GeminiService {
+  static async generateAllAIContent(request: AIContentRequest): Promise<AIContentResponse> {
+    if (!GEMINI_API_KEY) {
+      return {
+        aiContent: {},
+        success: false,
+        error: 'Gemini API key not configured. Please set REACT_APP_GEMINI_API_KEY environment variable.'
+      };
+    }
+
+    if (!request.documentLinks || request.documentLinks.length === 0) {
+      return {
+        aiContent: {},
+        success: false,
+        error: 'No document links provided for AI content generation.'
+      };
+    }
+
+    try {
+      // Create context from available information
+      let context = `Topic: ${request.topicName}\n`;
+      context += `Class Level: ${request.classLevel}\n\n`;
+      
+      if (request.description) {
+        context += `Description: ${request.description}\n\n`;
+      }
+      
+      context += `Source Documents:\n`;
+      request.documentLinks.forEach((link, index) => {
+        context += `${index + 1}. ${link.name}: ${link.url}\n`;
+      });
+      context += '\n';
+
+      const prompt = `Based on the following educational topic information, create comprehensive AI-generated content for teachers:
+
+${context}
+
+Generate the following content types in a structured format:
+
+**1. SUMMARY**
+Create a concise 2-paragraph summary (5-6 lines each) covering the key concepts and main points. Make it educational and suitable for ${request.classLevel} students.
+
+**2. INTERACTIVE ACTIVITIES**
+Create engaging classroom activities including:
+- Discussion Questions (3-4 thought-provoking questions)
+- Quick Quiz (5 multiple choice questions with answers)
+- Hands-on Activities (2-3 practical exercises)
+- Real-world Applications (daily life connections)
+- Creative Projects (student project ideas)
+
+**3. LESSON PLAN**
+Create a detailed 40-minute lesson plan for ${request.classLevel} including:
+- Learning Objectives (3-4 specific goals)
+- Materials Needed
+- Lesson Structure:
+  * Introduction (5 minutes)
+  * Main Content (25 minutes)
+  * Activities (8 minutes)
+  * Wrap-up (2 minutes)
+- Assessment Methods
+- Homework/Follow-up Activities
+
+Requirements:
+- Age-appropriate for ${request.classLevel}
+- Clear instructions for teachers
+- Include timing for each lesson segment
+- Provide answer keys where applicable
+- Use engaging, interactive teaching methods
+
+Please format each section clearly with headings and organize the content for easy teacher use.`;
+
+      const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 4096,
+            candidateCount: 1,
+          },
+          safetySettings: [
+            {
+              category: "HARM_CATEGORY_HARASSMENT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_HATE_SPEECH",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            }
+          ]
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Gemini API error: ${errorData.error?.message || response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.candidates || data.candidates.length === 0) {
+        throw new Error('No AI content generated by Gemini');
+      }
+
+      const fullContent = data.candidates[0].content.parts[0].text.trim();
+      
+      // Parse the response to extract different sections
+      const aiContent: AIContent = {
+        generatedAt: new Date(),
+        classLevel: request.classLevel
+      };
+
+      // Extract summary (between **1. SUMMARY** and **2. INTERACTIVE ACTIVITIES**)
+      const summaryMatch = fullContent.match(/\*\*1\.\s*SUMMARY\*\*([\s\S]*?)\*\*2\.\s*INTERACTIVE ACTIVITIES\*\*/);
+      if (summaryMatch) {
+        aiContent.summary = summaryMatch[1].trim();
+      }
+
+      // Extract interactive activities (between **2. INTERACTIVE ACTIVITIES** and **3. LESSON PLAN**)
+      const activitiesMatch = fullContent.match(/\*\*2\.\s*INTERACTIVE ACTIVITIES\*\*([\s\S]*?)\*\*3\.\s*LESSON PLAN\*\*/);
+      if (activitiesMatch) {
+        aiContent.interactiveActivities = activitiesMatch[1].trim();
+      }
+
+      // Extract lesson plan (after **3. LESSON PLAN**)
+      const lessonPlanMatch = fullContent.match(/\*\*3\.\s*LESSON PLAN\*\*([\s\S]*?)$/);
+      if (lessonPlanMatch) {
+        aiContent.lessonPlan = lessonPlanMatch[1].trim();
+      }
+
+      // Fallback: if parsing fails, put everything in summary
+      if (!aiContent.summary && !aiContent.interactiveActivities && !aiContent.lessonPlan) {
+        aiContent.summary = fullContent;
+      }
+
+      return {
+        aiContent,
+        success: true
+      };
+
+    } catch (error) {
+      console.error('Error generating AI content:', error);
+      return {
+        aiContent: {},
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to generate AI content'
+      };
+    }
+  }
   static async generateSummary(request: SummaryRequest): Promise<SummaryResponse> {
     if (!GEMINI_API_KEY) {
       return {
@@ -117,6 +309,131 @@ Please provide only the summary text without any additional formatting or explan
         summary: '',
         success: false,
         error: error instanceof Error ? error.message : 'Failed to generate summary'
+      };
+    }
+  }
+
+  static async generateInteractiveContent(request: InteractiveContentRequest): Promise<InteractiveContentResponse> {
+    if (!GEMINI_API_KEY) {
+      return {
+        interactiveContent: '',
+        success: false,
+        error: 'Gemini API key not configured. Please set REACT_APP_GEMINI_API_KEY environment variable.'
+      };
+    }
+
+    if (!request.summary && (!request.documentLinks || request.documentLinks.length === 0)) {
+      return {
+        interactiveContent: '',
+        success: false,
+        error: 'Either a summary or document links are required to generate interactive content.'
+      };
+    }
+
+    try {
+      // Create context from available information
+      let context = `Topic: ${request.topicName}\n\n`;
+      
+      if (request.description) {
+        context += `Description: ${request.description}\n\n`;
+      }
+      
+      if (request.summary) {
+        context += `Summary: ${request.summary}\n\n`;
+      }
+      
+      if (request.documentLinks && request.documentLinks.length > 0) {
+        context += `Source Documents:\n`;
+        request.documentLinks.forEach((link, index) => {
+          context += `${index + 1}. ${link.name}: ${link.url}\n`;
+        });
+        context += '\n';
+      }
+
+      const prompt = `Based on the following topic information, create engaging and interactive learning activities for students:
+
+${context}
+
+Create interactive content that includes:
+1. **Discussion Questions** (3-4 thought-provoking questions)
+2. **Quick Quiz** (5 multiple choice questions with answers)
+3. **Hands-on Activities** (2-3 practical exercises or experiments)
+4. **Real-world Applications** (How this topic applies to daily life)
+5. **Creative Projects** (Ideas for student projects or presentations)
+
+Requirements:
+- Make it age-appropriate and engaging for students
+- Include clear instructions for teachers
+- Provide answer keys where applicable
+- Make activities interactive and participatory
+- Use simple, clear language
+- Include both individual and group activities
+
+Format the response with clear headings and bullet points for easy reading by teachers.`;
+
+      const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.8,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 2048,
+            candidateCount: 1,
+          },
+          safetySettings: [
+            {
+              category: "HARM_CATEGORY_HARASSMENT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_HATE_SPEECH",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            }
+          ]
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Gemini API error: ${errorData.error?.message || response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.candidates || data.candidates.length === 0) {
+        throw new Error('No interactive content generated by Gemini');
+      }
+
+      const interactiveContent = data.candidates[0].content.parts[0].text.trim();
+
+      return {
+        interactiveContent,
+        success: true
+      };
+
+    } catch (error) {
+      console.error('Error generating interactive content:', error);
+      return {
+        interactiveContent: '',
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to generate interactive content'
       };
     }
   }

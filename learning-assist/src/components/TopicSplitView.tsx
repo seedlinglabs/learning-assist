@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Topic } from '../types';
 import TopicSidebar from './TopicSidebar';
-import TopicDetailPanel from './TopicDetailPanel';
+import TopicTabbedView from './TopicTabbedView';
 import NewTopicPanel from './NewTopicPanel';
 import '../styles/TopicSplitView.css';
 
@@ -85,7 +85,7 @@ const TopicSplitView: React.FC = () => {
             onTopicCreated={handleTopicCreated}
           />
         ) : selectedTopic ? (
-          <TopicDetailPanel
+          <TopicTabbedView
             topic={selectedTopic}
             onTopicDeleted={handleTopicDeleted}
           />
