@@ -81,15 +81,24 @@ def lambda_handler(event, context):
         # Create table if it doesn't exist
         table = create_table_if_not_exists()
         
-        # Parse the request
-        http_method = event.get('httpMethod', '')
-        path = event.get('path', '')
+        # Parse the request - handle both proxy and non-proxy integration
+        http_method = event.get('httpMethod', '') or event.get('requestContext', {}).get('httpMethod', '')
+        path = event.get('path', '') or event.get('requestContext', {}).get('resourcePath', '')
         body = event.get('body', '{}')
         
+        # Handle API Gateway v2 format as well
+        if not http_method and 'requestContext' in event:
+            request_context = event['requestContext']
+            if 'http' in request_context:
+                http_method = request_context['http'].get('method', '')
+                path = request_context['http'].get('path', '')
+        
         # Debug logging
+        print(f"DEBUG: Full event keys: {list(event.keys())}")
         print(f"DEBUG: HTTP Method: {http_method}")
         print(f"DEBUG: Path: {path}")
         print(f"DEBUG: Body: {body[:200] if body else 'None'}...")  # First 200 chars
+        print(f"DEBUG: Request Context: {event.get('requestContext', {})}")
         
         if body:
             try:
