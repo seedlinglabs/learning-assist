@@ -354,31 +354,45 @@ Please format each section clearly with headings and organize the content for ea
         classLevel: request.classLevel
       };
 
-      // Extract summary (between **1. SUMMARY** and **2. INTERACTIVE ACTIVITIES**)
-      const summaryMatch = fullContent.match(/\*\*1\.\s*SUMMARY\*\*([\s\S]*?)\*\*2\.\s*INTERACTIVE ACTIVITIES\*\*/);
+      // Try multiple regex patterns to match different AI response formats
+      
+      // Extract summary - try multiple patterns
+      let summaryMatch = fullContent.match(/\*\*1\.\s*SUMMARY\*\*([\s\S]*?)(?=\*\*2\.|$)/i);
+      if (!summaryMatch) summaryMatch = fullContent.match(/\*\*SUMMARY\*\*([\s\S]*?)(?=\*\*INTERACTIVE|$)/i);
+      if (!summaryMatch) summaryMatch = fullContent.match(/##?\s*SUMMARY([\s\S]*?)(?=##?\s*INTERACTIVE|$)/i);
+      if (!summaryMatch) summaryMatch = fullContent.match(/SUMMARY:([\s\S]*?)(?=INTERACTIVE|$)/i);
+      
       if (summaryMatch) {
         aiContent.summary = summaryMatch[1].trim();
         console.log('DEBUG: Extracted summary:', aiContent.summary ? aiContent.summary.substring(0, 100) + '...' : 'empty');
       } else {
-        console.log('DEBUG: No summary match found');
+        console.log('DEBUG: No summary match found with any pattern');
       }
 
-      // Extract interactive activities (between **2. INTERACTIVE ACTIVITIES** and **3. LESSON PLAN**)
-      const activitiesMatch = fullContent.match(/\*\*2\.\s*INTERACTIVE ACTIVITIES\*\*([\s\S]*?)\*\*3\.\s*LESSON PLAN\*\*/);
+      // Extract interactive activities - try multiple patterns
+      let activitiesMatch = fullContent.match(/\*\*2\.\s*INTERACTIVE ACTIVITIES\*\*([\s\S]*?)(?=\*\*3\.|$)/i);
+      if (!activitiesMatch) activitiesMatch = fullContent.match(/\*\*INTERACTIVE ACTIVITIES\*\*([\s\S]*?)(?=\*\*LESSON|$)/i);
+      if (!activitiesMatch) activitiesMatch = fullContent.match(/##?\s*INTERACTIVE ACTIVITIES([\s\S]*?)(?=##?\s*LESSON|$)/i);
+      if (!activitiesMatch) activitiesMatch = fullContent.match(/INTERACTIVE ACTIVITIES:([\s\S]*?)(?=LESSON|$)/i);
+      
       if (activitiesMatch) {
         aiContent.interactiveActivities = activitiesMatch[1].trim();
         console.log('DEBUG: Extracted activities:', aiContent.interactiveActivities ? aiContent.interactiveActivities.substring(0, 100) + '...' : 'empty');
       } else {
-        console.log('DEBUG: No activities match found');
+        console.log('DEBUG: No activities match found with any pattern');
       }
 
-      // Extract lesson plan (after **3. LESSON PLAN**)
-      const lessonPlanMatch = fullContent.match(/\*\*3\.\s*LESSON PLAN\*\*([\s\S]*?)$/);
+      // Extract lesson plan - try multiple patterns
+      let lessonPlanMatch = fullContent.match(/\*\*3\.\s*LESSON PLAN\*\*([\s\S]*?)$/i);
+      if (!lessonPlanMatch) lessonPlanMatch = fullContent.match(/\*\*LESSON PLAN\*\*([\s\S]*?)$/i);
+      if (!lessonPlanMatch) lessonPlanMatch = fullContent.match(/##?\s*LESSON PLAN([\s\S]*?)$/i);
+      if (!lessonPlanMatch) lessonPlanMatch = fullContent.match(/LESSON PLAN:([\s\S]*?)$/i);
+      
       if (lessonPlanMatch) {
         aiContent.lessonPlan = lessonPlanMatch[1].trim();
         console.log('DEBUG: Extracted lesson plan:', aiContent.lessonPlan ? aiContent.lessonPlan.substring(0, 100) + '...' : 'empty');
       } else {
-        console.log('DEBUG: No lesson plan match found');
+        console.log('DEBUG: No lesson plan match found with any pattern');
       }
 
       console.log('DEBUG: Final aiContent object:', aiContent);
