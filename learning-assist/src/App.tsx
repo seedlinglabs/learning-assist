@@ -34,8 +34,8 @@ const AppContent: React.FC = () => {
       <header className="app-header">
         <div className="header-content">
           <div className="header-title">
-            <h1>Learning Assistant</h1>
-            <p>Navigate your educational content with NotebookLM integration</p>
+            <h1>AISchool</h1>
+            <p>AI-Powered Learning Assistant for Personalized Education</p>
           </div>
           <div className="header-actions">
             <SearchBar />
