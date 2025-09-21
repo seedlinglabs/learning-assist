@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Calendar, ExternalLink, Trash2, Save, Sparkles, BookOpen, Users, GraduationCap } from 'lucide-react';
-import { Topic, AIContent } from '../types';
+import { FileText, Calendar, ExternalLink, Trash2, Save, Sparkles, BookOpen, Users, GraduationCap, Search } from 'lucide-react';
+import { Topic, DocumentLink } from '../types';
 import { useApp } from '../context/AppContext';
 import { GeminiService } from '../services/geminiService';
+import DocumentDiscoveryModal from './DocumentDiscoveryModal';
+import LessonPlanDisplay from './LessonPlanDisplay';
+import '../styles/LessonPlanDisplay.css';
 
 interface TopicTabbedViewProps {
   topic: Topic;
@@ -16,6 +19,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
   const [activeTab, setActiveTab] = useState<TabType>('details');
   const [generatingAI, setGeneratingAI] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
   const [formData, setFormData] = useState({
     name: topic.name,
     description: topic.description || '',
@@ -97,6 +101,8 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
       });
 
       if (result.success) {
+        console.log('DEBUG: Generated AI content:', result.aiContent);
+        
         // Update the topic with the new AI content
         await updateTopic(topic.id, {
           name: formData.name.trim(),
@@ -104,6 +110,8 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
           documentLinks: formData.documentLinks,
           aiContent: result.aiContent,
         });
+        
+        console.log('DEBUG: Topic update sent with aiContent:', result.aiContent);
       } else {
         setAiError(result.error || 'Failed to generate AI content');
       }
@@ -142,6 +150,27 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
       }
     }
   };
+
+  const handleDiscoveredDocuments = (discoveredDocs: DocumentLink[]) => {
+    // Add discovered documents to the current document list
+    const newDocuments = [...formData.documentLinks, ...discoveredDocs];
+    setFormData(prev => ({
+      ...prev,
+      documentLinks: newDocuments
+    }));
+  };
+
+  // Debug logging for AI content
+  React.useEffect(() => {
+    console.log('DEBUG TopicTabbedView - Full topic object:', topic);
+    console.log('DEBUG TopicTabbedView - AI Content:', topic.aiContent);
+    if (topic.aiContent) {
+      console.log('DEBUG TopicTabbedView - Has summary:', !!topic.aiContent.summary);
+      console.log('DEBUG TopicTabbedView - Has interactiveActivities:', !!topic.aiContent.interactiveActivities);
+      console.log('DEBUG TopicTabbedView - Has lessonPlan:', !!topic.aiContent.lessonPlan);
+      console.log('DEBUG TopicTabbedView - LessonPlan value:', topic.aiContent.lessonPlan);
+    }
+  }, [topic]);
 
   const tabs = [
     { id: 'details', label: 'Topic Details', icon: FileText },
@@ -226,7 +255,17 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
             </div>
 
             <div className="topic-detail-section">
-              <h3>Document Links</h3>
+              <div className="document-section-header">
+                <h3>Document Links</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowDiscoveryModal(true)}
+                  className="btn btn-primary btn-sm"
+                >
+                  <Search size={14} />
+                  Discover More Documents
+                </button>
+              </div>
               <div className="document-link-form">
                 <input
                   type="url"
@@ -331,19 +370,26 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
         )}
 
         {activeTab === 'lesson-plan' && topic.aiContent?.lessonPlan && (
-          <div className="tab-panel">
-            <div className="ai-content-header">
-              <h3>40-Minute Lesson Plan</h3>
-              <span className="ai-badge">Generated for {topic.aiContent.classLevel}</span>
-            </div>
-            <div className="ai-content-display">
-              <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.7' }}>
-                {topic.aiContent.lessonPlan}
-              </div>
-            </div>
+          <div className="tab-panel lesson-plan-panel">
+            <LessonPlanDisplay
+              lessonPlan={topic.aiContent.lessonPlan}
+              classLevel={topic.aiContent.classLevel || 'Class 1'}
+              topicName={topic.name}
+            />
           </div>
         )}
       </div>
+
+      {showDiscoveryModal && (
+        <DocumentDiscoveryModal
+          topicName={formData.name}
+          description={formData.description}
+          classLevel={currentPath.class?.name || 'Class 1'}
+          existingDocuments={formData.documentLinks}
+          onDocumentsSelected={handleDiscoveredDocuments}
+          onClose={() => setShowDiscoveryModal(false)}
+        />
+      )}
     </div>
   );
 };

@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { School, NavigationPath, Topic, Subject, Class, SearchResult } from '../types';
 import { schools } from '../data';
 import { topicsAPI, CreateTopicRequest, ApiError } from '../services/api';
+import { GeminiService, DocumentDiscoveryRequest } from '../services/geminiService';
+import { useAuth } from './AuthContext';
 
 interface AppContextType {
   schools: School[];
@@ -16,6 +18,7 @@ interface AppContextType {
   openNotebookLM: (url: string) => void;
   performSearch: (query: string) => SearchResult[];
   refreshTopics: () => Promise<void>;
+  discoverDocuments: (request: DocumentDiscoveryRequest) => Promise<{ success: boolean; documents?: any[]; error?: string }>;
   loading: boolean;
   error: string | null;
   clearError: () => void;
@@ -36,12 +39,43 @@ interface AppProviderProps {
 }
 
 export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
+  const { user, canAccessClass, hasRole } = useAuth();
   const [schoolsData, setSchoolsData] = useState<School[]>(schools);
   const [currentPath, setCurrentPath] = useState<NavigationPath>({});
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Filter schools and classes based on user access
+  const getFilteredSchools = (): School[] => {
+    if (!user) return [];
+    
+    // Teachers can see everything
+    if (hasRole('teacher')) {
+      return schoolsData;
+    }
+    
+    // Parents can only see classes their children are in
+    if (hasRole('parent')) {
+      const accessibleClassIds = user.class_access;
+      return schoolsData.map(school => ({
+        ...school,
+        classes: school.classes.filter(cls => accessibleClassIds.includes(cls.id))
+      })).filter(school => school.classes.length > 0);
+    }
+    
+    // Students can see their own classes
+    if (hasRole('student')) {
+      const accessibleClassIds = user.class_access;
+      return schoolsData.map(school => ({
+        ...school,
+        classes: school.classes.filter(cls => accessibleClassIds.includes(cls.id))
+      })).filter(school => school.classes.length > 0);
+    }
+    
+    return [];
+  };
 
   // Load topics for a subject from API
   const loadTopicsForSubject = async (subjectId: string): Promise<Topic[]> => {
@@ -143,6 +177,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         aiContent: updates.aiContent,
       };
 
+      console.log('DEBUG: Update request being sent:', updateRequest);
+      console.log('DEBUG: AI Content in request:', updates.aiContent);
+
       const updatedTopic = await topicsAPI.update(topicId, updateRequest);
 
       // Refresh topics from API to ensure consistency
@@ -237,6 +274,35 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   const clearError = () => setError(null);
 
+  const discoverDocuments = async (request: DocumentDiscoveryRequest) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const result = await GeminiService.discoverDocuments(request);
+      
+      if (result.success) {
+        return {
+          success: true,
+          documents: result.suggestedDocuments
+        };
+      } else {
+        return {
+          success: false,
+          error: result.error || 'Failed to discover documents'
+        };
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to discover documents';
+      return {
+        success: false,
+        error: errorMessage
+      };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Reseat currentPath references after immutable schoolsData updates
   const reseatCurrentPath = (nextSchools: School[]) => {
     if (!currentPath.school) return;
@@ -283,7 +349,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   };
 
   const contextValue: AppContextType = {
-    schools: schoolsData,
+    schools: getFilteredSchools(),
     currentPath,
     setCurrentPath,
     searchQuery,
@@ -295,6 +361,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     openNotebookLM,
     performSearch,
     refreshTopics,
+    discoverDocuments,
     loading,
     error,
     clearError,
