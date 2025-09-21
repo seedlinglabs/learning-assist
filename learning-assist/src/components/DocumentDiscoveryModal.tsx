@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { X, Search, Plus, Video, Volume2, Gamepad2, FileText, Atom, Presentation, BookOpen, Microscope, FileSpreadsheet, GraduationCap } from 'lucide-react';
 import { DocumentLink } from '../types';
-import { GeminiService, ContentType } from '../services/geminiService';
+import { secureGeminiService } from '../services/secureGeminiService';
+import { ContentType } from '../services/geminiService';
 
 interface DocumentDiscoveryModalProps {
   topicName: string;
@@ -54,17 +55,24 @@ const DocumentDiscoveryModal: React.FC<DocumentDiscoveryModalProps> = ({
     setSuggestedDocuments([]);
 
     try {
-      const result = await GeminiService.discoverDocuments({
-        topicName,
-        description,
+      const prompt = customPrompt.trim() || `Find educational resources for ${topicName}${description ? ` - ${description}` : ''} for ${classLevel} students.`;
+      const existingUrls = existingDocuments.map(doc => doc.url);
+      
+      const result = await secureGeminiService.discoverDocuments({
+        prompt,
+        documentUrls: existingUrls,
         classLevel,
-        existingDocuments,
-        customPrompt: customPrompt.trim() || undefined,
-        contentTypes: selectedContentTypes.length > 0 ? selectedContentTypes : undefined
+        subject: 'General', // We don't have subject context here
+        maxResults: 10
       });
 
-      if (result.success) {
-        setSuggestedDocuments(result.suggestedDocuments);
+      if (result.success && result.suggestions) {
+        // Map suggestions to DocumentLink format
+        const documentLinks: DocumentLink[] = result.suggestions.map(suggestion => ({
+          name: suggestion.title,
+          url: suggestion.url
+        }));
+        setSuggestedDocuments(documentLinks);
       } else {
         setError(result.error || 'Failed to discover documents');
       }

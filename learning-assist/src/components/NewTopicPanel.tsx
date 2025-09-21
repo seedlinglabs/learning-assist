@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { FileText, Save, X, Search, Plus } from 'lucide-react';
+import { FileText, Save, X, Search } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { GeminiService, ContentType } from '../services/geminiService';
+// Secure Gemini service available for future enhancements
+// import { secureGeminiService, ContentType } from '../services/secureGeminiService';
 import { DocumentLink } from '../types';
 import DocumentDiscoveryModal from './DocumentDiscoveryModal';
 

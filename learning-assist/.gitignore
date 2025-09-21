@@ -13,10 +13,16 @@
 
 # misc
 .DS_Store
+.env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+
+# API Keys and secrets (CRITICAL - never commit these)
+**/GEMINI_API_KEY*
+**/*api*key*
+**/*secret*
 
 npm-debug.log*
 yarn-debug.log*

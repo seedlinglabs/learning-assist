@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Clock, BookOpen, Users, Target, Play, ExternalLink, Youtube, Gamepad2, Wand2, Loader2, Volume2, Monitor, Hand, VolumeX } from 'lucide-react';
-import { GeminiService, SectionEnhancementRequest } from '../services/geminiService';
+import { secureGeminiService, SectionEnhancementRequest } from '../services/secureGeminiService';
 import { SpeechService } from '../services/speechService';
 
 interface LessonSection {
@@ -342,33 +342,34 @@ const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({
 
     try {
       const request: SectionEnhancementRequest = {
-        sectionTitle: section.title,
-        sectionContent: section.content,
-        sectionType: section.type,
-        topicName: topicName,
+        section: section.title,
+        content: section.content,
         classLevel: classLevel,
+        enhancementType: 'expand', // Default enhancement type for lesson plans
+        topicName: topicName,
+        sectionType: section.type,
         duration: section.duration
       };
 
-      const response = await GeminiService.enhanceSection(request);
+      const response = await secureGeminiService.enhanceSection(request);
 
-      if (response.success) {
+      if (response.success && response.enhancedContent) {
         // Update the section content
         setSections(prevSections => 
           prevSections.map(s => 
             s.id === section.id 
-              ? { ...s, content: response.enhancedContent }
+              ? { ...s, content: response.enhancedContent! }
               : s
           )
         );
 
         // Notify parent component if callback provided
-        if (onSectionUpdate) {
+        if (onSectionUpdate && response.enhancedContent) {
           onSectionUpdate(section.id, response.enhancedContent);
         }
       } else {
         console.error('Failed to enhance section:', response.error);
-        alert('Failed to enhance section: ' + response.error);
+        alert('Failed to enhance section: ' + (response.error || 'Unknown error'));
       }
     } catch (error) {
       console.error('Error enhancing section:', error);

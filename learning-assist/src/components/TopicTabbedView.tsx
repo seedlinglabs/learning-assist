@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FileText, Calendar, ExternalLink, Trash2, Save, Sparkles, BookOpen, Users, GraduationCap, Search } from 'lucide-react';
 import { Topic, DocumentLink } from '../types';
 import { useApp } from '../context/AppContext';
-import { GeminiService } from '../services/geminiService';
+import { secureGeminiService } from '../services/secureGeminiService';
 import DocumentDiscoveryModal from './DocumentDiscoveryModal';
 import LessonPlanDisplay from './LessonPlanDisplay';
 import '../styles/LessonPlanDisplay.css';
@@ -93,14 +93,18 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     setAiError(null);
 
     try {
-      const result = await GeminiService.generateAllAIContent({
-        documentLinks: formData.documentLinks,
-        topicName: formData.name,
-        description: formData.description,
-        classLevel: classLevel
-      });
+      const documentUrls = formData.documentLinks.map(link => link.url);
+      const subject = currentPath.subject?.name || 'General';
+      
+      const result = await secureGeminiService.generateTopicContent(
+        formData.name,
+        formData.description || '',
+        documentUrls,
+        classLevel,
+        subject
+      );
 
-      if (result.success) {
+      if (result.success && result.aiContent) {
         console.log('DEBUG: Generated AI content:', result.aiContent);
         
         // Update the topic with the new AI content
