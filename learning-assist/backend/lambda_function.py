@@ -97,7 +97,7 @@ def lambda_handler(event, context):
         print(f"DEBUG: Full event keys: {list(event.keys())}")
         print(f"DEBUG: HTTP Method: {http_method}")
         print(f"DEBUG: Path: {path}")
-        print(f"DEBUG: Body: {body[:200] if body else 'None'}...")  # First 200 chars
+        print(f"DEBUG: Body: {body if body else 'None'}")  # Full body
         print(f"DEBUG: Request Context: {event.get('requestContext', {})}")
         
         if body:
@@ -428,6 +428,8 @@ def get_all_topics(table):
 def update_topic(table, topic_id, update_data):
     """Update an existing topic"""
     try:
+        print(f"DEBUG: update_topic called with topic_id: {topic_id}")
+        print(f"DEBUG: update_data: {update_data}")
         # Check if topic exists
         existing_response = table.get_item(Key={'id': topic_id})
         if 'Item' not in existing_response:
