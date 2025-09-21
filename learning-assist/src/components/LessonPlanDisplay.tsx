@@ -551,7 +551,7 @@ const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({
                   )}
                   <button
                     onClick={() => handlePlayAudio(section)}
-                    disabled={!!enhancingSection}
+                    disabled={playingAudio === section.id}
                     className="audio-button"
                     title="Generate and play audio for this section"
                   >
@@ -616,7 +616,7 @@ const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({
                     >
                       <div className="video-thumbnail">
                         <img 
-                          src={video.thumbnailUrl} 
+                          src={video.thumbnail} 
                           alt={video.title}
                           className="thumbnail-image"
                         />

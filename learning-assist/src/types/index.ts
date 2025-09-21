@@ -18,7 +18,8 @@ export interface YouTubeVideo {
   channelTitle: string;
   duration: string;
   description: string;
-  thumbnailUrl: string;
+  thumbnail: string;
+  publishedAt: string;
 }
 
 export interface Topic {
