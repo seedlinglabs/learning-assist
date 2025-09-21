@@ -8,6 +8,17 @@ export interface AIContent {
   // Future AI content types can be added here
   generatedAt?: Date;
   classLevel?: string;
+  videos?: YouTubeVideo[];
+}
+
+export interface YouTubeVideo {
+  id: string;
+  title: string;
+  url: string;
+  channelTitle: string;
+  duration: string;
+  description: string;
+  thumbnailUrl: string;
 }
 
 export interface Topic {

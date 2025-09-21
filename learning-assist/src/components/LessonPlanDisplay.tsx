@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Clock, BookOpen, Users, Target, Play, ExternalLink, Youtube, Gamepad2, Wand2, Loader2, Volume2, Monitor, Hand, VolumeX } from 'lucide-react';
-import { secureGeminiService, SectionEnhancementRequest } from '../services/secureGeminiService';
+import { Clock, BookOpen, Users, Target, Play, ExternalLink, Youtube, Gamepad2, Volume2, Monitor, Hand, VolumeX } from 'lucide-react';
+import { secureGeminiService } from '../services/secureGeminiService';
 import { SpeechService } from '../services/speechService';
+import { YouTubeVideo } from '../types';
 
 interface LessonSection {
   id: string;
@@ -22,6 +23,7 @@ interface LessonPlanDisplayProps {
   classLevel: string;
   topicName: string;
   subject?: string;
+  videos?: YouTubeVideo[];
   onSectionUpdate?: (sectionId: string, newContent: string) => void;
   onLessonPlanUpdate?: (updatedLessonPlan: string) => void;
 }
@@ -31,11 +33,11 @@ const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({
   classLevel,
   topicName,
   subject,
+  videos = [],
   onSectionUpdate,
   onLessonPlanUpdate
 }) => {
   const [sections, setSections] = useState<LessonSection[]>([]);
-  const [enhancingSection, setEnhancingSection] = useState<string | null>(null);
   const [playingAudio, setPlayingAudio] = useState<string | null>(null);
   const parseLessonPlan = (text: string): LessonSection[] => {
     const sections: LessonSection[] = [];
@@ -487,51 +489,6 @@ const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({
     return lessonPlan;
   };
 
-  const handleEnhanceSection = async (section: LessonSection) => {
-    if (!section || enhancingSection) return;
-
-    setEnhancingSection(section.id);
-
-    try {
-      const request: SectionEnhancementRequest = {
-        section: section.title,
-        content: section.content,
-        classLevel: classLevel,
-        enhancementType: 'expand', // Default enhancement type for lesson plans
-        topicName: topicName,
-        subject: subject,
-        sectionType: section.type,
-        duration: section.duration
-      };
-
-      const response = await secureGeminiService.enhanceSection(request);
-
-      if (response.success && response.enhancedContent) {
-        // Update the section content
-        const updatedSections = sections.map(s => 
-          s.id === section.id 
-            ? { ...s, content: response.enhancedContent! }
-            : s
-        );
-        
-        setSections(updatedSections);
-
-        // For now, just notify with the enhanced content
-        // The parent will handle updating the lesson plan
-        if (onSectionUpdate && response.enhancedContent) {
-          onSectionUpdate(section.id, response.enhancedContent);
-        }
-      } else {
-        console.error('Failed to enhance section:', response.error);
-        alert('Failed to enhance section: ' + (response.error || 'Unknown error'));
-      }
-    } catch (error) {
-      console.error('Error enhancing section:', error);
-      alert('An error occurred while enhancing the section');
-    } finally {
-      setEnhancingSection(null);
-    }
-  };
 
   const handlePlayAudio = async (section: LessonSection) => {
     if (playingAudio === section.id) {
@@ -607,21 +564,6 @@ const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({
                       {playingAudio === section.id ? 'Stop' : 'Audio'}
                     </span>
                   </button>
-                  <button
-                    onClick={() => handleEnhanceSection(section)}
-                    disabled={enhancingSection === section.id}
-                    className="enhance-button"
-                    title="Enhance section with AI teaching aids"
-                  >
-                    {enhancingSection === section.id ? (
-                      <Loader2 size={16} className="animate-spin" />
-                    ) : (
-                      <Wand2 size={16} />
-                    )}
-                    <span>
-                      {enhancingSection === section.id ? 'Enhancing...' : 'Enhance'}
-                    </span>
-                  </button>
                 </div>
               </div>
               
@@ -651,6 +593,52 @@ const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({
             </div>
           );
         })}
+        
+        {/* Videos Section */}
+        {videos.length > 0 && (
+          <div className="lesson-section videos-section">
+            <div className="section-header bg-gradient-to-r from-red-500 to-red-600">
+              <div className="section-title">
+                <Youtube size={20} className="section-icon" />
+                <span>Educational Videos</span>
+              </div>
+            </div>
+            
+            <div className="section-content">
+              <div className="videos-grid">
+                {videos.map((video, index) => (
+                  <div key={video.id} className="video-card">
+                    <a
+                      href={video.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="video-link"
+                    >
+                      <div className="video-thumbnail">
+                        <img 
+                          src={video.thumbnailUrl} 
+                          alt={video.title}
+                          className="thumbnail-image"
+                        />
+                        <div className="play-overlay">
+                          <Youtube size={24} />
+                        </div>
+                      </div>
+                      <div className="video-info">
+                        <h4 className="video-title">{video.title}</h4>
+                        <p className="video-channel">{video.channelTitle}</p>
+                        <p className="video-duration">{video.duration}</p>
+                        <p className="video-description">
+                          {video.description.substring(0, 100)}...
+                        </p>
+                      </div>
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

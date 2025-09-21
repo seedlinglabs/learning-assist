@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Calendar, ExternalLink, Trash2, Save, Sparkles, BookOpen, Users, GraduationCap, Search } from 'lucide-react';
+import { FileText, Calendar, ExternalLink, Trash2, Save, Sparkles, BookOpen, Users, GraduationCap, Search, Youtube } from 'lucide-react';
 import { Topic, DocumentLink } from '../types';
 import { useApp } from '../context/AppContext';
 import { secureGeminiService } from '../services/secureGeminiService';
+import { youtubeService } from '../services/youtubeService';
 import DocumentDiscoveryModal from './DocumentDiscoveryModal';
 import LessonPlanDisplay from './LessonPlanDisplay';
 import '../styles/LessonPlanDisplay.css';
@@ -18,6 +19,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
   const { updateTopic, deleteTopic, loading, error, clearError, currentPath } = useApp();
   const [activeTab, setActiveTab] = useState<TabType>('details');
   const [generatingAI, setGeneratingAI] = useState(false);
+  const [findingVideos, setFindingVideos] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [enhancedLessonPlan, setEnhancedLessonPlan] = useState<string | null>(null);
   const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
@@ -136,6 +138,43 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     // This ensures the enhanced content is visible without needing to save
     if (topic.aiContent) {
       topic.aiContent.lessonPlan = updatedLessonPlan;
+    }
+  };
+
+  const handleFindVideos = async () => {
+    if (!topic.aiContent?.lessonPlan) return;
+    
+    setFindingVideos(true);
+    try {
+      // Search for videos related to this topic
+      const videoResults = await youtubeService.searchTopicVideos(
+        topic.name,
+        topic.aiContent.classLevel || 'Class 1',
+        currentPath.subject?.name
+      );
+
+      if (videoResults.videos.length > 0) {
+        // Update the topic's AI content with videos
+        const updatedAIContent = {
+          ...topic.aiContent,
+          videos: videoResults.videos
+        };
+
+        // Update the topic immediately for display
+        topic.aiContent = updatedAIContent;
+        
+        // Store for saving
+        setEnhancedLessonPlan(JSON.stringify(updatedAIContent, null, 2));
+        
+        console.log('Found videos:', videoResults.videos);
+      } else {
+        alert('No videos found for this topic. Try different search terms.');
+      }
+    } catch (error) {
+      console.error('Error finding videos:', error);
+      alert('Error finding videos: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setFindingVideos(false);
     }
   };
 
@@ -264,6 +303,16 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
             <Sparkles size={16} />
             {generatingAI ? 'Generating AI Content...' : 'Generate AI Content'}
           </button>
+          {topic.aiContent?.lessonPlan && (
+            <button
+              onClick={handleFindVideos}
+              disabled={findingVideos || loading}
+              className="btn btn-outline btn-sm"
+            >
+              <Youtube size={16} />
+              {findingVideos ? 'Finding Videos...' : 'Find Videos from YouTube'}
+            </button>
+          )}
           <button onClick={handleSave} className="btn btn-secondary btn-sm" disabled={loading}>
             <Save size={16} />
             {loading ? 'Saving...' : 'Save Changes'}
@@ -411,6 +460,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
               classLevel={topic.aiContent.classLevel || 'Class 1'}
               topicName={topic.name}
               subject={currentPath.subject?.name}
+              videos={topic.aiContent.videos}
               onSectionUpdate={handleSectionUpdate}
               onLessonPlanUpdate={handleLessonPlanUpdate}
             />
