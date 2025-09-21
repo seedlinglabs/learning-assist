@@ -12,13 +12,14 @@ interface TopicTabbedViewProps {
   onTopicDeleted: () => void;
 }
 
-type TabType = 'details' | 'summary' | 'activities' | 'lesson-plan';
+type TabType = 'details' | 'lesson-plan';
 
 const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted }) => {
   const { updateTopic, deleteTopic, loading, error, clearError, currentPath } = useApp();
   const [activeTab, setActiveTab] = useState<TabType>('details');
   const [generatingAI, setGeneratingAI] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [enhancedLessonPlan, setEnhancedLessonPlan] = useState<string | null>(null);
   const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
   const [formData, setFormData] = useState({
     name: topic.name,
@@ -127,6 +128,16 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     }
   };
 
+  const handleLessonPlanUpdate = (updatedLessonPlan: string) => {
+    // Store the updated lesson plan to be saved
+    setEnhancedLessonPlan(updatedLessonPlan);
+  };
+
+  const handleSectionUpdate = async (sectionId: string, newContent: string) => {
+    // This is kept for backward compatibility but not used for saving
+    console.log('Section updated:', sectionId, newContent);
+  };
+
   const handleSave = async () => {
     if (!formData.name.trim()) {
       alert('Please enter a topic name');
@@ -134,11 +145,21 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     }
 
     try {
+      // Use enhanced lesson plan if available, otherwise use original
+      const lessonPlanToSave = enhancedLessonPlan || topic.aiContent?.lessonPlan;
+      
       await updateTopic(topic.id, {
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
         documentLinks: formData.documentLinks,
+        aiContent: {
+          ...topic.aiContent,
+          lessonPlan: lessonPlanToSave
+        },
       });
+      
+      // Clear the enhanced lesson plan after saving
+      setEnhancedLessonPlan(null);
     } catch (error) {
       console.error('Failed to update topic:', error);
     }
@@ -169,8 +190,6 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     console.log('DEBUG TopicTabbedView - Full topic object:', topic);
     console.log('DEBUG TopicTabbedView - AI Content:', topic.aiContent);
     if (topic.aiContent) {
-      console.log('DEBUG TopicTabbedView - Has summary:', !!topic.aiContent.summary);
-      console.log('DEBUG TopicTabbedView - Has interactiveActivities:', !!topic.aiContent.interactiveActivities);
       console.log('DEBUG TopicTabbedView - Has lessonPlan:', !!topic.aiContent.lessonPlan);
       console.log('DEBUG TopicTabbedView - LessonPlan value:', topic.aiContent.lessonPlan);
     }
@@ -178,8 +197,6 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
 
   const tabs = [
     { id: 'details', label: 'Topic Details', icon: FileText },
-    { id: 'summary', label: 'Summary', icon: BookOpen, disabled: !topic.aiContent?.summary },
-    { id: 'activities', label: 'Activities', icon: Users, disabled: !topic.aiContent?.interactiveActivities },
     { id: 'lesson-plan', label: 'Lesson Plan', icon: GraduationCap, disabled: !topic.aiContent?.lessonPlan },
   ];
 
@@ -345,40 +362,16 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
           </div>
         )}
 
-        {activeTab === 'summary' && topic.aiContent?.summary && (
-          <div className="tab-panel">
-            <div className="ai-content-header">
-              <h3>AI-Generated Summary</h3>
-              <span className="ai-badge">Generated for {topic.aiContent.classLevel}</span>
-            </div>
-            <div className="ai-content-display">
-              <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.7' }}>
-                {topic.aiContent.summary}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'activities' && topic.aiContent?.interactiveActivities && (
-          <div className="tab-panel">
-            <div className="ai-content-header">
-              <h3>Interactive Activities</h3>
-              <span className="ai-badge">Generated for {topic.aiContent.classLevel}</span>
-            </div>
-            <div className="ai-content-display">
-              <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.7' }}>
-                {topic.aiContent.interactiveActivities}
-              </div>
-            </div>
-          </div>
-        )}
 
         {activeTab === 'lesson-plan' && topic.aiContent?.lessonPlan && (
           <div className="tab-panel lesson-plan-panel">
             <LessonPlanDisplay
-              lessonPlan={topic.aiContent.lessonPlan}
+              lessonPlan={enhancedLessonPlan || topic.aiContent.lessonPlan}
               classLevel={topic.aiContent.classLevel || 'Class 1'}
               topicName={topic.name}
+              subject={currentPath.subject?.name}
+              onSectionUpdate={handleSectionUpdate}
+              onLessonPlanUpdate={handleLessonPlanUpdate}
             />
           </div>
         )}

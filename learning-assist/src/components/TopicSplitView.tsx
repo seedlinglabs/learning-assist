@@ -94,7 +94,7 @@ const TopicSplitView: React.FC = () => {
             <div className="empty-state-large">
               <div className="empty-icon">📚</div>
               <h3>Select a topic to view details</h3>
-              <p>Choose a topic from the sidebar to view and edit its content, documents, and AI-generated summary.</p>
+              <p>Choose a topic from the sidebar to view and edit its content, documents, and AI-generated lesson plan.</p>
             </div>
           </div>
         )}

@@ -126,7 +126,7 @@ const NewTopicPanel: React.FC<NewTopicPanelProps> = ({
       <div className="topic-detail-content">
         <div className="new-topic-info">
           <h4>Creating new topic in {subjectName}</h4>
-          <p>Fill in the details below to create a new topic. You can add document links and generate an AI summary.</p>
+          <p>Fill in the details below to create a new topic. You can add document links and generate an AI lesson plan.</p>
         </div>
 
         <div className="topic-detail-section">

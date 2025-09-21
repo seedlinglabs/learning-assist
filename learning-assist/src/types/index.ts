@@ -4,8 +4,6 @@ export interface DocumentLink {
 }
 
 export interface AIContent {
-  summary?: string;
-  interactiveActivities?: string;
   lessonPlan?: string;
   // Future AI content types can be added here
   generatedAt?: Date;

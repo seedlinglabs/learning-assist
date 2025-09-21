@@ -21,14 +21,18 @@ interface LessonPlanDisplayProps {
   lessonPlan: string;
   classLevel: string;
   topicName: string;
+  subject?: string;
   onSectionUpdate?: (sectionId: string, newContent: string) => void;
+  onLessonPlanUpdate?: (updatedLessonPlan: string) => void;
 }
 
 const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({
   lessonPlan,
   classLevel,
   topicName,
-  onSectionUpdate
+  subject,
+  onSectionUpdate,
+  onLessonPlanUpdate
 }) => {
   const [sections, setSections] = useState<LessonSection[]>([]);
   const [enhancingSection, setEnhancingSection] = useState<string | null>(null);
@@ -36,7 +40,114 @@ const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({
   const parseLessonPlan = (text: string): LessonSection[] => {
     const sections: LessonSection[] = [];
     
-    // Define section patterns with their types
+    // First, try to parse as JSON (from secureGeminiService)
+    try {
+      const lessonPlanData = JSON.parse(text);
+      if (lessonPlanData && typeof lessonPlanData === 'object') {
+        let sectionId = 1;
+
+        // Parse objectives
+        if (lessonPlanData.objectives && Array.isArray(lessonPlanData.objectives)) {
+          sections.push({
+            id: `section-${sectionId}`,
+            title: 'Learning Objectives',
+            content: lessonPlanData.objectives.map((obj: string, index: number) => `${index + 1}. ${obj}`).join('\n'),
+            type: 'objectives'
+          });
+          sectionId++;
+        }
+
+        // Parse materials
+        if (lessonPlanData.materials && Array.isArray(lessonPlanData.materials)) {
+          sections.push({
+            id: `section-${sectionId}`,
+            title: 'Materials Needed',
+            content: lessonPlanData.materials.map((material: string) => `• ${material}`).join('\n'),
+            type: 'materials'
+          });
+          sectionId++;
+        }
+
+        // Parse introduction
+        if (lessonPlanData.introduction) {
+          sections.push({
+            id: `section-${sectionId}`,
+            title: 'Introduction',
+            content: lessonPlanData.introduction,
+            duration: 5,
+            type: 'introduction'
+          });
+          sectionId++;
+        }
+
+        // Parse main content
+        if (lessonPlanData.mainContent && Array.isArray(lessonPlanData.mainContent)) {
+          lessonPlanData.mainContent.forEach((content: any) => {
+            sections.push({
+              id: `section-${sectionId}`,
+              title: content.section || 'Main Content',
+              content: content.content || '',
+              duration: content.timeEstimate ? parseInt(content.timeEstimate) : undefined,
+              type: 'content'
+            });
+            sectionId++;
+          });
+        }
+
+        // Parse wrap-up
+        if (lessonPlanData.wrapUp) {
+          sections.push({
+            id: `section-${sectionId}`,
+            title: 'Wrap-up',
+            content: lessonPlanData.wrapUp,
+            duration: 2,
+            type: 'activities'
+          });
+          sectionId++;
+        }
+
+        // Parse assessment
+        if (lessonPlanData.assessment) {
+          sections.push({
+            id: `section-${sectionId}`,
+            title: 'Assessment Methods',
+            content: lessonPlanData.assessment,
+            type: 'assessment'
+          });
+          sectionId++;
+        }
+
+        // Parse homework
+        if (lessonPlanData.homework) {
+          sections.push({
+            id: `section-${sectionId}`,
+            title: 'Homework & Follow-up',
+            content: lessonPlanData.homework,
+            type: 'homework'
+          });
+          sectionId++;
+        }
+
+        // Parse resources
+        if (lessonPlanData.resources && Array.isArray(lessonPlanData.resources)) {
+          sections.push({
+            id: `section-${sectionId}`,
+            title: 'Educational Resources',
+            content: lessonPlanData.resources.map((resource: string) => `• ${resource}`).join('\n'),
+            type: 'resources'
+          });
+          sectionId++;
+        }
+
+        if (sections.length > 0) {
+          return sections;
+        }
+      }
+    } catch (error) {
+      console.log('Not JSON format, falling back to text parsing');
+    }
+
+    // Fallback to text parsing (from original geminiService)
     const sectionPatterns = [
       { pattern: /(?:learning\s+)?objectives?[\s:]*(.+?)(?=(?:materials|lesson\s+structure|introduction|main\s+content|activities|assessment|homework|educational\s+resources|$))/is, type: 'objectives' as const, title: 'Learning Objectives' },
       { pattern: /materials?\s+needed[\s:]*(.+?)(?=(?:lesson\s+structure|introduction|main\s+content|activities|assessment|homework|educational\s+resources|$))/is, type: 'materials' as const, title: 'Materials Needed' },
@@ -264,14 +375,49 @@ const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({
                 }
                 
                 // Process text content with formatting
+                const formatTextContent = (text: string) => {
+                  // Convert numbered lists
+                  const numberedListRegex = /^(\d+)\.\s+(.+)$/gm;
+                  let formatted = text.replace(numberedListRegex, '<li>$2</li>');
+                  
+                  // Wrap consecutive list items in ol tags
+                  formatted = formatted.replace(/(<li>.*<\/li>)(\s*<li>.*<\/li>)*/gs, (match) => {
+                    return `<ol>${match}</ol>`;
+                  });
+                  
+                  // Convert bullet points
+                  const bulletListRegex = /^•\s+(.+)$/gm;
+                  formatted = formatted.replace(bulletListRegex, '<li>$1</li>');
+                  
+                  // Wrap consecutive bullet list items in ul tags
+                  formatted = formatted.replace(/(<li>.*<\/li>)(\s*<li>.*<\/li>)*/gs, (match) => {
+                    return `<ul>${match}</ul>`;
+                  });
+                  
+                  // Convert bold text
+                  formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                  
+                  // Convert emoji headers to h3 tags
+                  formatted = formatted.replace(/\*\*🎥\s*RECOMMENDED VIDEOS:\*\*/g, '<h3>🎥 RECOMMENDED VIDEOS</h3>');
+                  formatted = formatted.replace(/\*\*📚\s*ADDITIONAL RESOURCES:\*\*/g, '<h3>📚 ADDITIONAL RESOURCES</h3>');
+                  formatted = formatted.replace(/\*\*🎯\s*TEACHING ACTIVITIES:\*\*/g, '<h3>🎯 TEACHING ACTIVITIES</h3>');
+                  
+                  // Convert line breaks to paragraphs
+                  formatted = formatted.replace(/\n\n/g, '</p><p>');
+                  formatted = '<p>' + formatted + '</p>';
+                  
+                  // Clean up empty paragraphs
+                  formatted = formatted.replace(/<p><\/p>/g, '');
+                  
+                  return formatted;
+                };
+
                 return (
                   <div 
                     key={partIndex} 
                     className="text-content"
                     dangerouslySetInnerHTML={{ 
-                      __html: part
-                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                        .replace(/\n/g, '<br />')
+                      __html: formatTextContent(part)
                     }}
                   />
                 );
@@ -335,6 +481,16 @@ const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({
     SpeechService.initialize();
   }, []);
 
+  const reconstructLessonPlan = (sections: LessonSection[]): string => {
+    return sections.map(section => {
+      let content = `**${section.title}**\n\n${section.content}`;
+      if (section.duration) {
+        content = `**${section.title}** (${section.duration} min)\n\n${section.content}`;
+      }
+      return content;
+    }).join('\n\n');
+  };
+
   const handleEnhanceSection = async (section: LessonSection) => {
     if (!section || enhancingSection) return;
 
@@ -347,6 +503,7 @@ const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({
         classLevel: classLevel,
         enhancementType: 'expand', // Default enhancement type for lesson plans
         topicName: topicName,
+        subject: subject,
         sectionType: section.type,
         duration: section.duration
       };
@@ -355,15 +512,23 @@ const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({
 
       if (response.success && response.enhancedContent) {
         // Update the section content
-        setSections(prevSections => 
-          prevSections.map(s => 
-            s.id === section.id 
-              ? { ...s, content: response.enhancedContent! }
-              : s
-          )
+        const updatedSections = sections.map(s => 
+          s.id === section.id 
+            ? { ...s, content: response.enhancedContent! }
+            : s
         );
+        
+        setSections(updatedSections);
 
-        // Notify parent component if callback provided
+        // Reconstruct the full lesson plan with the enhanced content
+        const updatedLessonPlan = reconstructLessonPlan(updatedSections);
+        
+        // Notify parent component with the full updated lesson plan
+        if (onLessonPlanUpdate) {
+          onLessonPlanUpdate(updatedLessonPlan);
+        }
+        
+        // Also notify with section-specific update for backward compatibility
         if (onSectionUpdate && response.enhancedContent) {
           onSectionUpdate(section.id, response.enhancedContent);
         }
@@ -438,19 +603,6 @@ const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({
                       <span>{section.duration} min</span>
                     </div>
                   )}
-                  {youtubeVideos.map((video, index) => (
-                    <a
-                      key={index}
-                      href={video.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="youtube-button"
-                      title={`Watch: ${video.title}`}
-                    >
-                      <Youtube size={16} />
-                      <span>{video.title.length > 20 ? video.title.substring(0, 20) + '...' : video.title}</span>
-                    </a>
-                  ))}
                   <button
                     onClick={() => handlePlayAudio(section)}
                     disabled={!!enhancingSection}
@@ -483,6 +635,24 @@ const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({
                   </button>
                 </div>
               </div>
+              
+              {youtubeVideos.length > 0 && (
+                <div className="video-buttons-row">
+                  {youtubeVideos.map((video, index) => (
+                    <a
+                      key={index}
+                      href={video.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="video-button"
+                      title={`Watch: ${video.title}`}
+                    >
+                      <Youtube size={14} />
+                      <span>{video.title.length > 25 ? video.title.substring(0, 25) + '...' : video.title}</span>
+                    </a>
+                  ))}
+                </div>
+              )}
               
               <div className="section-content">
                 <div className="content-text">

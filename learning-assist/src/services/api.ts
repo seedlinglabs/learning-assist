@@ -44,8 +44,6 @@ const transformApiTopicToTopic = (apiTopic: any): Topic => {
       ? apiTopic.document_links.map((l: any) => ({ name: l.name || generateNameFromUrl(l.url), url: l.url }))
       : undefined,
     aiContent: apiTopic.ai_content ? {
-      summary: apiTopic.ai_content.summary,
-      interactiveActivities: apiTopic.ai_content.interactiveActivities,
       lessonPlan: apiTopic.ai_content.lessonPlan,
       generatedAt: apiTopic.ai_content.generatedAt ? new Date(apiTopic.ai_content.generatedAt) : undefined,
       classLevel: apiTopic.ai_content.classLevel,
