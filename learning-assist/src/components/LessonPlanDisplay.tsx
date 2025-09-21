@@ -398,7 +398,6 @@ const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({
                   formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
                   
                   // Convert emoji headers to h3 tags
-                  formatted = formatted.replace(/\*\*🎥\s*RECOMMENDED VIDEOS:\*\*/g, '<h3>🎥 RECOMMENDED VIDEOS</h3>');
                   formatted = formatted.replace(/\*\*📚\s*ADDITIONAL RESOURCES:\*\*/g, '<h3>📚 ADDITIONAL RESOURCES</h3>');
                   formatted = formatted.replace(/\*\*🎯\s*TEACHING ACTIVITIES:\*\*/g, '<h3>🎯 TEACHING ACTIVITIES</h3>');
                   

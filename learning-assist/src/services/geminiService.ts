@@ -626,11 +626,12 @@ Return only the enhanced content with specific, working links.`;
 
       const enhancedContent = data.candidates[0].content.parts[0].text.trim();
 
-      // Only add video section to existing content, don't replace
-      const videoSection = `\n\n**🎥 RECOMMENDED VIDEOS:**\n\nSearch YouTube for "${request.topicName}" educational videos for ${request.classLevel} students\n\n**Suggested search terms:**\n- "${request.topicName} for kids"\n- "${request.topicName} ${request.classLevel} lesson"\n- "${request.topicName} educational video"`;
+      // Only add additional resources and teaching activities, not videos
+      // since video buttons are shown at the top of the section
+      const additionalContent = `\n\n**📚 ADDITIONAL RESOURCES:**\n\nSearch YouTube for "${request.topicName}" educational videos for ${request.classLevel} students\n\n**Suggested search terms:**\n- "${request.topicName} for kids"\n- "${request.topicName} ${request.classLevel} lesson"\n- "${request.topicName} educational video"\n\n**🎯 TEACHING ACTIVITIES:**\n\n- Use the video buttons above to access educational content\n- Pause videos at key moments for discussion\n- Have students take notes on important concepts\n- Follow up with hands-on activities related to the videos\n\n`;
       
       return {
-        enhancedContent: request.sectionContent + videoSection,
+        enhancedContent: request.sectionContent + additionalContent,
         success: true
       };
 

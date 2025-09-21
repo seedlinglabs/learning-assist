@@ -212,24 +212,33 @@ class SecureGeminiService {
   }
 
   private buildEnhancedContentWithVideos(request: SectionEnhancementRequest, videos: YouTubeVideo[]): string {
-    // Only add the video section to existing content
-    let videoSection = `\n\n**🎥 RECOMMENDED VIDEOS:**\n\n`;
+    // Only add additional resources and teaching activities, not videos
+    // since video buttons are shown at the top of the section
+    let additionalContent = `\n\n**📚 ADDITIONAL RESOURCES:**\n\n`;
     
     if (videos.length > 0) {
+      additionalContent += `**Educational Videos Available:**\n`;
       videos.forEach((video, index) => {
-        videoSection += `- [${video.title} (${video.duration})](${video.url}) - ${video.channelTitle}\n`;
-        videoSection += `  - ${video.description.substring(0, 150)}...\n\n`;
+        additionalContent += `- ${video.title} (${video.duration}) - ${video.channelTitle}\n`;
       });
+      additionalContent += `\n`;
     } else {
-      videoSection += `**Search YouTube for:** "${request.topicName}" educational videos for ${request.classLevel} students\n`;
-      videoSection += `**Suggested search terms:**\n`;
-      videoSection += `- "${request.topicName} for kids"\n`;
-      videoSection += `- "${request.topicName} ${request.classLevel} lesson"\n`;
-      videoSection += `- "${request.topicName} educational video"\n\n`;
+      additionalContent += `**Search YouTube for:** "${request.topicName}" educational videos for ${request.classLevel} students\n`;
+      additionalContent += `**Suggested search terms:**\n`;
+      additionalContent += `- "${request.topicName} for kids"\n`;
+      additionalContent += `- "${request.topicName} ${request.classLevel} lesson"\n`;
+      additionalContent += `- "${request.topicName} educational video"\n\n`;
     }
 
-    // Append video section to existing content
-    return request.content + videoSection;
+    // Add teaching activities section
+    additionalContent += `**🎯 TEACHING ACTIVITIES:**\n\n`;
+    additionalContent += `- Use the video buttons above to access educational content\n`;
+    additionalContent += `- Pause videos at key moments for discussion\n`;
+    additionalContent += `- Have students take notes on important concepts\n`;
+    additionalContent += `- Follow up with hands-on activities related to the videos\n\n`;
+
+    // Append additional content to existing content
+    return request.content + additionalContent;
   }
 
   private async fallbackEnhancement(request: SectionEnhancementRequest): Promise<{
@@ -265,10 +274,11 @@ class SecureGeminiService {
         return { success: false, error: 'No enhanced content generated' };
       }
 
-      // Only add video section to existing content, don't replace
-      const videoSection = `\n\n**🎥 RECOMMENDED VIDEOS:**\n\nSearch YouTube for "${request.topicName}" educational videos for ${request.classLevel} students\n\n**Suggested search terms:**\n- "${request.topicName} for kids"\n- "${request.topicName} ${request.classLevel} lesson"\n- "${request.topicName} educational video"`;
+      // Only add additional resources and teaching activities, not videos
+      // since video buttons are shown at the top of the section
+      const additionalContent = `\n\n**📚 ADDITIONAL RESOURCES:**\n\nSearch YouTube for "${request.topicName}" educational videos for ${request.classLevel} students\n\n**Suggested search terms:**\n- "${request.topicName} for kids"\n- "${request.topicName} ${request.classLevel} lesson"\n- "${request.topicName} educational video"\n\n**🎯 TEACHING ACTIVITIES:**\n\n- Use the video buttons above to access educational content\n- Pause videos at key moments for discussion\n- Have students take notes on important concepts\n- Follow up with hands-on activities related to the videos\n\n`;
       
-      return { success: true, enhancedContent: request.content + videoSection };
+      return { success: true, enhancedContent: request.content + additionalContent };
       
     } catch (error) {
       return { 
