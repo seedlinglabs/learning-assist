@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { School, NavigationPath, Topic, Subject, Class, SearchResult } from '../types';
 import { schools } from '../data';
 import { topicsAPI, CreateTopicRequest, ApiError } from '../services/api';
-import { GeminiService, DocumentDiscoveryRequest } from '../services/geminiService';
+import { secureGeminiService, DocumentDiscoveryRequest } from '../services/secureGeminiService';
 import { useAuth } from './AuthContext';
 
 interface AppContextType {
@@ -279,12 +279,12 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       setLoading(true);
       setError(null);
       
-      const result = await GeminiService.discoverDocuments(request);
+      const result = await secureGeminiService.discoverDocuments(request);
       
       if (result.success) {
         return {
           success: true,
-          documents: result.suggestedDocuments
+          documents: result.suggestions
         };
       } else {
         return {
