@@ -13,7 +13,7 @@ interface TopicTabbedViewProps {
   onTopicDeleted: () => void;
 }
 
-type TabType = 'details' | 'lesson-plan';
+type TabType = 'details' | 'lesson-plan' | 'videos';
 
 const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted }) => {
   const { updateTopic, deleteTopic, loading, error, clearError, currentPath } = useApp();
@@ -119,6 +119,9 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
         });
         
         console.log('DEBUG: Topic update sent with aiContent:', result.aiContent);
+        
+        // Automatically find videos after AI content generation
+        await findVideosForTopic();
       } else {
         setAiError(result.error || 'Failed to generate AI content');
       }
@@ -141,7 +144,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     }
   };
 
-  const handleFindVideos = async () => {
+  const findVideosForTopic = async () => {
     if (!topic.aiContent?.lessonPlan) return;
     
     setFindingVideos(true);
@@ -163,16 +166,21 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
         // Update the topic immediately for display
         topic.aiContent = updatedAIContent;
         
-        // Store for saving
-        setEnhancedLessonPlan(JSON.stringify(updatedAIContent, null, 2));
+        // Save the updated topic with videos
+        await updateTopic(topic.id, {
+          name: formData.name.trim(),
+          description: formData.description.trim() || undefined,
+          documentLinks: formData.documentLinks,
+          aiContent: updatedAIContent,
+        });
         
-        console.log('Found videos:', videoResults.videos);
+        console.log('Found and saved videos:', videoResults.videos);
       } else {
-        alert('No videos found for this topic. Try different search terms.');
+        console.log('No videos found for this topic');
       }
     } catch (error) {
       console.error('Error finding videos:', error);
-      alert('Error finding videos: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      // Don't show alert for automatic video search
     } finally {
       setFindingVideos(false);
     }
@@ -278,6 +286,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
   const tabs = [
     { id: 'details', label: 'Topic Details', icon: FileText },
     { id: 'lesson-plan', label: 'Lesson Plan', icon: GraduationCap, disabled: !topic.aiContent?.lessonPlan },
+    { id: 'videos', label: 'Videos', icon: Youtube, disabled: !topic.aiContent?.videos || topic.aiContent.videos.length === 0 },
   ];
 
   return (
@@ -303,16 +312,6 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
             <Sparkles size={16} />
             {generatingAI ? 'Generating AI Content...' : 'Generate AI Content'}
           </button>
-          {topic.aiContent?.lessonPlan && (
-            <button
-              onClick={handleFindVideos}
-              disabled={findingVideos || loading}
-              className="btn btn-outline btn-sm"
-            >
-              <Youtube size={16} />
-              {findingVideos ? 'Finding Videos...' : 'Find Videos from YouTube'}
-            </button>
-          )}
           <button onClick={handleSave} className="btn btn-secondary btn-sm" disabled={loading}>
             <Save size={16} />
             {loading ? 'Saving...' : 'Save Changes'}
@@ -460,10 +459,47 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
               classLevel={topic.aiContent.classLevel || 'Class 1'}
               topicName={topic.name}
               subject={currentPath.subject?.name}
-              videos={topic.aiContent.videos}
               onSectionUpdate={handleSectionUpdate}
               onLessonPlanUpdate={handleLessonPlanUpdate}
             />
+          </div>
+        )}
+
+        {activeTab === 'videos' && topic.aiContent?.videos && topic.aiContent.videos.length > 0 && (
+          <div className="tab-panel videos-panel">
+            <div className="videos-section">
+              <div className="videos-grid">
+                {topic.aiContent.videos.map((video, index) => (
+                  <div key={video.id} className="video-card">
+                    <a
+                      href={video.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="video-link"
+                    >
+                      <div className="video-thumbnail">
+                        <img 
+                          src={video.thumbnail} 
+                          alt={video.title}
+                          className="thumbnail-image"
+                        />
+                        <div className="play-overlay">
+                          <Youtube size={24} />
+                        </div>
+                      </div>
+                      <div className="video-info">
+                        <h4 className="video-title">{video.title}</h4>
+                        <p className="video-channel">{video.channelTitle}</p>
+                        <p className="video-duration">{video.duration}</p>
+                        <p className="video-description">
+                          {video.description.substring(0, 100)}...
+                        </p>
+                      </div>
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </div>
