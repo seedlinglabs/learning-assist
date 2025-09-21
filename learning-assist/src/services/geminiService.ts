@@ -42,11 +42,30 @@ export interface InteractiveContentResponse {
   error?: string;
 }
 
+export type ContentType = 'video' | 'audio' | 'interactive' | 'games' | 'articles' | 'simulations' | 'worksheets' | 'presentations' | 'books' | 'research';
+
+export interface SectionEnhancementRequest {
+  sectionTitle: string;
+  sectionContent: string;
+  sectionType: string; // e.g., 'introduction', 'activities', 'assessment'
+  topicName: string;
+  classLevel: string;
+  duration?: number;
+}
+
+export interface SectionEnhancementResponse {
+  enhancedContent: string;
+  success: boolean;
+  error?: string;
+}
+
 export interface DocumentDiscoveryRequest {
   topicName: string;
   description?: string;
   classLevel: string;
   existingDocuments?: DocumentLink[]; // Context from already added documents
+  customPrompt?: string; // Optional custom search prompt
+  contentTypes?: ContentType[]; // Preferred content types
 }
 
 export interface DocumentDiscoveryResponse {
@@ -81,40 +100,72 @@ export class GeminiService {
         context += '\nPlease suggest similar or complementary educational resources.\n';
       }
 
-      const prompt = `Based on the following educational topic, suggest 3 high-quality, educational document links that would be perfect for ${request.classLevel} students learning about this topic:
+      // Build content type preferences
+      let contentTypeText = '';
+      if (request.contentTypes && request.contentTypes.length > 0) {
+        const contentTypeMap = {
+          'video': 'educational videos and video tutorials',
+          'audio': 'podcasts, audio lessons, and audio content',
+          'interactive': 'interactive websites and tools',
+          'games': 'educational games and gamified learning',
+          'articles': 'articles, blog posts, and written content',
+          'simulations': 'virtual labs and simulations',
+          'worksheets': 'downloadable worksheets and activities',
+          'presentations': 'slideshows and presentation materials',
+          'books': 'e-books and digital textbooks',
+          'research': 'research papers and academic content'
+        };
+        
+        const preferredTypes = request.contentTypes.map(type => contentTypeMap[type]).join(', ');
+        contentTypeText = `\n\nPREFERRED CONTENT TYPES: Focus on finding ${preferredTypes}. Prioritize these types of educational resources.`;
+      }
 
-${context}
+      // Add custom prompt if provided
+      let customPromptText = '';
+      if (request.customPrompt && request.customPrompt.trim()) {
+        customPromptText = `\n\nADDITIONAL SEARCH GUIDANCE: ${request.customPrompt.trim()}`;
+      }
 
-Requirements for suggested documents:
-1. Age-appropriate for ${request.classLevel} students
-2. Educational and curriculum-aligned content
-3. Reliable sources (educational institutions, government sites, established educational platforms)
-4. Interactive or engaging formats when possible
-5. Free and accessible resources
-6. Different types of content (videos, articles, interactive simulations, etc.)
+      const prompt = `Based on the following educational topic, suggest 3 specific, well-known educational resources from established platforms:
 
-For each suggested document, provide:
-- A descriptive name (not just the URL)
-- The actual URL
-- Brief reason why it's suitable for this topic and class level
+${context}${contentTypeText}${customPromptText}
 
-Format your response EXACTLY like this example:
+**PROVIDE PRACTICAL CLASSROOM RESOURCES:**
+
+Instead of generic platform links, suggest specific activities and materials that teachers can implement immediately using common classroom resources.
+
+**Requirements:**
+1. Focus on activities using materials already available in most classrooms
+2. Provide step-by-step instructions for hands-on activities
+3. Include simple demonstration ideas using everyday objects
+4. Suggest printable resources teachers can create easily
+5. Make everything age-appropriate for ${request.classLevel}
+6. Directly related to ${request.topicName}
+
+**If suggesting digital resources, use these well-known educational sites:**
+- Khan Academy Kids (free app with offline content)
+- YouTube educational channels with specific video titles
+- PBS Kids educational games
+- Starfall (reading and phonics)
+- ABCmouse (if available in school)
+
+Format your response EXACTLY like this:
 DOCUMENT 1
-Name: Interactive Solar System Simulation
-URL: https://solarsystem.nasa.gov/solar-system/our-solar-system/
-Reason: NASA's official interactive tool perfect for visual learners
+Name: [Specific Activity or Resource Name]
+URL: [Specific URL if digital, or "Classroom Activity" if hands-on]
+Reason: [Why this is perfect for ${request.classLevel} learning about ${request.topicName}]
 
 DOCUMENT 2
-Name: Khan Academy - Planets and Moons
-URL: https://www.khanacademy.org/science/cosmology-and-astronomy/earth-history-topic
-Reason: Age-appropriate videos with exercises for ${request.classLevel}
+Name: [Specific Hands-on Activity]
+URL: Classroom Activity
+Reason: [How this engages students and reinforces learning]
 
 DOCUMENT 3
-Name: National Geographic Kids - Space Facts
-URL: https://kids.nationalgeographic.com/science/space
-Reason: Engaging articles with stunning visuals for young learners
+Name: [Specific Digital Resource with exact title]
+URL: [Actual working URL to specific content]
+Reason: [Educational value and age-appropriateness]
 
-Please follow this exact format for easy parsing.`;
+**FOCUS ON**: Ready-to-implement activities, not platform browsing.`;
 
       const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
         method: 'POST',
@@ -284,6 +335,11 @@ Create a detailed 40-minute lesson plan for ${request.classLevel} including:
   * Wrap-up (2 minutes)
 - Assessment Methods
 - Homework/Follow-up Activities
+- Educational Resources with SPECIFIC LINKS:
+  * Include 2-3 educational videos with actual YouTube or educational platform URLs
+  * Include 1-2 interactive games or simulations with real website links
+  * Include any relevant online tools or resources with working URLs
+  * Format links as: [Link Title](https://actual-url.com)
 
 Requirements:
 - Age-appropriate for ${request.classLevel}
@@ -347,6 +403,11 @@ Please format each section clearly with headings and organize the content for ea
       const fullContent = data.candidates[0].content.parts[0].text.trim();
       
       console.log('DEBUG: Full AI response:', fullContent);
+      console.log('DEBUG: Full AI response length:', fullContent.length);
+      
+      // Log sections for debugging
+      const sections = fullContent.split(/\*\*\d+\.\s*|\*\*/).filter((s: string) => s.trim());
+      console.log('DEBUG: Detected sections:', sections.map((s: string) => s.substring(0, 50) + '...'));
       
       // Parse the response to extract different sections
       const aiContent: AIContent = {
@@ -382,17 +443,43 @@ Please format each section clearly with headings and organize the content for ea
         console.log('DEBUG: No activities match found with any pattern');
       }
 
-      // Extract lesson plan - try multiple patterns
-      let lessonPlanMatch = fullContent.match(/\*\*3\.\s*LESSON PLAN\*\*([\s\S]*?)$/i);
-      if (!lessonPlanMatch) lessonPlanMatch = fullContent.match(/\*\*LESSON PLAN\*\*([\s\S]*?)$/i);
-      if (!lessonPlanMatch) lessonPlanMatch = fullContent.match(/##?\s*LESSON PLAN([\s\S]*?)$/i);
-      if (!lessonPlanMatch) lessonPlanMatch = fullContent.match(/LESSON PLAN:([\s\S]*?)$/i);
+      // Extract lesson plan - try multiple patterns with extensive logging
+      console.log('DEBUG: Attempting to extract lesson plan...');
+      
+      const lessonPlanPatterns = [
+        /\*\*3\.\s*LESSON PLAN\*\*([\s\S]*?)$/i,
+        /\*\*LESSON PLAN\*\*([\s\S]*?)$/i,
+        /##?\s*LESSON PLAN([\s\S]*?)$/i,
+        /LESSON PLAN:([\s\S]*?)$/i,
+        /3\.\s*LESSON PLAN([\s\S]*?)$/i,
+        /lesson\s*plan([\s\S]*?)$/i,
+        /\*\*3\*\*([\s\S]*?)$/i // Sometimes the number and title get separated
+      ];
+      
+      let lessonPlanMatch = null;
+      let matchedPattern = '';
+      
+      for (let i = 0; i < lessonPlanPatterns.length; i++) {
+        lessonPlanMatch = fullContent.match(lessonPlanPatterns[i]);
+        if (lessonPlanMatch) {
+          matchedPattern = lessonPlanPatterns[i].toString();
+          console.log(`DEBUG: Lesson plan matched with pattern ${i}: ${matchedPattern}`);
+          break;
+        }
+      }
       
       if (lessonPlanMatch) {
         aiContent.lessonPlan = lessonPlanMatch[1].trim();
-        console.log('DEBUG: Extracted lesson plan:', aiContent.lessonPlan ? aiContent.lessonPlan.substring(0, 100) + '...' : 'empty');
+        console.log('DEBUG: Extracted lesson plan length:', aiContent.lessonPlan?.length || 0);
+        console.log('DEBUG: Extracted lesson plan preview:', aiContent.lessonPlan?.substring(0, 200) + '...' || 'empty');
       } else {
         console.log('DEBUG: No lesson plan match found with any pattern');
+        console.log('DEBUG: Searching for any occurrence of "lesson" in content...');
+        const lessonIndex = fullContent.toLowerCase().indexOf('lesson');
+        if (lessonIndex !== -1) {
+          console.log('DEBUG: Found "lesson" at index:', lessonIndex);
+          console.log('DEBUG: Context around "lesson":', fullContent.substring(Math.max(0, lessonIndex - 50), lessonIndex + 200));
+        }
       }
 
       console.log('DEBUG: Final aiContent object:', aiContent);
@@ -643,6 +730,166 @@ Format the response with clear headings and bullet points for easy reading by te
         interactiveContent: '',
         success: false,
         error: error instanceof Error ? error.message : 'Failed to generate interactive content'
+      };
+    }
+  }
+
+  static async enhanceSection(request: SectionEnhancementRequest): Promise<SectionEnhancementResponse> {
+    if (!GEMINI_API_KEY) {
+      return {
+        enhancedContent: '',
+        success: false,
+        error: 'Gemini API key not configured. Please set REACT_APP_GEMINI_API_KEY environment variable.'
+      };
+    }
+
+    try {
+      const durationText = request.duration ? ` (${request.duration} minutes)` : '';
+      
+      const prompt = `Enhance the following lesson plan section with specific, ready-to-use teaching materials and activities:
+
+**Section**: ${request.sectionTitle}${durationText}
+**Topic**: ${request.topicName}
+**Class Level**: ${request.classLevel}
+**Section Type**: ${request.sectionType}
+
+**Current Content**:
+${request.sectionContent}
+
+**CRITICAL INSTRUCTIONS**: 
+- DO NOT provide general platform links or ask teachers to search
+- DO NOT say "teachers will need to locate" or "find specific content"
+- PROVIDE specific, actionable activities and materials
+- Include ONLY content that is immediately usable in the classroom
+
+**Enhancement Requirements**:
+
+**1. YOUTUBE VIDEOS** (MANDATORY - provide specific educational videos):
+Find and include 1-2 specific YouTube videos that are:
+- Directly related to ${request.topicName} for ${request.classLevel}
+- 3-10 minutes in length (appropriate for classroom use)
+- From established educational channels like:
+  * Crash Course Kids
+  * National Geographic Kids
+  * SciShow Kids
+  * Khan Academy
+  * TED-Ed
+  * Bill Nye the Science Guy
+  * Sesame Street (for younger students)
+  * Brain Pump Videos
+  * Free School
+
+Format YouTube videos as: [Video Title](https://www.youtube.com/watch?v=VIDEO_ID)
+Example: [Plants Need Water - Science for Kids](https://www.youtube.com/watch?v=dQw4w9WgXcQ)
+
+**2. READY-TO-USE ACTIVITIES** (provide complete instructions):
+- Specific activities with step-by-step teacher instructions
+- Exact materials needed (all easily accessible)
+- Clear timing for each activity
+- Student worksheets or handouts (describe exactly what to create)
+
+**3. CONCRETE TEACHING MATERIALS**:
+- Physical manipulatives using common classroom items
+- Printable resources (describe exactly what to print/create)
+- Simple demonstration setups using available materials
+- Visual aids that teachers can easily create or display
+
+**4. CLASSROOM MANAGEMENT TIPS**:
+- Specific questions to ask students
+- How to organize students (pairs, groups, individual work)
+- What to do if students finish early
+- How to handle different learning paces
+
+**5. ASSESSMENT METHODS**:
+- Specific observation checklists
+- Quick verbal assessment questions
+- Simple exit ticket formats
+- Peer assessment activities
+
+**EXAMPLE OF GOOD ENHANCEMENT**:
+Instead of: "Use Khan Academy videos about plants"
+Provide: "Show students how to create a simple plant observation journal. Give each student a small potted plant or leaf. Have them draw the plant and write 3 observations using these sentence starters: 'I notice...', 'I wonder...', 'This reminds me of...'"
+
+**FOCUS ON**:
+- Activities using materials already in most classrooms
+- Simple demonstrations teachers can set up in 2 minutes
+- Student discussions and peer interactions
+- Hands-on exploration using common objects
+- Creative projects using basic art supplies
+
+**OUTPUT REQUIREMENTS**:
+- Be specific and detailed
+- Provide complete activity instructions
+- Use materials readily available in classrooms
+- Make everything immediately actionable
+- Age-appropriate for ${request.classLevel}
+- Directly related to ${request.topicName}
+
+Format with clear headings and bullet points for easy teacher reference.`;
+
+      const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.8,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 2048,
+            candidateCount: 1,
+          },
+          safetySettings: [
+            {
+              category: "HARM_CATEGORY_HARASSMENT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_HATE_SPEECH",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            }
+          ]
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Gemini API error: ${errorData.error?.message || response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.candidates || data.candidates.length === 0) {
+        throw new Error('No enhanced content generated by Gemini');
+      }
+
+      const enhancedContent = data.candidates[0].content.parts[0].text.trim();
+
+      return {
+        enhancedContent,
+        success: true
+      };
+
+    } catch (error) {
+      console.error('Error enhancing section:', error);
+      return {
+        enhancedContent: '',
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to enhance section'
       };
     }
   }

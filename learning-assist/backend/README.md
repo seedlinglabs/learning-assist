@@ -1,345 +1,147 @@
-# Learning Assist Backend Lambda
+# Learning Assistant - Backend Deployment
 
-This Lambda function provides a REST API for managing topics in the Learning Assist application, with automatic DynamoDB table creation and management.
+## 🚀 Quick Deployment
 
-## Features
+### Prerequisites
+- AWS CLI installed and configured
+- Appropriate AWS permissions (Lambda, API Gateway, IAM, DynamoDB)
 
-- **Auto-provisioning**: Creates DynamoDB table if it doesn't exist
-- **CRUD Operations**: Complete Create, Read, Update, Delete operations for topics
-- **CORS Support**: Handles cross-origin requests for frontend integration
-- **Error Handling**: Comprehensive error handling and validation
-- **Global Secondary Index**: Efficient querying by subject_id
-
-## API Endpoints
-
-### Base URL
-```
-https://xvq11x0421.execute-api.us-west-2.amazonaws.com/pre-prod
-```
-
-### Endpoints
-
-#### 1. Create Topic
-```http
-POST /topics
-Content-Type: application/json
-
-{
-  "name": "Matter",
-  "description": "Understanding the properties and states of matter",
-  "notebookLMUrl": "https://notebooklm.google.com/notebook/example",
-  "subject_id": "subject-class-6-science",
-  "school_id": "school-1",
-  "class_id": "class-6"
-}
-```
-
-**Response (201):**
-```json
-{
-  "id": "uuid-generated",
-  "name": "Matter",
-  "description": "Understanding the properties and states of matter",
-  "notebook_lm_url": "https://notebooklm.google.com/notebook/example",
-  "subject_id": "subject-class-6-science",
-  "school_id": "school-1",
-  "class_id": "class-6",
-  "created_at": "2024-09-17T12:00:00.000Z",
-  "updated_at": "2024-09-17T12:00:00.000Z"
-}
-```
-
-#### 2. Get All Topics
-```http
-GET /topics
-```
-
-**Response (200):**
-```json
-[
-  {
-    "id": "uuid-1",
-    "name": "Matter",
-    "description": "Understanding properties of matter",
-    "notebook_lm_url": "https://notebooklm.google.com/notebook/example",
-    "subject_id": "subject-class-6-science",
-    "school_id": "school-1",
-    "class_id": "class-6",
-    "created_at": "2024-09-17T12:00:00.000Z",
-    "updated_at": "2024-09-17T12:00:00.000Z"
-  }
-]
-```
-
-#### 3. Get Topics by Subject
-```http
-GET /topics?subject_id=subject-class-6-science
-```
-
-**Response (200):**
-```json
-[
-  {
-    "id": "uuid-1",
-    "name": "Matter",
-    "description": "Understanding properties of matter",
-    "notebook_lm_url": "https://notebooklm.google.com/notebook/example",
-    "subject_id": "subject-class-6-science",
-    "school_id": "school-1",
-    "class_id": "class-6",
-    "created_at": "2024-09-17T12:00:00.000Z",
-    "updated_at": "2024-09-17T12:00:00.000Z"
-  }
-]
-```
-
-#### 4. Get Single Topic
-```http
-GET /topics/{topic_id}
-```
-
-**Response (200):**
-```json
-{
-  "id": "uuid-1",
-  "name": "Matter",
-  "description": "Understanding properties of matter",
-  "notebook_lm_url": "https://notebooklm.google.com/notebook/example",
-  "subject_id": "subject-class-6-science",
-  "school_id": "school-1",
-  "class_id": "class-6",
-  "created_at": "2024-09-17T12:00:00.000Z",
-  "updated_at": "2024-09-17T12:00:00.000Z"
-}
-```
-
-#### 5. Update Topic
-```http
-PUT /topics/{topic_id}
-Content-Type: application/json
-
-{
-  "name": "Updated Matter Topic",
-  "description": "Updated description",
-  "notebookLMUrl": "https://notebooklm.google.com/notebook/updated"
-}
-```
-
-**Response (200):**
-```json
-{
-  "id": "uuid-1",
-  "name": "Updated Matter Topic",
-  "description": "Updated description",
-  "notebook_lm_url": "https://notebooklm.google.com/notebook/updated",
-  "subject_id": "subject-class-6-science",
-  "school_id": "school-1",
-  "class_id": "class-6",
-  "created_at": "2024-09-17T12:00:00.000Z",
-  "updated_at": "2024-09-17T12:05:00.000Z"
-}
-```
-
-#### 6. Delete Topic
-```http
-DELETE /topics/{topic_id}
-```
-
-**Response (200):**
-```json
-{
-  "message": "Topic deleted successfully"
-}
-```
-
-## DynamoDB Table Structure
-
-### Table Name: `learning_assist_topics`
-
-### Primary Key
-- **Partition Key**: `id` (String) - Unique topic identifier
-
-### Global Secondary Index
-- **Index Name**: `school-class-subject-index`
-- **Partition Key**: `subject_id` (String)
-
-### Attributes
-- `id` (String): Unique topic identifier
-- `name` (String): Topic name
-- `description` (String): Topic description
-- `notebook_lm_url` (String): NotebookLM URL
-- `subject_id` (String): Subject identifier
-- `school_id` (String): School identifier  
-- `class_id` (String): Class identifier
-- `created_at` (String): ISO timestamp of creation
-- `updated_at` (String): ISO timestamp of last update
-
-## Deployment Requirements
-
-### IAM Permissions
-The Lambda execution role needs the following permissions:
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "dynamodb:CreateTable",
-        "dynamodb:DescribeTable",
-        "dynamodb:GetItem",
-        "dynamodb:PutItem",
-        "dynamodb:UpdateItem",
-        "dynamodb:DeleteItem",
-        "dynamodb:Scan",
-        "dynamodb:Query"
-      ],
-      "Resource": [
-        "arn:aws:dynamodb:*:*:table/learning_assist_topics",
-        "arn:aws:dynamodb:*:*:table/learning_assist_topics/index/*"
-      ]
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "logs:CreateLogGroup",
-        "logs:CreateLogStream",
-        "logs:PutLogEvents"
-      ],
-      "Resource": "arn:aws:logs:*:*:*"
-    }
-  ]
-}
-```
-
-### Environment Variables (Optional)
-- `TABLE_NAME`: Override default table name (default: `learning_assist_topics`)
-
-### Lambda Configuration
-- **Runtime**: Python 3.9+
-- **Memory**: 256 MB (minimum)
-- **Timeout**: 30 seconds
-- **Handler**: `lambda_function.lambda_handler`
-
-## Error Responses
-
-### 400 Bad Request
-```json
-{
-  "error": "Missing required field: name"
-}
-```
-
-### 404 Not Found
-```json
-{
-  "error": "Topic not found"
-}
-```
-
-### 500 Internal Server Error
-```json
-{
-  "error": "Error message details"
-}
-```
-
-## Testing
-
-### Live API Testing with curl
-
-#### 1. Get All Topics
+### Deploy Everything
 ```bash
-curl -X GET https://xvq11x0421.execute-api.us-west-2.amazonaws.com/pre-prod/topics
+cd backend
+./deploy.sh
 ```
 
-#### 2. Get Topics by Subject ID
-```bash
-curl -X GET "https://xvq11x0421.execute-api.us-west-2.amazonaws.com/pre-prod/topics?subject_id=subject-class-6-science"
+That's it! The script will:
+1. ✅ Create IAM roles and policies
+2. ✅ Deploy Lambda functions (Topics + Auth)
+3. ✅ Create API Gateway with all endpoints
+4. ✅ Configure CORS for web app
+5. ✅ Update frontend configuration automatically
+6. ✅ Test endpoints to verify deployment
+
+### What Gets Created
+
+#### **Lambda Functions:**
+- `learning-assist-topics` - Topics CRUD operations
+- `learning-assist-auth` - User authentication
+
+#### **DynamoDB Tables:**
+- `learning_assist_topics` - Topic data storage
+- `learning_assist_users` - User accounts (created automatically)
+
+#### **API Gateway:**
+- REST API with all endpoints
+- CORS enabled for web app
+- Production stage deployment
+
+#### **API Endpoints Created:**
+```
+📚 Topics API:
+GET    /topics
+GET    /topics?subject_id=<id>
+GET    /topics/{id}
+POST   /topics
+PUT    /topics/{id}
+DELETE /topics/{id}
+
+🔐 Authentication API:
+POST   /auth/register
+POST   /auth/login
+GET    /auth/verify
+GET    /auth/user/{id}
+PUT    /auth/user/{id}
 ```
 
-#### 3. Create a New Topic
+### After Deployment
+
+1. **API URL** will be displayed in console output
+2. **Frontend files** automatically updated with new URLs
+3. **Environment file** created with all configuration
+4. **JWT secret** generated and configured
+
+### Testing the API
+
+#### **Test User Registration:**
 ```bash
-curl -X POST https://xvq11x0421.execute-api.us-west-2.amazonaws.com/pre-prod/topics \
+curl -X POST https://YOUR_API_URL/prod/auth/register \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "Matter",
-    "description": "Understanding the properties and states of matter",
-    "notebookLMUrl": "https://notebooklm.google.com/notebook/b066683b-a190-45a0-ade9-a2ae690618b3",
-    "subject_id": "subject-class-6-science",
-    "school_id": "school-1",
-    "class_id": "class-6"
+    "email": "teacher@test.com",
+    "password": "password123",
+    "name": "Test Teacher",
+    "user_type": "teacher"
   }'
 ```
 
-#### 4. Get Single Topic (replace {topic-id} with actual ID from create response)
+#### **Test User Login:**
 ```bash
-curl -X GET https://xvq11x0421.execute-api.us-west-2.amazonaws.com/pre-prod/topics/{topic-id}
-```
-
-#### 5. Update Topic (replace {topic-id} with actual ID)
-```bash
-curl -X PUT https://xvq11x0421.execute-api.us-west-2.amazonaws.com/pre-prod/topics/{topic-id} \
+curl -X POST https://YOUR_API_URL/prod/auth/login \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "Updated Matter Topic",
-    "description": "Updated description about matter properties",
-    "notebookLMUrl": "https://notebooklm.google.com/notebook/updated-link"
+    "email": "teacher@test.com",
+    "password": "password123"
   }'
 ```
 
-#### 6. Delete Topic (replace {topic-id} with actual ID)
+#### **Test Topics API:**
 ```bash
-curl -X DELETE https://xvq11x0421.execute-api.us-west-2.amazonaws.com/pre-prod/topics/{topic-id}
+curl https://YOUR_API_URL/prod/topics
 ```
 
-### Expected Responses
+### Troubleshooting
 
-#### Successful Create Response (201):
-```json
-{
-  "id": "12345678-1234-1234-1234-123456789abc",
-  "name": "Matter",
-  "description": "Understanding the properties and states of matter",
-  "notebook_lm_url": "https://notebooklm.google.com/notebook/b066683b-a190-45a0-ade9-a2ae690618b3",
-  "subject_id": "subject-class-6-science",
-  "school_id": "school-1",
-  "class_id": "class-6",
-  "created_at": "2024-09-17T18:30:00.000Z",
-  "updated_at": "2024-09-17T18:30:00.000Z"
-}
+#### **If deployment fails:**
+1. Check AWS CLI configuration: `aws sts get-caller-identity`
+2. Verify AWS permissions for Lambda, API Gateway, IAM, DynamoDB
+3. Check CloudWatch Logs for Lambda errors
+
+#### **If CORS issues:**
+- CORS is automatically configured by the script
+- Check browser network tab for CORS errors
+- Verify API Gateway deployment was successful
+
+#### **If authentication fails:**
+- Check JWT_SECRET environment variable in Lambda
+- Verify DynamoDB users table was created
+- Check CloudWatch Logs for auth Lambda errors
+
+### Manual Cleanup (if needed)
+
+```bash
+# Delete Lambda functions
+aws lambda delete-function --function-name learning-assist-topics
+aws lambda delete-function --function-name learning-assist-auth
+
+# Delete API Gateway (replace YOUR_API_ID with actual ID from .env file)
+aws apigateway delete-rest-api --rest-api-id YOUR_API_ID
+
+# Delete IAM role (AWS may append random suffix to role name)
+# Find the actual role name first:
+ROLE_NAME=$(aws iam list-roles --query "Roles[?starts_with(RoleName, 'learning-assist-lambda-role')].RoleName" --output text)
+echo "Found role: $ROLE_NAME"
+
+# Delete the role
+aws iam detach-role-policy --role-name $ROLE_NAME --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+aws iam detach-role-policy --role-name $ROLE_NAME --policy-arn arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
+aws iam delete-role --role-name $ROLE_NAME
+
+# Delete DynamoDB tables
+aws dynamodb delete-table --table-name learning_assist_topics
+aws dynamodb delete-table --table-name learning_assist_users
 ```
 
-#### Get All Topics Response (200):
-```json
-[
-  {
-    "id": "12345678-1234-1234-1234-123456789abc",
-    "name": "Matter",
-    "description": "Understanding the properties and states of matter",
-    "notebook_lm_url": "https://notebooklm.google.com/notebook/b066683b-a190-45a0-ade9-a2ae690618b3",
-    "subject_id": "subject-class-6-science",
-    "school_id": "school-1",
-    "class_id": "class-6",
-    "created_at": "2024-09-17T18:30:00.000Z",
-    "updated_at": "2024-09-17T18:30:00.000Z"
-  }
-]
-```
+## 🔧 Files Overview
 
-### Sample Lambda Test Event (for AWS Console testing)
-```json
-{
-  "httpMethod": "POST",
-  "path": "/topics",
-  "headers": {
-    "Content-Type": "application/json"
-  },
-  "body": "{\"name\":\"Test Topic\",\"description\":\"Test Description\",\"notebookLMUrl\":\"https://example.com\",\"subject_id\":\"subject-1\",\"school_id\":\"school-1\",\"class_id\":\"class-1\"}"
-}
-```
+- `auth_lambda_function.py` - Authentication Lambda function
+- `lambda_function.py` - Topics Lambda function  
+- `requirements.txt` - Python dependencies
+- `deploy.sh` - Automated deployment script
+- `.env` - Environment configuration (generated)
 
-## Integration with Frontend
+## 🔒 Security Notes
 
-The Lambda is designed to work seamlessly with the React frontend. Update your frontend context to call these API endpoints instead of using local state management.
+- JWT secret is randomly generated for each deployment
+- Passwords are hashed with PBKDF2 + salt
+- API Gateway has CORS properly configured
+- IAM roles follow least privilege principle

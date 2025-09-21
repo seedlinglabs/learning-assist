@@ -32,23 +32,33 @@ export interface ApiTopic {
 }
 
 // Transform API response to frontend Topic format
-const transformApiTopicToTopic = (apiTopic: any): Topic => ({
-  id: apiTopic.id,
-  name: apiTopic.name,
-  description: apiTopic.description || undefined,
-  documentLinks: Array.isArray(apiTopic.document_links)
-    ? apiTopic.document_links.map((l: any) => ({ name: l.name || generateNameFromUrl(l.url), url: l.url }))
-    : undefined,
-  aiContent: apiTopic.ai_content ? {
-    summary: apiTopic.ai_content.summary,
-    interactiveActivities: apiTopic.ai_content.interactiveActivities,
-    lessonPlan: apiTopic.ai_content.lessonPlan,
-    generatedAt: apiTopic.ai_content.generatedAt ? new Date(apiTopic.ai_content.generatedAt) : undefined,
-    classLevel: apiTopic.ai_content.classLevel,
-  } : undefined,
-  createdAt: new Date(apiTopic.created_at),
-  updatedAt: new Date(apiTopic.updated_at)
-});
+const transformApiTopicToTopic = (apiTopic: any): Topic => {
+  console.log('DEBUG API Transform - Raw API topic:', apiTopic);
+  console.log('DEBUG API Transform - Raw ai_content:', apiTopic.ai_content);
+  
+  const transformed = {
+    id: apiTopic.id,
+    name: apiTopic.name,
+    description: apiTopic.description || undefined,
+    documentLinks: Array.isArray(apiTopic.document_links)
+      ? apiTopic.document_links.map((l: any) => ({ name: l.name || generateNameFromUrl(l.url), url: l.url }))
+      : undefined,
+    aiContent: apiTopic.ai_content ? {
+      summary: apiTopic.ai_content.summary,
+      interactiveActivities: apiTopic.ai_content.interactiveActivities,
+      lessonPlan: apiTopic.ai_content.lessonPlan,
+      generatedAt: apiTopic.ai_content.generatedAt ? new Date(apiTopic.ai_content.generatedAt) : undefined,
+      classLevel: apiTopic.ai_content.classLevel,
+    } : undefined,
+    createdAt: new Date(apiTopic.created_at),
+    updatedAt: new Date(apiTopic.updated_at)
+  };
+  
+  console.log('DEBUG API Transform - Transformed topic:', transformed);
+  console.log('DEBUG API Transform - Transformed aiContent:', transformed.aiContent);
+  
+  return transformed;
+};
 
 // Transform frontend Topic to API format
 const transformTopicToApiTopic = (topic: CreateTopicRequest): any => ({

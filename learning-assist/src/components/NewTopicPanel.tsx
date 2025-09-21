@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { FileText, Save, X, Search, Plus } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { GeminiService } from '../services/geminiService';
+import { GeminiService, ContentType } from '../services/geminiService';
 import { DocumentLink } from '../types';
+import DocumentDiscoveryModal from './DocumentDiscoveryModal';
 
 interface NewTopicPanelProps {
   subjectId: string;
@@ -18,9 +19,7 @@ const NewTopicPanel: React.FC<NewTopicPanelProps> = ({
   onTopicCreated 
 }) => {
   const { addTopic, loading, error, clearError, currentPath } = useApp();
-  const [discoveringDocuments, setDiscoveringDocuments] = useState(false);
-  const [discoveryError, setDiscoveryError] = useState<string | null>(null);
-  const [suggestedDocuments, setSuggestedDocuments] = useState<DocumentLink[]>([]);
+  const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -56,46 +55,12 @@ const NewTopicPanel: React.FC<NewTopicPanelProps> = ({
     }));
   };
 
-  const discoverDocuments = async () => {
-    if (!formData.name.trim()) {
-      setDiscoveryError('Please enter a topic name before discovering documents.');
-      return;
-    }
-
-    const classLevel = currentPath.class?.name || 'Class 1';
-
-    setDiscoveringDocuments(true);
-    setDiscoveryError(null);
-    setSuggestedDocuments([]);
-
-    try {
-      const result = await GeminiService.discoverDocuments({
-        topicName: formData.name,
-        description: formData.description,
-        classLevel: classLevel,
-        existingDocuments: formData.documentLinks.length > 0 ? formData.documentLinks : undefined
-      });
-
-      if (result.success) {
-        setSuggestedDocuments(result.suggestedDocuments);
-      } else {
-        setDiscoveryError(result.error || 'Failed to discover documents');
-      }
-    } catch (error) {
-      setDiscoveryError('An error occurred while discovering documents');
-      console.error('Document discovery error:', error);
-    } finally {
-      setDiscoveringDocuments(false);
-    }
-  };
-
-  const addSuggestedDocument = (document: DocumentLink) => {
-    if (formData.documentLinks.some(l => l.url === document.url)) {
-      return; // Already added
-    }
+  const handleDiscoveredDocuments = (discoveredDocs: DocumentLink[]) => {
+    // Add discovered documents to the current document list
+    const newDocuments = [...formData.documentLinks, ...discoveredDocs];
     setFormData(prev => ({
       ...prev,
-      documentLinks: [...prev.documentLinks, document]
+      documentLinks: newDocuments
     }));
   };
 
@@ -179,49 +144,15 @@ const NewTopicPanel: React.FC<NewTopicPanelProps> = ({
             <h3>Document Links</h3>
             <button
               type="button"
-              onClick={discoverDocuments}
-              disabled={discoveringDocuments || loading || !formData.name.trim()}
+              onClick={() => setShowDiscoveryModal(true)}
+              disabled={loading || !formData.name.trim()}
               className="btn btn-primary btn-sm"
             >
               <Search size={14} />
-              {discoveringDocuments ? 'Finding Documents...' : 'Find Documents with AI'}
+              Find Documents with AI
             </button>
           </div>
 
-          {discoveryError && (
-            <div className="error-message" style={{ margin: '1rem 0' }}>
-              <span>{discoveryError}</span>
-              <button onClick={() => setDiscoveryError(null)}>×</button>
-            </div>
-          )}
-
-          {suggestedDocuments.length > 0 && (
-            <div className="suggested-documents">
-              <h4>🤖 AI-Suggested Documents</h4>
-              <p>Click to add relevant educational resources for your topic:</p>
-              <div className="suggested-documents-list">
-                {suggestedDocuments.map((doc, index) => (
-                  <div key={doc.url} className="suggested-document-item">
-                    <div className="suggested-document-info">
-                      <strong>{doc.name}</strong>
-                      <a href={doc.url} target="_blank" rel="noreferrer" className="suggested-document-url">
-                        {doc.url}
-                      </a>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => addSuggestedDocument(doc)}
-                      disabled={formData.documentLinks.some(l => l.url === doc.url)}
-                      className="btn btn-secondary btn-sm"
-                    >
-                      <Plus size={14} />
-                      {formData.documentLinks.some(l => l.url === doc.url) ? 'Added' : 'Add'}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           <div className="manual-document-section">
             <h4>Add Document Manually</h4>
@@ -283,6 +214,17 @@ const NewTopicPanel: React.FC<NewTopicPanelProps> = ({
           </div>
         </div>
       </div>
+
+      {showDiscoveryModal && (
+        <DocumentDiscoveryModal
+          topicName={formData.name}
+          description={formData.description}
+          classLevel={currentPath.class?.name || 'Class 1'}
+          existingDocuments={formData.documentLinks}
+          onDocumentsSelected={handleDiscoveredDocuments}
+          onClose={() => setShowDiscoveryModal(false)}
+        />
+      )}
     </div>
   );
 };

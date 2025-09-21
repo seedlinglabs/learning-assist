@@ -1,15 +1,20 @@
 import React from 'react';
 import { AppProvider, useApp } from './context/AppContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import Breadcrumb from './components/Breadcrumb';
 import SearchBar from './components/SearchBar';
 import SchoolList from './components/SchoolList';
 import ClassList from './components/ClassList';
 import SubjectList from './components/SubjectList';
 import TopicList from './components/TopicList';
+import ProtectedRoute from './components/ProtectedRoute';
+import LoginForm from './components/LoginForm';
 import './App.css';
+import './styles/Auth.css';
 
 const AppContent: React.FC = () => {
   const { currentPath } = useApp();
+  const { user, logout } = useAuth();
   const { school, class: cls, subject } = currentPath;
 
   const renderContent = () => {
@@ -32,7 +37,20 @@ const AppContent: React.FC = () => {
             <h1>Learning Assistant</h1>
             <p>Navigate your educational content with NotebookLM integration</p>
           </div>
-          <SearchBar />
+          <div className="header-actions">
+            <SearchBar />
+            {user && (
+              <div className="user-info">
+                <span className={`user-type-badge user-type-${user.user_type}`}>
+                  {user.user_type}
+                </span>
+                <span className="user-name">{user.name}</span>
+                <button onClick={logout} className="logout-btn">
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
         </div>
         <Breadcrumb />
       </header>
@@ -46,9 +64,13 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
+    <AuthProvider>
+      <ProtectedRoute>
+        <AppProvider>
+          <AppContent />
+        </AppProvider>
+      </ProtectedRoute>
+    </AuthProvider>
   );
 };
 
