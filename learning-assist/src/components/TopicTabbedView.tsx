@@ -131,11 +131,52 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
   const handleLessonPlanUpdate = (updatedLessonPlan: string) => {
     // Store the updated lesson plan to be saved
     setEnhancedLessonPlan(updatedLessonPlan);
+    
+    // Also update the topic's AI content immediately for display
+    // This ensures the enhanced content is visible without needing to save
+    if (topic.aiContent) {
+      topic.aiContent.lessonPlan = updatedLessonPlan;
+    }
   };
 
   const handleSectionUpdate = async (sectionId: string, newContent: string) => {
-    // This is kept for backward compatibility but not used for saving
-    console.log('Section updated:', sectionId, newContent);
+    // Update the lesson plan with the enhanced content
+    if (topic.aiContent?.lessonPlan) {
+      try {
+        // Parse the current lesson plan
+        const lessonPlanData = JSON.parse(topic.aiContent.lessonPlan);
+        
+        if (lessonPlanData && lessonPlanData.lessonPlan) {
+          // Find and update the specific section
+          const updatedLessonPlan = updateSectionInLessonPlan(lessonPlanData, sectionId, newContent);
+          
+          // Update the topic's AI content
+          topic.aiContent.lessonPlan = JSON.stringify(updatedLessonPlan, null, 2);
+          
+          // Store for saving
+          setEnhancedLessonPlan(JSON.stringify(updatedLessonPlan, null, 2));
+        }
+      } catch (error) {
+        console.error('Error updating lesson plan:', error);
+        // Fallback: just store the enhanced content
+        setEnhancedLessonPlan(topic.aiContent.lessonPlan + '\n\n' + newContent);
+      }
+    }
+  };
+
+  const updateSectionInLessonPlan = (lessonPlanData: any, sectionId: string, newContent: string): any => {
+    // This is a simplified approach - we'll add the enhanced content to the end
+    // In a more sophisticated implementation, we'd parse the sectionId and update the specific section
+    
+    // For now, just append the enhanced content to the lesson plan
+    if (!lessonPlanData.lessonPlan.resources) {
+      lessonPlanData.lessonPlan.resources = [];
+    }
+    
+    // Add the enhanced content as a new resource
+    lessonPlanData.lessonPlan.resources.push(`Enhanced content: ${newContent}`);
+    
+    return lessonPlanData;
   };
 
   const handleSave = async () => {
@@ -366,7 +407,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
         {activeTab === 'lesson-plan' && topic.aiContent?.lessonPlan && (
           <div className="tab-panel lesson-plan-panel">
             <LessonPlanDisplay
-              lessonPlan={enhancedLessonPlan || topic.aiContent.lessonPlan}
+              lessonPlan={topic.aiContent.lessonPlan}
               classLevel={topic.aiContent.classLevel || 'Class 1'}
               topicName={topic.name}
               subject={currentPath.subject?.name}

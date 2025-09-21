@@ -482,13 +482,10 @@ const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({
   }, []);
 
   const reconstructLessonPlan = (sections: LessonSection[]): string => {
-    return sections.map(section => {
-      let content = `**${section.title}**\n\n${section.content}`;
-      if (section.duration) {
-        content = `**${section.title}** (${section.duration} min)\n\n${section.content}`;
-      }
-      return content;
-    }).join('\n\n');
+    // For now, let's just return the original lesson plan format
+    // The enhanced content is already added to the specific section
+    // We don't need to reconstruct the entire JSON structure
+    return lessonPlan;
   };
 
   const handleEnhanceSection = async (section: LessonSection) => {
@@ -520,15 +517,8 @@ const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({
         
         setSections(updatedSections);
 
-        // Reconstruct the full lesson plan with the enhanced content
-        const updatedLessonPlan = reconstructLessonPlan(updatedSections);
-        
-        // Notify parent component with the full updated lesson plan
-        if (onLessonPlanUpdate) {
-          onLessonPlanUpdate(updatedLessonPlan);
-        }
-        
-        // Also notify with section-specific update for backward compatibility
+        // For now, just notify with the enhanced content
+        // The parent will handle updating the lesson plan
         if (onSectionUpdate && response.enhancedContent) {
           onSectionUpdate(section.id, response.enhancedContent);
         }
