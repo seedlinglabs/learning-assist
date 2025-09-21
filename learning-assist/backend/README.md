@@ -1,24 +1,41 @@
 # Learning Assistant - Backend Deployment
 
-## 🚀 Quick Deployment
+## 🚀 Deployment Process
 
 ### Prerequisites
 - AWS CLI installed and configured
 - Appropriate AWS permissions (Lambda, API Gateway, IAM, DynamoDB)
 
-### Deploy Everything
+### Step-by-Step Deployment
+
+#### 1. Check Current Status
 ```bash
 cd backend
-./deploy.sh
+./check-status.sh
 ```
 
-That's it! The script will:
-1. ✅ Create IAM roles and policies
-2. ✅ Deploy Lambda functions (Topics + Auth)
-3. ✅ Create API Gateway with all endpoints
-4. ✅ Configure CORS for web app
-5. ✅ Update frontend configuration automatically
-6. ✅ Test endpoints to verify deployment
+#### 2. Deploy Components (as needed)
+```bash
+# Deploy Topics Lambda
+./deploy-topics-only.sh
+
+# Deploy Auth Lambda  
+./deploy-auth-only.sh
+
+# Setup API Gateway endpoints
+./deploy-api-gateway.sh
+```
+
+#### 3. Verify Deployment
+```bash
+./check-status.sh
+```
+
+The modular approach allows you to:
+- ✅ Deploy components independently
+- ✅ Fix specific issues without full redeployment
+- ✅ Clear error messages for each component
+- ✅ Fast deployment (each script ~30-60 seconds)
 
 ### What Gets Created
 
@@ -106,6 +123,13 @@ curl https://YOUR_API_URL/prod/topics
 - Verify DynamoDB users table was created
 - Check CloudWatch Logs for auth Lambda errors
 
+### Available Scripts
+
+- `check-status.sh` - Check deployment status and test all endpoints
+- `deploy-topics-only.sh` - Deploy/update topics Lambda function
+- `deploy-auth-only.sh` - Deploy/update auth Lambda function  
+- `deploy-api-gateway.sh` - Setup API Gateway endpoints and CORS
+
 ### Manual Cleanup (if needed)
 
 ```bash
@@ -113,15 +137,11 @@ curl https://YOUR_API_URL/prod/topics
 aws lambda delete-function --function-name learning-assist-topics
 aws lambda delete-function --function-name learning-assist-auth
 
-# Delete API Gateway (replace YOUR_API_ID with actual ID from .env file)
-aws apigateway delete-rest-api --rest-api-id YOUR_API_ID
+# Delete API Gateway
+aws apigateway delete-rest-api --rest-api-id xvq11x0421
 
 # Delete IAM role (AWS may append random suffix to role name)
-# Find the actual role name first:
 ROLE_NAME=$(aws iam list-roles --query "Roles[?starts_with(RoleName, 'learning-assist-lambda-role')].RoleName" --output text)
-echo "Found role: $ROLE_NAME"
-
-# Delete the role
 aws iam detach-role-policy --role-name $ROLE_NAME --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 aws iam detach-role-policy --role-name $ROLE_NAME --policy-arn arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
 aws iam delete-role --role-name $ROLE_NAME
