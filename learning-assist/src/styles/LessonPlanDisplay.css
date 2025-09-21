@@ -256,6 +256,334 @@
   content: "";
 }
 
+/* Enhanced list formatting for JSON-parsed content */
+.text-content {
+  white-space: pre-line;
+}
+
+.text-content p {
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+
+.text-content ol {
+  counter-reset: item;
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+  list-style: none;
+}
+
+.text-content ol li {
+  display: block;
+  margin-bottom: 0.5rem;
+  padding-left: 0.5rem;
+  position: relative;
+  line-height: 1.6;
+}
+
+.text-content ol li:before {
+  content: counter(item) ". ";
+  counter-increment: item;
+  font-weight: 600;
+  color: #3b82f6;
+  position: absolute;
+  left: -1.5rem;
+}
+
+.text-content ul {
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+  list-style: none;
+}
+
+.text-content ul li {
+  position: relative;
+  padding-left: 1rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.6;
+}
+
+.text-content ul li:before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: #3b82f6;
+  font-weight: bold;
+  font-size: 1.2em;
+}
+
+/* Enhanced content styling for emoji headers */
+.text-content h3 {
+  color: #1e293b;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 1.5rem 0 1rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.text-content h3:first-child {
+  margin-top: 0;
+}
+
+/* Video links styling - subtle design */
+.text-content a[href*="youtube.com"],
+.text-content a[href*="youtu.be"] {
+  color: #6b7280;
+  text-decoration: none;
+  font-weight: 400;
+  display: block;
+  margin: 0.5rem 0;
+  padding: 0.75rem;
+  background: #f8fafc;
+  border-radius: 0.5rem;
+  border-left: 3px solid #e5e7eb;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.text-content a[href*="youtube.com"]:hover,
+.text-content a[href*="youtu.be"]:hover {
+  background: #f1f5f9;
+  color: #475569;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-left-color: #cbd5e1;
+}
+
+/* Video link content layout */
+.text-content a[href*="youtube.com"]:before,
+.text-content a[href*="youtu.be"]:before {
+  content: "▶";
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.9rem;
+  color: #94a3b8;
+}
+
+.text-content a[href*="youtube.com"] span,
+.text-content a[href*="youtu.be"] span {
+  margin-left: 1.5rem;
+  display: block;
+}
+
+/* External link icon for videos */
+.text-content a[href*="youtube.com"]:after,
+.text-content a[href*="youtu.be"]:after {
+  content: "↗";
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+/* Video description styling */
+.text-content p:has(+ a[href*="youtube.com"]),
+.text-content p:has(+ a[href*="youtu.be"]) {
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: #6b7280;
+  font-style: italic;
+}
+
+/* Limit video cards to 2 per section */
+.text-content .video-section {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+@media (min-width: 768px) {
+  .text-content .video-section {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Enhanced content sections */
+.text-content strong {
+  color: #1e293b;
+  font-weight: 600;
+}
+
+/* Activity and resource lists */
+.text-content ul li {
+  margin-bottom: 0.75rem;
+  line-height: 1.6;
+}
+
+/* Video section specific styling */
+.text-content h3:has-text("🎥") {
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  color: #dc2626;
+  font-size: 1.2rem;
+}
+
+/* Limit video display to 2 per section */
+.text-content .video-container {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+@media (min-width: 768px) {
+  .text-content .video-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Ensure only 2 videos are prominently displayed */
+.text-content a[href*="youtube.com"]:nth-child(n+3),
+.text-content a[href*="youtu.be"]:nth-child(n+3) {
+  display: none;
+}
+
+/* Video card improvements */
+.text-content a[href*="youtube.com"],
+.text-content a[href*="youtu.be"] {
+  max-width: 100%;
+  word-wrap: break-word;
+}
+
+/* Video title styling */
+.text-content a[href*="youtube.com"] span:first-child,
+.text-content a[href*="youtu.be"] span:first-child {
+  font-weight: 500;
+  font-size: 0.9rem;
+  line-height: 1.3;
+  color: #374151;
+}
+
+/* Video description styling */
+.text-content a[href*="youtube.com"] span:last-child,
+.text-content a[href*="youtu.be"] span:last-child {
+  font-size: 0.8rem;
+  color: #9ca3af;
+  margin-top: 0.2rem;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+/* Videos Section */
+.videos-section {
+  margin-top: 2rem;
+}
+
+.videos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+  padding: 1rem;
+}
+
+.video-card {
+  background: #ffffff;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  border: 1px solid #e2e8f0;
+}
+
+.video-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.video-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
+.video-thumbnail {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  overflow: hidden;
+  background: #f3f4f6;
+}
+
+.thumbnail-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.video-card:hover .thumbnail-image {
+  transform: scale(1.05);
+}
+
+.play-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.video-card:hover .play-overlay {
+  background: rgba(239, 68, 68, 0.9);
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+.video-info {
+  padding: 1rem;
+}
+
+.video-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 0.5rem 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.video-channel {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0 0 0.25rem 0;
+  font-weight: 500;
+}
+
+.video-duration {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin: 0 0 0.5rem 0;
+  font-weight: 500;
+}
+
+.video-description {
+  font-size: 0.8rem;
+  color: #6b7280;
+  line-height: 1.4;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 /* Legacy support for old content */
 .content-text p {
   margin-bottom: 1rem;

@@ -4,12 +4,22 @@ export interface DocumentLink {
 }
 
 export interface AIContent {
-  summary?: string;
-  interactiveActivities?: string;
   lessonPlan?: string;
   // Future AI content types can be added here
   generatedAt?: Date;
   classLevel?: string;
+  videos?: YouTubeVideo[];
+}
+
+export interface YouTubeVideo {
+  id: string;
+  title: string;
+  url: string;
+  channelTitle: string;
+  duration: string;
+  description: string;
+  thumbnail: string;
+  publishedAt: string;
 }
 
 export interface Topic {

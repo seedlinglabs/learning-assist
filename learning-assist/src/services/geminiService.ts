@@ -17,7 +17,7 @@ export interface AIContentResponse {
   error?: string;
 }
 
-// Legacy interfaces for backward compatibility
+// Legacy interfaces for backward compatibility - DEPRECATED
 export interface SummaryRequest {
   documentLinks: DocumentLink[];
   topicName: string;
@@ -307,24 +307,11 @@ Reason: [Educational value and age-appropriateness]
       });
       context += '\n';
 
-      const prompt = `Based on the following educational topic information, create comprehensive AI-generated content for teachers:
+      const prompt = `Based on the following educational topic information, create a comprehensive lesson plan for teachers:
 
 ${context}
 
-Generate the following content types in a structured format:
-
-**1. SUMMARY**
-Create a concise 2-paragraph summary (5-6 lines each) covering the key concepts and main points. Make it educational and suitable for ${request.classLevel} students.
-
-**2. INTERACTIVE ACTIVITIES**
-Create engaging classroom activities including:
-- Discussion Questions (3-4 thought-provoking questions)
-- Quick Quiz (5 multiple choice questions with answers)
-- Hands-on Activities (2-3 practical exercises)
-- Real-world Applications (daily life connections)
-- Creative Projects (student project ideas)
-
-**3. LESSON PLAN**
+**LESSON PLAN**
 Create a detailed 40-minute lesson plan for ${request.classLevel} including:
 - Learning Objectives (3-4 specific goals)
 - Materials Needed
@@ -348,7 +335,7 @@ Requirements:
 - Provide answer keys where applicable
 - Use engaging, interactive teaching methods
 
-Please format each section clearly with headings and organize the content for easy teacher use.`;
+Please format the lesson plan clearly with headings and organize the content for easy teacher use.`;
 
       const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
         method: 'POST',
@@ -409,51 +396,20 @@ Please format each section clearly with headings and organize the content for ea
       const sections = fullContent.split(/\*\*\d+\.\s*|\*\*/).filter((s: string) => s.trim());
       console.log('DEBUG: Detected sections:', sections.map((s: string) => s.substring(0, 50) + '...'));
       
-      // Parse the response to extract different sections
+      // Parse the response to extract lesson plan
       const aiContent: AIContent = {
         generatedAt: new Date(),
         classLevel: request.classLevel
       };
 
-      // Try multiple regex patterns to match different AI response formats
-      
-      // Extract summary - try multiple patterns
-      let summaryMatch = fullContent.match(/\*\*1\.\s*SUMMARY\*\*([\s\S]*?)(?=\*\*2\.|$)/i);
-      if (!summaryMatch) summaryMatch = fullContent.match(/\*\*SUMMARY\*\*([\s\S]*?)(?=\*\*INTERACTIVE|$)/i);
-      if (!summaryMatch) summaryMatch = fullContent.match(/##?\s*SUMMARY([\s\S]*?)(?=##?\s*INTERACTIVE|$)/i);
-      if (!summaryMatch) summaryMatch = fullContent.match(/SUMMARY:([\s\S]*?)(?=INTERACTIVE|$)/i);
-      
-      if (summaryMatch) {
-        aiContent.summary = summaryMatch[1].trim();
-        console.log('DEBUG: Extracted summary:', aiContent.summary ? aiContent.summary.substring(0, 100) + '...' : 'empty');
-      } else {
-        console.log('DEBUG: No summary match found with any pattern');
-      }
-
-      // Extract interactive activities - try multiple patterns
-      let activitiesMatch = fullContent.match(/\*\*2\.\s*INTERACTIVE ACTIVITIES\*\*([\s\S]*?)(?=\*\*3\.|$)/i);
-      if (!activitiesMatch) activitiesMatch = fullContent.match(/\*\*INTERACTIVE ACTIVITIES\*\*([\s\S]*?)(?=\*\*LESSON|$)/i);
-      if (!activitiesMatch) activitiesMatch = fullContent.match(/##?\s*INTERACTIVE ACTIVITIES([\s\S]*?)(?=##?\s*LESSON|$)/i);
-      if (!activitiesMatch) activitiesMatch = fullContent.match(/INTERACTIVE ACTIVITIES:([\s\S]*?)(?=LESSON|$)/i);
-      
-      if (activitiesMatch) {
-        aiContent.interactiveActivities = activitiesMatch[1].trim();
-        console.log('DEBUG: Extracted activities:', aiContent.interactiveActivities ? aiContent.interactiveActivities.substring(0, 100) + '...' : 'empty');
-      } else {
-        console.log('DEBUG: No activities match found with any pattern');
-      }
-
       // Extract lesson plan - try multiple patterns with extensive logging
       console.log('DEBUG: Attempting to extract lesson plan...');
       
       const lessonPlanPatterns = [
-        /\*\*3\.\s*LESSON PLAN\*\*([\s\S]*?)$/i,
         /\*\*LESSON PLAN\*\*([\s\S]*?)$/i,
         /##?\s*LESSON PLAN([\s\S]*?)$/i,
         /LESSON PLAN:([\s\S]*?)$/i,
-        /3\.\s*LESSON PLAN([\s\S]*?)$/i,
-        /lesson\s*plan([\s\S]*?)$/i,
-        /\*\*3\*\*([\s\S]*?)$/i // Sometimes the number and title get separated
+        /lesson\s*plan([\s\S]*?)$/i
       ];
       
       let lessonPlanMatch = null;
@@ -484,10 +440,10 @@ Please format each section clearly with headings and organize the content for ea
 
       console.log('DEBUG: Final aiContent object:', aiContent);
 
-      // Fallback: if parsing fails, put everything in summary
-      if (!aiContent.summary && !aiContent.interactiveActivities && !aiContent.lessonPlan) {
-        aiContent.summary = fullContent;
-        console.log('DEBUG: Using fallback - putting everything in summary');
+      // Fallback: if parsing fails, put everything in lesson plan
+      if (!aiContent.lessonPlan) {
+        aiContent.lessonPlan = fullContent;
+        console.log('DEBUG: Using fallback - putting everything in lesson plan');
       }
 
       return {
@@ -504,234 +460,28 @@ Please format each section clearly with headings and organize the content for ea
       };
     }
   }
+  /**
+   * @deprecated This method is deprecated. Use generateAllAIContent instead.
+   */
   static async generateSummary(request: SummaryRequest): Promise<SummaryResponse> {
-    if (!GEMINI_API_KEY) {
-      return {
-        summary: '',
-        success: false,
-        error: 'Gemini API key not configured. Please set REACT_APP_GEMINI_API_KEY environment variable.'
-      };
-    }
-
-    if (!request.documentLinks || request.documentLinks.length === 0) {
-      return {
-        summary: '',
-        success: false,
-        error: 'No document links provided for summarization.'
-      };
-    }
-
-    try {
-      // Create a prompt for Gemini
-      const documentList = request.documentLinks
-        .map((link, index) => `${index + 1}. ${link.name}: ${link.url}`)
-        .join('\n');
-
-      const prompt = `Please analyze the following documents related to the topic "${request.topicName}" and create a concise summary:
-
-Documents:
-${documentList}
-
-Requirements:
-- Create a summary with exactly 2 paragraphs
-- Each paragraph should be 5-6 lines long
-- Focus on the key concepts and main points
-- Make it educational and suitable for students
-- Do not include URLs in the summary
-- Keep the language clear and accessible
-
-Please provide only the summary text without any additional formatting or explanations.`;
-
-      const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: prompt
-            }]
-          }],
-          generationConfig: {
-            temperature: 0.7,
-            topK: 40,
-            topP: 0.95,
-            maxOutputTokens: 1024,
-            candidateCount: 1,
-          },
-          safetySettings: [
-            {
-              category: "HARM_CATEGORY_HARASSMENT",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE"
-            },
-            {
-              category: "HARM_CATEGORY_HATE_SPEECH",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE"
-            },
-            {
-              category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE"
-            },
-            {
-              category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE"
-            }
-          ]
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`Gemini API error: ${errorData.error?.message || response.statusText}`);
-      }
-
-      const data = await response.json();
-      
-      if (!data.candidates || data.candidates.length === 0) {
-        throw new Error('No summary generated by Gemini');
-      }
-
-      const summary = data.candidates[0].content.parts[0].text.trim();
-
-      return {
-        summary,
-        success: true
-      };
-
-    } catch (error) {
-      console.error('Error generating summary:', error);
-      return {
-        summary: '',
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to generate summary'
-      };
-    }
+    console.warn('generateSummary is deprecated. Use generateAllAIContent instead.');
+    return {
+      summary: '',
+      success: false,
+      error: 'Summary generation is deprecated. Please use generateAllAIContent to generate lesson plans.'
+    };
   }
 
+  /**
+   * @deprecated This method is deprecated. Use generateAllAIContent instead.
+   */
   static async generateInteractiveContent(request: InteractiveContentRequest): Promise<InteractiveContentResponse> {
-    if (!GEMINI_API_KEY) {
-      return {
-        interactiveContent: '',
-        success: false,
-        error: 'Gemini API key not configured. Please set REACT_APP_GEMINI_API_KEY environment variable.'
-      };
-    }
-
-    if (!request.summary && (!request.documentLinks || request.documentLinks.length === 0)) {
-      return {
-        interactiveContent: '',
-        success: false,
-        error: 'Either a summary or document links are required to generate interactive content.'
-      };
-    }
-
-    try {
-      // Create context from available information
-      let context = `Topic: ${request.topicName}\n\n`;
-      
-      if (request.description) {
-        context += `Description: ${request.description}\n\n`;
-      }
-      
-      if (request.summary) {
-        context += `Summary: ${request.summary}\n\n`;
-      }
-      
-      if (request.documentLinks && request.documentLinks.length > 0) {
-        context += `Source Documents:\n`;
-        request.documentLinks.forEach((link, index) => {
-          context += `${index + 1}. ${link.name}: ${link.url}\n`;
-        });
-        context += '\n';
-      }
-
-      const prompt = `Based on the following topic information, create engaging and interactive learning activities for students:
-
-${context}
-
-Create interactive content that includes:
-1. **Discussion Questions** (3-4 thought-provoking questions)
-2. **Quick Quiz** (5 multiple choice questions with answers)
-3. **Hands-on Activities** (2-3 practical exercises or experiments)
-4. **Real-world Applications** (How this topic applies to daily life)
-5. **Creative Projects** (Ideas for student projects or presentations)
-
-Requirements:
-- Make it age-appropriate and engaging for students
-- Include clear instructions for teachers
-- Provide answer keys where applicable
-- Make activities interactive and participatory
-- Use simple, clear language
-- Include both individual and group activities
-
-Format the response with clear headings and bullet points for easy reading by teachers.`;
-
-      const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: prompt
-            }]
-          }],
-          generationConfig: {
-            temperature: 0.8,
-            topK: 40,
-            topP: 0.95,
-            maxOutputTokens: 2048,
-            candidateCount: 1,
-          },
-          safetySettings: [
-            {
-              category: "HARM_CATEGORY_HARASSMENT",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE"
-            },
-            {
-              category: "HARM_CATEGORY_HATE_SPEECH",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE"
-            },
-            {
-              category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE"
-            },
-            {
-              category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE"
-            }
-          ]
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`Gemini API error: ${errorData.error?.message || response.statusText}`);
-      }
-
-      const data = await response.json();
-      
-      if (!data.candidates || data.candidates.length === 0) {
-        throw new Error('No interactive content generated by Gemini');
-      }
-
-      const interactiveContent = data.candidates[0].content.parts[0].text.trim();
-
-      return {
-        interactiveContent,
-        success: true
-      };
-
-    } catch (error) {
-      console.error('Error generating interactive content:', error);
-      return {
-        interactiveContent: '',
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to generate interactive content'
-      };
-    }
+    console.warn('generateInteractiveContent is deprecated. Use generateAllAIContent instead.');
+    return {
+      interactiveContent: '',
+      success: false,
+      error: 'Interactive content generation is deprecated. Please use generateAllAIContent to generate lesson plans.'
+    };
   }
 
   static async enhanceSection(request: SectionEnhancementRequest): Promise<SectionEnhancementResponse> {
@@ -746,7 +496,7 @@ Format the response with clear headings and bullet points for easy reading by te
     try {
       const durationText = request.duration ? ` (${request.duration} minutes)` : '';
       
-      const prompt = `Enhance the following lesson plan section with specific, ready-to-use teaching materials and activities:
+      const prompt = `You are an expert educational content curator. Enhance this lesson plan section with SPECIFIC, FREELY AVAILABLE teaching resources, focusing heavily on YouTube videos.
 
 **Section**: ${request.sectionTitle}${durationText}
 **Topic**: ${request.topicName}
@@ -756,76 +506,73 @@ Format the response with clear headings and bullet points for easy reading by te
 **Current Content**:
 ${request.sectionContent}
 
-**CRITICAL INSTRUCTIONS**: 
-- DO NOT provide general platform links or ask teachers to search
-- DO NOT say "teachers will need to locate" or "find specific content"
-- PROVIDE specific, actionable activities and materials
-- Include ONLY content that is immediately usable in the classroom
+**PRIMARY FOCUS: FIND SPECIFIC YOUTUBE VIDEOS**
 
-**Enhancement Requirements**:
-
-**1. YOUTUBE VIDEOS** (MANDATORY - provide specific educational videos):
-Find and include 1-2 specific YouTube videos that are:
-- Directly related to ${request.topicName} for ${request.classLevel}
-- 3-10 minutes in length (appropriate for classroom use)
-- From established educational channels like:
-  * Crash Course Kids
-  * National Geographic Kids
-  * SciShow Kids
-  * Khan Academy
-  * TED-Ed
-  * Bill Nye the Science Guy
+**1. YOUTUBE VIDEO RESEARCH (MANDATORY - Find maximum 2 specific videos):**
+Search for and provide EXACT YouTube videos that are:
+- Directly related to "${request.topicName}" for ${request.classLevel} students
+- 3-15 minutes long (perfect for classroom use)
+- From these trusted educational channels:
+  * Crash Course Kids (science, social studies)
+  * National Geographic Kids (nature, animals, geography)
+  * SciShow Kids (science experiments, nature)
+  * Khan Academy (math, science, history)
+  * TED-Ed (educational animations)
+  * Bill Nye the Science Guy (science demonstrations)
   * Sesame Street (for younger students)
-  * Brain Pump Videos
-  * Free School
+  * Brain Pump Videos (science, math)
+  * Free School (history, science, literature)
+  * Peekaboo Kidz (science, geography)
+  * Happy Learning (science, history)
+  * Smile and Learn (educational content)
+  * Learning Junction (science, social studies)
 
-Format YouTube videos as: [Video Title](https://www.youtube.com/watch?v=VIDEO_ID)
-Example: [Plants Need Water - Science for Kids](https://www.youtube.com/watch?v=dQw4w9WgXcQ)
+**VIDEO FORMAT REQUIREMENTS:**
+- Format: [Exact Video Title](https://www.youtube.com/watch?v=ACTUAL_VIDEO_ID)
+- Include video duration in title: [Video Title (5:30)](https://www.youtube.com/watch?v=VIDEO_ID)
+- Example: [Water Cycle for Kids (4:15)](https://www.youtube.com/watch?v=9_e7q-5Qw04)
 
-**2. READY-TO-USE ACTIVITIES** (provide complete instructions):
-- Specific activities with step-by-step teacher instructions
+**2. ADDITIONAL FREE RESOURCES:**
+- Interactive websites (PBS Kids, NASA Kids, etc.)
+- Free printable worksheets (describe exactly what to create)
+- Simple hands-on activities using common classroom materials
+- Free educational games or simulations
+
+**3. SPECIFIC TEACHING AIDS:**
 - Exact materials needed (all easily accessible)
-- Clear timing for each activity
-- Student worksheets or handouts (describe exactly what to create)
+- Step-by-step activity instructions
+- Classroom management tips for this specific content
+- Assessment questions related to the videos
 
-**3. CONCRETE TEACHING MATERIALS**:
-- Physical manipulatives using common classroom items
-- Printable resources (describe exactly what to print/create)
-- Simple demonstration setups using available materials
-- Visual aids that teachers can easily create or display
+**CRITICAL REQUIREMENTS:**
+- PROVIDE ACTUAL WORKING YOUTUBE LINKS - do not make them up
+- Focus on videos that directly support the learning objectives
+- Include videos that show experiments, demonstrations, or real-world examples
+- Make sure videos are age-appropriate for ${request.classLevel}
+- Provide specific timestamps for key moments in longer videos
 
-**4. CLASSROOM MANAGEMENT TIPS**:
-- Specific questions to ask students
-- How to organize students (pairs, groups, individual work)
-- What to do if students finish early
-- How to handle different learning paces
+**OUTPUT FORMAT:**
+Start with "**🎥 RECOMMENDED VIDEOS:**" followed by the video links
+Then add "**📚 ADDITIONAL RESOURCES:**" with other materials
+Then "**🎯 TEACHING ACTIVITIES:**" with specific classroom activities
 
-**5. ASSESSMENT METHODS**:
-- Specific observation checklists
-- Quick verbal assessment questions
-- Simple exit ticket formats
-- Peer assessment activities
+**EXAMPLE OF GOOD OUTPUT:**
+**🎥 RECOMMENDED VIDEOS:**
+- [The Water Cycle for Kids (3:45)](https://www.youtube.com/watch?v=9_e7q-5Qw04) - Perfect introduction to water cycle concepts
+- [Water Cycle Experiment (6:20)](https://www.youtube.com/watch?v=ZVBEBreXH4w) - Shows hands-on demonstration students can replicate
 
-**EXAMPLE OF GOOD ENHANCEMENT**:
-Instead of: "Use Khan Academy videos about plants"
-Provide: "Show students how to create a simple plant observation journal. Give each student a small potted plant or leaf. Have them draw the plant and write 3 observations using these sentence starters: 'I notice...', 'I wonder...', 'This reminds me of...'"
+**IMPORTANT: Provide exactly 2 videos maximum per section. Choose the most relevant and highest quality videos.**
 
-**FOCUS ON**:
-- Activities using materials already in most classrooms
-- Simple demonstrations teachers can set up in 2 minutes
-- Student discussions and peer interactions
-- Hands-on exploration using common objects
-- Creative projects using basic art supplies
+**📚 ADDITIONAL RESOURCES:**
+- NASA Climate Kids Water Cycle Game (free online)
+- Printable water cycle diagram worksheet
 
-**OUTPUT REQUIREMENTS**:
-- Be specific and detailed
-- Provide complete activity instructions
-- Use materials readily available in classrooms
-- Make everything immediately actionable
-- Age-appropriate for ${request.classLevel}
-- Directly related to ${request.topicName}
+**🎯 TEACHING ACTIVITIES:**
+- Watch first video, pause at 1:30 to discuss evaporation
+- Have students create their own water cycle diagrams
+- Set up simple evaporation experiment using cups and water
 
-Format with clear headings and bullet points for easy teacher reference.`;
+Return only the enhanced content with specific, working links.`;
 
       const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
         method: 'POST',
@@ -879,8 +626,12 @@ Format with clear headings and bullet points for easy teacher reference.`;
 
       const enhancedContent = data.candidates[0].content.parts[0].text.trim();
 
+      // Only add additional resources and teaching activities, not videos
+      // since video buttons are shown at the top of the section
+      const additionalContent = `\n\n**📚 ADDITIONAL RESOURCES:**\n\nSearch YouTube for "${request.topicName}" educational videos for ${request.classLevel} students\n\n**Suggested search terms:**\n- "${request.topicName} for kids"\n- "${request.topicName} ${request.classLevel} lesson"\n- "${request.topicName} educational video"\n\n**🎯 TEACHING ACTIVITIES:**\n\n- Use the video buttons above to access educational content\n- Pause videos at key moments for discussion\n- Have students take notes on important concepts\n- Follow up with hands-on activities related to the videos\n\n`;
+      
       return {
-        enhancedContent,
+        enhancedContent: request.sectionContent + additionalContent,
         success: true
       };
 

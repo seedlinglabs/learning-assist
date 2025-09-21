@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Calendar, ExternalLink, Trash2, Save, Sparkles, BookOpen, Users, GraduationCap, Search } from 'lucide-react';
+import { FileText, Calendar, ExternalLink, Trash2, Save, Sparkles, BookOpen, Users, GraduationCap, Search, Youtube } from 'lucide-react';
 import { Topic, DocumentLink } from '../types';
 import { useApp } from '../context/AppContext';
 import { secureGeminiService } from '../services/secureGeminiService';
+import { youtubeService } from '../services/youtubeService';
 import DocumentDiscoveryModal from './DocumentDiscoveryModal';
 import LessonPlanDisplay from './LessonPlanDisplay';
 import '../styles/LessonPlanDisplay.css';
@@ -12,13 +13,15 @@ interface TopicTabbedViewProps {
   onTopicDeleted: () => void;
 }
 
-type TabType = 'details' | 'summary' | 'activities' | 'lesson-plan';
+type TabType = 'details' | 'lesson-plan' | 'videos';
 
 const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted }) => {
   const { updateTopic, deleteTopic, loading, error, clearError, currentPath } = useApp();
   const [activeTab, setActiveTab] = useState<TabType>('details');
   const [generatingAI, setGeneratingAI] = useState(false);
+  const [findingVideos, setFindingVideos] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [enhancedLessonPlan, setEnhancedLessonPlan] = useState<string | null>(null);
   const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
   const [formData, setFormData] = useState({
     name: topic.name,
@@ -116,6 +119,9 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
         });
         
         console.log('DEBUG: Topic update sent with aiContent:', result.aiContent);
+        
+        // Automatically find videos after AI content generation
+        await findVideosForTopic();
       } else {
         setAiError(result.error || 'Failed to generate AI content');
       }
@@ -127,6 +133,99 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     }
   };
 
+  const handleLessonPlanUpdate = (updatedLessonPlan: string) => {
+    // Store the updated lesson plan to be saved
+    setEnhancedLessonPlan(updatedLessonPlan);
+    
+    // Also update the topic's AI content immediately for display
+    // This ensures the enhanced content is visible without needing to save
+    if (topic.aiContent) {
+      topic.aiContent.lessonPlan = updatedLessonPlan;
+    }
+  };
+
+  const findVideosForTopic = async () => {
+    if (!topic.aiContent?.lessonPlan) return;
+    
+    setFindingVideos(true);
+    try {
+      // Search for videos related to this topic
+      const videoResults = await youtubeService.searchTopicVideos(
+        topic.name,
+        topic.aiContent.classLevel || 'Class 1',
+        currentPath.subject?.name
+      );
+
+      if (videoResults.videos.length > 0) {
+        // Update the topic's AI content with videos
+        const updatedAIContent = {
+          ...topic.aiContent,
+          videos: videoResults.videos
+        };
+
+        // Update the topic immediately for display
+        topic.aiContent = updatedAIContent;
+        
+        // Save the updated topic with videos
+        await updateTopic(topic.id, {
+          name: formData.name.trim(),
+          description: formData.description.trim() || undefined,
+          documentLinks: formData.documentLinks,
+          aiContent: updatedAIContent,
+        });
+        
+        console.log('Found and saved videos:', videoResults.videos);
+      } else {
+        console.log('No videos found for this topic');
+      }
+    } catch (error) {
+      console.error('Error finding videos:', error);
+      // Don't show alert for automatic video search
+    } finally {
+      setFindingVideos(false);
+    }
+  };
+
+  const handleSectionUpdate = async (sectionId: string, newContent: string) => {
+    // Update the lesson plan with the enhanced content
+    if (topic.aiContent?.lessonPlan) {
+      try {
+        // Parse the current lesson plan
+        const lessonPlanData = JSON.parse(topic.aiContent.lessonPlan);
+        
+        if (lessonPlanData && lessonPlanData.lessonPlan) {
+          // Find and update the specific section
+          const updatedLessonPlan = updateSectionInLessonPlan(lessonPlanData, sectionId, newContent);
+          
+          // Update the topic's AI content
+          topic.aiContent.lessonPlan = JSON.stringify(updatedLessonPlan, null, 2);
+          
+          // Store for saving
+          setEnhancedLessonPlan(JSON.stringify(updatedLessonPlan, null, 2));
+        }
+      } catch (error) {
+        console.error('Error updating lesson plan:', error);
+        // Fallback: just store the enhanced content
+        setEnhancedLessonPlan(topic.aiContent.lessonPlan + '\n\n' + newContent);
+      }
+    }
+  };
+
+  const updateSectionInLessonPlan = (lessonPlanData: any, sectionId: string, newContent: string): any => {
+    // This is a simplified approach - we'll add the enhanced content to the end
+    // In a more sophisticated implementation, we'd parse the sectionId and update the specific section
+    
+    // For now, just append the enhanced content to the lesson plan
+    if (!lessonPlanData.lessonPlan.resources) {
+      lessonPlanData.lessonPlan.resources = [];
+    }
+    
+    // Add the enhanced content as a new resource
+    lessonPlanData.lessonPlan.resources.push(`Enhanced content: ${newContent}`);
+    
+    return lessonPlanData;
+  };
+
   const handleSave = async () => {
     if (!formData.name.trim()) {
       alert('Please enter a topic name');
@@ -134,11 +233,21 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     }
 
     try {
+      // Use enhanced lesson plan if available, otherwise use original
+      const lessonPlanToSave = enhancedLessonPlan || topic.aiContent?.lessonPlan;
+      
       await updateTopic(topic.id, {
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
         documentLinks: formData.documentLinks,
+        aiContent: {
+          ...topic.aiContent,
+          lessonPlan: lessonPlanToSave
+        },
       });
+      
+      // Clear the enhanced lesson plan after saving
+      setEnhancedLessonPlan(null);
     } catch (error) {
       console.error('Failed to update topic:', error);
     }
@@ -169,8 +278,6 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     console.log('DEBUG TopicTabbedView - Full topic object:', topic);
     console.log('DEBUG TopicTabbedView - AI Content:', topic.aiContent);
     if (topic.aiContent) {
-      console.log('DEBUG TopicTabbedView - Has summary:', !!topic.aiContent.summary);
-      console.log('DEBUG TopicTabbedView - Has interactiveActivities:', !!topic.aiContent.interactiveActivities);
       console.log('DEBUG TopicTabbedView - Has lessonPlan:', !!topic.aiContent.lessonPlan);
       console.log('DEBUG TopicTabbedView - LessonPlan value:', topic.aiContent.lessonPlan);
     }
@@ -178,9 +285,8 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
 
   const tabs = [
     { id: 'details', label: 'Topic Details', icon: FileText },
-    { id: 'summary', label: 'Summary', icon: BookOpen, disabled: !topic.aiContent?.summary },
-    { id: 'activities', label: 'Activities', icon: Users, disabled: !topic.aiContent?.interactiveActivities },
     { id: 'lesson-plan', label: 'Lesson Plan', icon: GraduationCap, disabled: !topic.aiContent?.lessonPlan },
+    { id: 'videos', label: 'Videos', icon: Youtube, disabled: !topic.aiContent?.videos || topic.aiContent.videos.length === 0 },
   ];
 
   return (
@@ -345,33 +451,6 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
           </div>
         )}
 
-        {activeTab === 'summary' && topic.aiContent?.summary && (
-          <div className="tab-panel">
-            <div className="ai-content-header">
-              <h3>AI-Generated Summary</h3>
-              <span className="ai-badge">Generated for {topic.aiContent.classLevel}</span>
-            </div>
-            <div className="ai-content-display">
-              <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.7' }}>
-                {topic.aiContent.summary}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'activities' && topic.aiContent?.interactiveActivities && (
-          <div className="tab-panel">
-            <div className="ai-content-header">
-              <h3>Interactive Activities</h3>
-              <span className="ai-badge">Generated for {topic.aiContent.classLevel}</span>
-            </div>
-            <div className="ai-content-display">
-              <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.7' }}>
-                {topic.aiContent.interactiveActivities}
-              </div>
-            </div>
-          </div>
-        )}
 
         {activeTab === 'lesson-plan' && topic.aiContent?.lessonPlan && (
           <div className="tab-panel lesson-plan-panel">
@@ -379,7 +458,48 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
               lessonPlan={topic.aiContent.lessonPlan}
               classLevel={topic.aiContent.classLevel || 'Class 1'}
               topicName={topic.name}
+              subject={currentPath.subject?.name}
+              onSectionUpdate={handleSectionUpdate}
+              onLessonPlanUpdate={handleLessonPlanUpdate}
             />
+          </div>
+        )}
+
+        {activeTab === 'videos' && topic.aiContent?.videos && topic.aiContent.videos.length > 0 && (
+          <div className="tab-panel videos-panel">
+            <div className="videos-section">
+              <div className="videos-grid">
+                {topic.aiContent.videos.map((video, index) => (
+                  <div key={video.id} className="video-card">
+                    <a
+                      href={video.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="video-link"
+                    >
+                      <div className="video-thumbnail">
+                        <img 
+                          src={video.thumbnail} 
+                          alt={video.title}
+                          className="thumbnail-image"
+                        />
+                        <div className="play-overlay">
+                          <Youtube size={24} />
+                        </div>
+                      </div>
+                      <div className="video-info">
+                        <h4 className="video-title">{video.title}</h4>
+                        <p className="video-channel">{video.channelTitle}</p>
+                        <p className="video-duration">{video.duration}</p>
+                        <p className="video-description">
+                          {video.description.substring(0, 100)}...
+                        </p>
+                      </div>
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </div>

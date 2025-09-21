@@ -4,6 +4,7 @@
  */
 
 import { AIContent } from '../types';
+import { youtubeService, YouTubeVideo } from './youtubeService';
 
 // Use the same API base URL as other services
 const API_BASE_URL = 'https://xvq11x0421.execute-api.us-west-2.amazonaws.com/pre-prod';
@@ -27,6 +28,7 @@ export interface SectionEnhancementRequest {
   classLevel: string;
   enhancementType: 'expand' | 'simplify' | 'add_examples' | 'add_activities';
   topicName?: string;
+  subject?: string;
   sectionType?: string;
   duration?: number;
 }
@@ -190,36 +192,93 @@ class SecureGeminiService {
     enhancedContent?: string;
     error?: string;
   }> {
-    
-    const prompt = this.buildSectionEnhancementPrompt(request);
-    
-    const payload = {
-      contents: [{
-        parts: [{
-          text: prompt
-        }]
-      }],
-      generationConfig: {
-        temperature: 0.6,
-        topK: 30,
-        topP: 0.9,
-        maxOutputTokens: 1536,
-      }
-    };
+    try {
+      // First, search for real YouTube videos
+      const videoResults = await youtubeService.searchTopicVideos(
+        request.topicName || 'this topic',
+        request.classLevel,
+        request.subject
+      );
 
-    const response = await this.makeSecureRequest('enhance-section', payload);
+      // Build enhanced content with real videos
+      const enhancedContent = this.buildEnhancedContentWithVideos(request, videoResults.videos);
+      
+      return { success: true, enhancedContent };
+    } catch (error) {
+      console.error('Error enhancing section with YouTube search:', error);
+      // Fallback to Gemini if YouTube search fails
+      return this.fallbackEnhancement(request);
+    }
+  }
+
+  private buildEnhancedContentWithVideos(request: SectionEnhancementRequest, videos: YouTubeVideo[]): string {
+    // Only add additional resources and teaching activities, not videos
+    // since video buttons are shown at the top of the section
+    let additionalContent = `\n\n**📚 ADDITIONAL RESOURCES:**\n\n`;
     
-    if (!response.success) {
-      return { success: false, error: response.error };
+    if (videos.length > 0) {
+      additionalContent += `**Educational Videos Available:**\n`;
+      videos.forEach((video, index) => {
+        additionalContent += `- ${video.title} (${video.duration}) - ${video.channelTitle}\n`;
+      });
+      additionalContent += `\n`;
+    } else {
+      additionalContent += `**Search YouTube for:** "${request.topicName}" educational videos for ${request.classLevel} students\n`;
+      additionalContent += `**Suggested search terms:**\n`;
+      additionalContent += `- "${request.topicName} for kids"\n`;
+      additionalContent += `- "${request.topicName} ${request.classLevel} lesson"\n`;
+      additionalContent += `- "${request.topicName} educational video"\n\n`;
     }
 
+    // Add teaching activities section
+    additionalContent += `**🎯 TEACHING ACTIVITIES:**\n\n`;
+    additionalContent += `- Use the video buttons above to access educational content\n`;
+    additionalContent += `- Pause videos at key moments for discussion\n`;
+    additionalContent += `- Have students take notes on important concepts\n`;
+    additionalContent += `- Follow up with hands-on activities related to the videos\n\n`;
+
+    // Append additional content to existing content
+    return request.content + additionalContent;
+  }
+
+  private async fallbackEnhancement(request: SectionEnhancementRequest): Promise<{
+    success: boolean;
+    enhancedContent?: string;
+    error?: string;
+  }> {
     try {
+      const prompt = this.buildSectionEnhancementPrompt(request);
+      
+      const payload = {
+        contents: [{
+          parts: [{
+            text: prompt
+          }]
+        }],
+        generationConfig: {
+          temperature: 0.6,
+          topK: 30,
+          topP: 0.9,
+          maxOutputTokens: 1536,
+        }
+      };
+
+      const response = await this.makeSecureRequest('enhance-section', payload);
+      
+      if (!response.success) {
+        return { success: false, error: response.error };
+      }
+
       const enhancedContent = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!enhancedContent) {
         return { success: false, error: 'No enhanced content generated' };
       }
 
-      return { success: true, enhancedContent: enhancedContent.trim() };
+      // Only add additional resources and teaching activities, not videos
+      // since video buttons are shown at the top of the section
+      const additionalContent = `\n\n**📚 ADDITIONAL RESOURCES:**\n\nSearch YouTube for "${request.topicName}" educational videos for ${request.classLevel} students\n\n**Suggested search terms:**\n- "${request.topicName} for kids"\n- "${request.topicName} ${request.classLevel} lesson"\n- "${request.topicName} educational video"\n\n**🎯 TEACHING ACTIVITIES:**\n\n- Use the video buttons above to access educational content\n- Pause videos at key moments for discussion\n- Have students take notes on important concepts\n- Follow up with hands-on activities related to the videos\n\n`;
+      
+      return { success: true, enhancedContent: request.content + additionalContent };
       
     } catch (error) {
       return { 
@@ -231,28 +290,18 @@ class SecureGeminiService {
 
   // Private helper methods (same as original service)
   private buildTopicPrompt(topicName: string, description: string, documentUrls: string[], classLevel: string, subject: string): string {
-    return `Create comprehensive educational content for a ${classLevel} ${subject} topic.
+    return `Create a comprehensive lesson plan for a ${classLevel} ${subject} topic.
 
 Topic: ${topicName}
 Description: ${description}
 Referenced Documents: ${documentUrls.length > 0 ? documentUrls.join(', ') : 'None provided'}
 
-Please generate content in this exact JSON format:
+Please generate a detailed 40-minute lesson plan in this exact JSON format:
 {
-  "summary": "A clear, engaging summary suitable for ${classLevel} students",
-  "interactiveActivities": [
-    {
-      "title": "Activity name",
-      "description": "What students will do",
-      "instructions": "Step-by-step instructions",
-      "materials": ["List of materials needed"],
-      "duration": "Estimated time",
-      "difficulty": "Easy/Medium/Hard"
-    }
-  ],
   "lessonPlan": {
     "objectives": ["Learning objective 1", "Learning objective 2"],
-    "introduction": "How to introduce the topic",
+    "materials": ["List of materials needed"],
+    "introduction": "How to introduce the topic (5 minutes)",
     "mainContent": [
       {
         "section": "Section title",
@@ -261,14 +310,21 @@ Please generate content in this exact JSON format:
         "timeEstimate": "Duration"
       }
     ],
-    "conclusion": "How to wrap up the lesson",
+    "wrapUp": "How to wrap up the lesson (2 minutes)",
     "assessment": "How to assess student understanding",
     "homework": "Optional homework suggestions",
-    "resources": ["Additional resources"]
+    "resources": ["Additional resources with specific URLs"]
   }
 }
 
-Make all content age-appropriate for ${classLevel} students and align with ${subject} curriculum standards.`;
+Requirements:
+- Age-appropriate for ${classLevel} students
+- Clear instructions for teachers
+- Include timing for each lesson segment
+- Include specific educational resource URLs where applicable
+- Align with ${subject} curriculum standards
+
+Make all content immediately usable in the classroom.`;
   }
 
   private buildDocumentDiscoveryPrompt(request: DocumentDiscoveryRequest): string {
@@ -295,7 +351,7 @@ Focus on reputable educational sources, age-appropriate content, and curriculum 
     const topicContext = request.topicName ? `**Topic**: ${request.topicName}\n` : '';
     const sectionTypeContext = request.sectionType ? `**Section Type**: ${request.sectionType}\n` : '';
     
-    return `Enhance the following lesson plan section with specific, ready-to-use teaching materials and activities:
+    return `You are an expert educational content curator. Enhance this lesson plan section with SPECIFIC, FREELY AVAILABLE teaching resources, focusing heavily on YouTube videos.
 
 **Section**: ${request.section}${durationText}
 ${topicContext}**Class Level**: ${request.classLevel}
@@ -303,77 +359,73 @@ ${sectionTypeContext}
 **Current Content**:
 ${request.content}
 
-**CRITICAL INSTRUCTIONS**: 
-- DO NOT provide general platform links or ask teachers to search
-- DO NOT say "teachers will need to locate" or "find specific content"
-- PROVIDE specific, actionable activities and materials
-- Include ONLY content that is immediately usable in the classroom
+**PRIMARY FOCUS: FIND SPECIFIC YOUTUBE VIDEOS**
 
-**Enhancement Requirements**:
-
-**1. YOUTUBE VIDEOS** (if appropriate - provide specific educational videos):
-Find and include 1-2 specific YouTube videos that are:
-- Directly related to ${request.topicName || 'the topic'} for ${request.classLevel}
-- 3-10 minutes in length (appropriate for classroom use)
-- From established educational channels like:
-  * Crash Course Kids
-  * National Geographic Kids
-  * SciShow Kids
-  * Khan Academy
-  * TED-Ed
-  * Bill Nye the Science Guy
+**1. YOUTUBE VIDEO RESEARCH (MANDATORY - Find maximum 2 specific videos):**
+Search for and provide EXACT YouTube videos that are:
+- Directly related to "${request.topicName || 'this topic'}" for ${request.classLevel} students
+- 3-15 minutes long (perfect for classroom use)
+- From these trusted educational channels:
+  * Crash Course Kids (science, social studies)
+  * National Geographic Kids (nature, animals, geography)
+  * SciShow Kids (science experiments, nature)
+  * Khan Academy (math, science, history)
+  * TED-Ed (educational animations)
+  * Bill Nye the Science Guy (science demonstrations)
   * Sesame Street (for younger students)
-  * Brain Pump Videos
-  * Free School
+  * Brain Pump Videos (science, math)
+  * Free School (history, science, literature)
+  * Peekaboo Kidz (science, geography)
+  * Happy Learning (science, history)
+  * Smile and Learn (educational content)
+  * Learning Junction (science, social studies)
 
-Format YouTube videos as: [Video Title](https://www.youtube.com/watch?v=VIDEO_ID)
-Example: [Plants Need Water - Science for Kids](https://www.youtube.com/watch?v=dQw4w9WgXcQ)
+**VIDEO FORMAT REQUIREMENTS:**
+- Format: [Exact Video Title](https://www.youtube.com/watch?v=ACTUAL_VIDEO_ID)
+- Include video duration in title: [Video Title (5:30)](https://www.youtube.com/watch?v=VIDEO_ID)
+- Example: [Water Cycle for Kids (4:15)](https://www.youtube.com/watch?v=9_e7q-5Qw04)
 
-**2. READY-TO-USE ACTIVITIES** (provide complete instructions):
-- Specific activities with step-by-step teacher instructions
+**2. ADDITIONAL FREE RESOURCES:**
+- Interactive websites (PBS Kids, NASA Kids, etc.)
+- Free printable worksheets (describe exactly what to create)
+- Simple hands-on activities using common classroom materials
+- Free educational games or simulations
+
+**3. SPECIFIC TEACHING AIDS:**
 - Exact materials needed (all easily accessible)
-- Clear timing for each activity
-- Student worksheets or handouts (describe exactly what to create)
+- Step-by-step activity instructions
+- Classroom management tips for this specific content
+- Assessment questions related to the videos
 
-**3. CONCRETE TEACHING MATERIALS**:
-- Physical manipulatives using common classroom items
-- Printable resources (describe exactly what to print/create)
-- Simple demonstration setups using available materials
-- Visual aids that teachers can easily create or display
+**CRITICAL REQUIREMENTS:**
+- PROVIDE ACTUAL WORKING YOUTUBE LINKS - do not make them up
+- Focus on videos that directly support the learning objectives
+- Include videos that show experiments, demonstrations, or real-world examples
+- Make sure videos are age-appropriate for ${request.classLevel}
+- Provide specific timestamps for key moments in longer videos
 
-**4. CLASSROOM MANAGEMENT TIPS**:
-- Specific questions to ask students
-- How to organize students (pairs, groups, individual work)
-- What to do if students finish early
-- How to handle different learning paces
+**OUTPUT FORMAT:**
+Start with "**🎥 RECOMMENDED VIDEOS:**" followed by the video links
+Then add "**📚 ADDITIONAL RESOURCES:**" with other materials
+Then "**🎯 TEACHING ACTIVITIES:**" with specific classroom activities
 
-**5. ASSESSMENT METHODS**:
-- Specific observation checklists
-- Quick verbal assessment questions
-- Simple exit ticket formats
-- Peer assessment activities
+**EXAMPLE OF GOOD OUTPUT:**
+**🎥 RECOMMENDED VIDEOS:**
+- [The Water Cycle for Kids (3:45)](https://www.youtube.com/watch?v=9_e7q-5Qw04) - Perfect introduction to water cycle concepts
+- [Water Cycle Experiment (6:20)](https://www.youtube.com/watch?v=ZVBEBreXH4w) - Shows hands-on demonstration students can replicate
 
-**EXAMPLE OF GOOD ENHANCEMENT**:
-Instead of: "Use Khan Academy videos about plants"
-Provide: "Show students how to create a simple plant observation journal. Give each student a small potted plant or leaf. Have them draw the plant and write 3 observations using these sentence starters: 'I notice...', 'I wonder...', 'This reminds me of...'"
+**IMPORTANT: Provide exactly 2 videos maximum per section. Choose the most relevant and highest quality videos.**
 
-**FOCUS ON**:
-- Activities using materials already in most classrooms
-- Simple demonstrations teachers can set up in 2 minutes
-- Student discussions and peer interactions
-- Hands-on exploration using common objects
-- Creative projects using basic art supplies
+**📚 ADDITIONAL RESOURCES:**
+- NASA Climate Kids Water Cycle Game (free online)
+- Printable water cycle diagram worksheet
 
-**OUTPUT REQUIREMENTS**:
-- Be specific and detailed
-- Provide complete activity instructions
-- Use materials readily available in classrooms
-- Make everything immediately actionable
-- Age-appropriate for ${request.classLevel}
-- Directly related to ${request.topicName || 'the lesson topic'}
+**🎯 TEACHING ACTIVITIES:**
+- Watch first video, pause at 1:30 to discuss evaporation
+- Have students create their own water cycle diagrams
+- Set up simple evaporation experiment using cups and water
 
-Format with clear headings and bullet points for easy teacher reference.
-Return only the enhanced content, not wrapped in JSON.`;
+Return only the enhanced content with specific, working links.`;
   }
 
   private parseGeneratedContent(generatedText: string, classLevel: string): AIContent {
@@ -383,8 +435,6 @@ Return only the enhanced content, not wrapped in JSON.`;
       if (jsonMatch) {
         const parsedContent = JSON.parse(jsonMatch[0]);
         return {
-          summary: parsedContent.summary || 'Summary not available',
-          interactiveActivities: JSON.stringify(parsedContent.interactiveActivities || []),
           lessonPlan: JSON.stringify(parsedContent.lessonPlan || {}),
           generatedAt: new Date(),
           classLevel
@@ -396,13 +446,12 @@ Return only the enhanced content, not wrapped in JSON.`;
 
     // Fallback: create basic structure from raw text
     return {
-      summary: generatedText.substring(0, 500) + '...',
-      interactiveActivities: JSON.stringify([]),
       lessonPlan: JSON.stringify({
         objectives: [],
+        materials: [],
         introduction: generatedText,
         mainContent: [],
-        conclusion: '',
+        wrapUp: '',
         assessment: '',
         homework: '',
         resources: []
