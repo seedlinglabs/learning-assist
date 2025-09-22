@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { Clock, BookOpen, Users, Target, Play, ExternalLink, Youtube, Gamepad2, Volume2, Monitor, Hand, VolumeX } from 'lucide-react';
+import { Clock, BookOpen, Users, Target, Play, ExternalLink, Youtube, Gamepad2, Monitor, Hand } from 'lucide-react';
 import { secureGeminiService } from '../services/secureGeminiService';
-import { SpeechService } from '../services/speechService';
 
 interface LessonSection {
   id: string;
@@ -35,7 +34,6 @@ const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({
   onLessonPlanUpdate
 }) => {
   const [sections, setSections] = useState<LessonSection[]>([]);
-  const [playingAudio, setPlayingAudio] = useState<string | null>(null);
   const parseLessonPlan = (text: string): LessonSection[] => {
     const sections: LessonSection[] = [];
     
@@ -430,7 +428,7 @@ const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({
   const getLinkIcon = (type: LessonLink['type']) => {
     switch (type) {
       case 'video': return <Youtube size={16} />;
-      case 'audio': return <Volume2 size={16} />;
+      case 'audio': return <ExternalLink size={16} />;
       case 'game': return <Gamepad2 size={16} />;
       case 'tool': return <Monitor size={16} />;
       case 'activity': return <Hand size={16} />;
@@ -474,10 +472,6 @@ const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({
     setSections(parsedSections);
   }, [lessonPlan]);
 
-  // Initialize speech service
-  React.useEffect(() => {
-    SpeechService.initialize();
-  }, []);
 
   const reconstructLessonPlan = (sections: LessonSection[]): string => {
     // For now, let's just return the original lesson plan format
@@ -487,36 +481,6 @@ const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({
   };
 
 
-  const handlePlayAudio = async (section: LessonSection) => {
-    if (playingAudio === section.id) {
-      // Stop current audio
-      SpeechService.stopSpeech();
-      setPlayingAudio(null);
-      return;
-    }
-
-    // Stop any currently playing audio
-    if (playingAudio) {
-      SpeechService.stopSpeech();
-    }
-
-    setPlayingAudio(section.id);
-
-    try {
-      const script = SpeechService.generateLessonScript(section.title, section.content, classLevel);
-      const result = await SpeechService.generateAudioForSection(script, section.title);
-      
-      if (!result.success) {
-        console.error('Failed to generate audio:', result.error);
-        alert('Audio generation failed: ' + result.error);
-      }
-    } catch (error) {
-      console.error('Error generating audio:', error);
-      alert('An error occurred while generating audio');
-    } finally {
-      setPlayingAudio(null);
-    }
-  };
 
   return (
     <div className="lesson-plan-display">
@@ -546,21 +510,6 @@ const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({
                       <span>{section.duration} min</span>
                     </div>
                   )}
-                  <button
-                    onClick={() => handlePlayAudio(section)}
-                    disabled={playingAudio === section.id}
-                    className="audio-button"
-                    title="Generate and play audio for this section"
-                  >
-                    {playingAudio === section.id ? (
-                      <VolumeX size={16} />
-                    ) : (
-                      <Volume2 size={16} />
-                    )}
-                    <span>
-                      {playingAudio === section.id ? 'Stop' : 'Audio'}
-                    </span>
-                  </button>
                 </div>
               </div>
               
