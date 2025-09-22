@@ -114,6 +114,23 @@ def generate_simple_token(user_data: dict) -> str:
     token_bytes = token_json.encode('utf-8')
     return base64.b64encode(token_bytes).decode('utf-8')
 
+def verify_simple_token(token: str) -> dict:
+    """Verify simple token and return user data"""
+    try:
+        # Decode base64 token
+        token_bytes = base64.b64decode(token.encode('utf-8'))
+        token_data = json.loads(token_bytes.decode('utf-8'))
+        
+        # Check if token is expired
+        exp_time = datetime.fromisoformat(token_data['exp'])
+        if exp_time < datetime.utcnow():
+            return {'valid': False, 'error': 'Token has expired'}
+        
+        return {'valid': True, 'user': token_data}
+        
+    except Exception as e:
+        return {'valid': False, 'error': f'Invalid token: {str(e)}'}
+
 def lambda_handler(event, context):
     """Main Lambda handler for authentication"""
     try:
@@ -161,6 +178,8 @@ def lambda_handler(event, context):
             return register_user(table, body)
         elif http_method == 'POST' and '/auth/login' in path:
             return login_user(table, body)
+        elif http_method == 'GET' and '/auth/verify' in path:
+            return verify_token(event)
         else:
             return {
                 'statusCode': 404,
@@ -335,6 +354,62 @@ def login_user(table, login_data):
     
     except Exception as e:
         print(f"Login error: {str(e)}")
+        return {
+            'statusCode': 500,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
+            'body': json.dumps({'error': str(e)})
+        }
+
+def verify_token(event):
+    """Verify token and return user data"""
+    try:
+        # Get token from Authorization header
+        headers = event.get('headers', {})
+        auth_header = headers.get('Authorization', '') or headers.get('authorization', '')
+        
+        if not auth_header.startswith('Bearer '):
+            return {
+                'statusCode': 401,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                'body': json.dumps({'error': 'No token provided'})
+            }
+        
+        token = auth_header[7:]  # Remove 'Bearer ' prefix
+        result = verify_simple_token(token)
+        
+        if result['valid']:
+            return {
+                'statusCode': 200,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                'body': json.dumps({
+                    'valid': True,
+                    'user': result['user']
+                })
+            }
+        else:
+            return {
+                'statusCode': 401,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                'body': json.dumps({
+                    'valid': False,
+                    'error': result['error']
+                })
+            }
+    
+    except Exception as e:
+        print(f"Verify token error: {str(e)}")
         return {
             'statusCode': 500,
             'headers': {
