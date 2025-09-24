@@ -173,7 +173,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       const updateRequest = {
         name: updates.name,
         description: updates.description,
-        documentLinks: updates.documentLinks,
+        documentLinks: updates.documentLinks || [],
         aiContent: updates.aiContent,
       };
 

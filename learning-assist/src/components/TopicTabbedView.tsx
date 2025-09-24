@@ -45,7 +45,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
       description: topic.description || '',
       documentLinkInput: '',
       documentLinkNameInput: '',
-      documentLinks: topic.documentLinks ? [...topic.documentLinks] : [],
+      documentLinks: topic.documentLinks ? [...topic.documentLinks] : [] as { name: string; url: string }[],
     });
     
     // Load saved AI content
