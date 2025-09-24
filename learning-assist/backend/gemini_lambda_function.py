@@ -121,7 +121,7 @@ def check_rate_limit(user_id):
         )
         
         daily_requests = len(response['Items'])
-        MAX_DAILY_REQUESTS = 100  # Configurable limit
+        MAX_DAILY_REQUESTS = 1000  # Configurable limit
         
         return daily_requests < MAX_DAILY_REQUESTS, daily_requests
         
