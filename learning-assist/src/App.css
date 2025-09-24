@@ -636,6 +636,13 @@ body {
   min-height: 80px;
 }
 
+.form-help-text {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-bottom: 0.75rem;
+  line-height: 1.5;
+}
+
 .modal-actions {
   display: flex;
   justify-content: flex-end;

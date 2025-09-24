@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Calendar, ExternalLink, Trash2, Save, Sparkles, BookOpen, Users, GraduationCap, Search, Youtube } from 'lucide-react';
+import { FileText, Calendar, ExternalLink, Trash2, Save, Sparkles, GraduationCap, Search, Youtube, User, Image } from 'lucide-react';
 import { Topic, DocumentLink } from '../types';
 import { useApp } from '../context/AppContext';
 import { secureGeminiService } from '../services/secureGeminiService';
 import { youtubeService } from '../services/youtubeService';
+import { imageSearchService } from '../services/imageSearchService';
 import DocumentDiscoveryModal from './DocumentDiscoveryModal';
 import LessonPlanDisplay from './LessonPlanDisplay';
+import TeachingGuideDisplay from './TeachingGuideDisplay';
+import ImageDisplay from './ImageDisplay';
 import '../styles/LessonPlanDisplay.css';
 
 interface TopicTabbedViewProps {
@@ -13,15 +16,18 @@ interface TopicTabbedViewProps {
   onTopicDeleted: () => void;
 }
 
-type TabType = 'details' | 'lesson-plan' | 'videos';
+type TabType = 'details' | 'lesson-plan' | 'teaching-guide' | 'images' | 'videos';
 
 const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted }) => {
   const { updateTopic, deleteTopic, loading, error, clearError, currentPath } = useApp();
   const [activeTab, setActiveTab] = useState<TabType>('details');
   const [generatingAI, setGeneratingAI] = useState(false);
   const [findingVideos, setFindingVideos] = useState(false);
+  const [aiGenerationStatus, setAiGenerationStatus] = useState<string>('');
   const [aiError, setAiError] = useState<string | null>(null);
   const [enhancedLessonPlan, setEnhancedLessonPlan] = useState<string | null>(null);
+  const [teachingGuide, setTeachingGuide] = useState<string | null>(null);
+  const [images, setImages] = useState<Array<{ title: string; description: string; url: string; source: string }>>([]);
   const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
   const [formData, setFormData] = useState({
     name: topic.name,
@@ -40,6 +46,15 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
       documentLinkNameInput: '',
       documentLinks: topic.documentLinks ? [...topic.documentLinks] : [],
     });
+    
+    // Load saved AI content
+    if (topic.aiContent?.teachingGuide) {
+      setTeachingGuide(topic.aiContent.teachingGuide);
+    }
+    
+    if (topic.aiContent?.images) {
+      setImages(topic.aiContent.images);
+    }
   }, [topic]);
 
   const formatDate = (date: Date) => {
@@ -91,15 +106,20 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     }
 
     const classLevel = currentPath.class?.name || 'Class 1';
+    const documentUrls = formData.documentLinks.map(link => link.url);
+    const subject = currentPath.subject?.name || 'General';
 
     setGeneratingAI(true);
     setAiError(null);
+    setAiGenerationStatus('');
+
+    // Track accumulated AI content locally
+    let accumulatedAiContent: any = { ...(topic.aiContent || {}) };
 
     try {
-      const documentUrls = formData.documentLinks.map(link => link.url);
-      const subject = currentPath.subject?.name || 'General';
-      
-      const result = await secureGeminiService.generateTopicContent(
+      // Step 1: Generate Lesson Plan
+      setAiGenerationStatus('Generating lesson plan...');
+      const lessonPlanResult = await secureGeminiService.generateTopicContent(
         formData.name,
         formData.description || '',
         documentUrls,
@@ -107,29 +127,135 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
         subject
       );
 
-      if (result.success && result.aiContent) {
-        console.log('DEBUG: Generated AI content:', result.aiContent);
+      if (lessonPlanResult.success && lessonPlanResult.aiContent) {
         
-        // Update the topic with the new AI content
+        // Accumulate the lesson plan content
+        accumulatedAiContent = {
+          ...accumulatedAiContent,
+          ...lessonPlanResult.aiContent,
+          generatedAt: new Date()
+        };
+        
+        // Update the topic with the lesson plan
         await updateTopic(topic.id, {
           name: formData.name.trim(),
           description: formData.description.trim() || undefined,
           documentLinks: formData.documentLinks,
-          aiContent: result.aiContent,
+          aiContent: accumulatedAiContent,
         });
-        
-        console.log('DEBUG: Topic update sent with aiContent:', result.aiContent);
-        
-        // Automatically find videos after AI content generation
-        await findVideosForTopic();
       } else {
-        setAiError(result.error || 'Failed to generate AI content');
+        throw new Error(lessonPlanResult.error || 'Failed to generate lesson plan');
       }
+
+      // Step 2: Generate Teaching Guide
+      setAiGenerationStatus('Generating teaching guide...');
+      
+      // Add timeout to teaching guide generation
+      const teachingGuidePromise = secureGeminiService.generateTeachingGuide(
+        formData.name,
+        formData.description || '',
+        documentUrls,
+        classLevel,
+        subject
+      );
+      
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Teaching guide generation timeout after 30 seconds')), 30000)
+      );
+      
+      const teachingGuideResult = await Promise.race([teachingGuidePromise, timeoutPromise]) as any;
+
+
+      if (teachingGuideResult.success && teachingGuideResult.teachingGuide) {
+        setTeachingGuide(teachingGuideResult.teachingGuide);
+        
+        // Accumulate the teaching guide content
+        accumulatedAiContent = {
+          ...accumulatedAiContent,
+          teachingGuide: teachingGuideResult.teachingGuide
+        };
+        
+        // Update topic with teaching guide
+        const teachingGuideUpdate = {
+          name: formData.name.trim(),
+          description: formData.description.trim() || undefined,
+          documentLinks: formData.documentLinks,
+          aiContent: accumulatedAiContent,
+        };
+        await updateTopic(topic.id, teachingGuideUpdate);
+      } else {
+        console.error('Failed to generate teaching guide:', teachingGuideResult.error);
+        console.error('Teaching guide result details:', teachingGuideResult);
+      }
+
+      // Step 3: Find Educational Images
+      setAiGenerationStatus('Finding educational images...');
+      try {
+        // Add timeout to image search
+        const imageSearchPromise = imageSearchService.searchTopicImages(
+          formData.name,
+          classLevel,
+          subject
+        );
+        
+        const imageTimeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Image search timeout after 15 seconds')), 15000)
+        );
+        
+        const imageResult = await Promise.race([imageSearchPromise, imageTimeoutPromise]) as any;
+        
+        
+        if (imageResult.success && imageResult.images) {
+          // Convert ImageSearchResult to the format expected by ImageDisplay
+          const formattedImages = imageResult.images.map((img: any) => ({
+            title: img.title,
+            description: img.description,
+            url: img.url,
+            source: img.source
+          }));
+          setImages(formattedImages);
+          
+          // Accumulate the images content
+          accumulatedAiContent = {
+            ...accumulatedAiContent,
+            images: formattedImages
+          };
+          
+          // Update topic with images
+          const imagesUpdate = {
+            name: formData.name.trim(),
+            description: formData.description.trim() || undefined,
+            documentLinks: formData.documentLinks,
+            aiContent: accumulatedAiContent,
+          };
+          await updateTopic(topic.id, imagesUpdate);
+        } else {
+          console.error('Failed to find images:', imageResult.error);
+          console.error('Image result details:', imageResult);
+        }
+      } catch (error) {
+        console.error('Error finding images:', error);
+      }
+
+      // Step 4: Find Videos
+      setAiGenerationStatus('Searching for educational videos...');
+      await findVideosForTopic(accumulatedAiContent);
+
+      setAiGenerationStatus('Complete!');
+      
     } catch (error) {
-      setAiError('An error occurred while generating AI content');
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred while generating AI content';
+      setAiError(errorMessage);
       console.error('AI content generation error:', error);
+      
+      // If it's an API key error, show a more helpful message
+      if (errorMessage.includes('temporarily unavailable') || errorMessage.includes('API key')) {
+        setAiGenerationStatus('AI service unavailable - check configuration');
+      }
     } finally {
       setGeneratingAI(false);
+      // Clear status after a short delay
+      setTimeout(() => setAiGenerationStatus(''), 2000);
     }
   };
 
@@ -144,22 +270,22 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     }
   };
 
-  const findVideosForTopic = async () => {
-    if (!topic.aiContent?.lessonPlan) return;
+  const findVideosForTopic = async (accumulatedAiContent: any) => {
+    if (!accumulatedAiContent?.lessonPlan) return;
     
     setFindingVideos(true);
     try {
       // Search for videos related to this topic
       const videoResults = await youtubeService.searchTopicVideos(
         topic.name,
-        topic.aiContent.classLevel || 'Class 1',
+        accumulatedAiContent.classLevel || 'Class 1',
         currentPath.subject?.name
       );
 
       if (videoResults.videos.length > 0) {
-        // Update the topic's AI content with videos
+        // Update the accumulated AI content with videos
         const updatedAIContent = {
-          ...topic.aiContent,
+          ...accumulatedAiContent,
           videos: videoResults.videos
         };
 
@@ -275,17 +401,13 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
 
   // Debug logging for AI content
   React.useEffect(() => {
-    console.log('DEBUG TopicTabbedView - Full topic object:', topic);
-    console.log('DEBUG TopicTabbedView - AI Content:', topic.aiContent);
-    if (topic.aiContent) {
-      console.log('DEBUG TopicTabbedView - Has lessonPlan:', !!topic.aiContent.lessonPlan);
-      console.log('DEBUG TopicTabbedView - LessonPlan value:', topic.aiContent.lessonPlan);
-    }
   }, [topic]);
 
   const tabs = [
     { id: 'details', label: 'Topic Details', icon: FileText },
     { id: 'lesson-plan', label: 'Lesson Plan', icon: GraduationCap, disabled: !topic.aiContent?.lessonPlan },
+    { id: 'teaching-guide', label: 'Teaching Guide', icon: User, disabled: !topic.aiContent?.teachingGuide && !teachingGuide },
+    { id: 'images', label: 'Images', icon: Image, disabled: (!topic.aiContent?.images || topic.aiContent.images.length === 0) && (!images || images.length === 0) },
     { id: 'videos', label: 'Videos', icon: Youtube, disabled: !topic.aiContent?.videos || topic.aiContent.videos.length === 0 },
   ];
 
@@ -308,9 +430,10 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
             onClick={generateAllAIContent}
             disabled={generatingAI || loading || formData.documentLinks.length === 0}
             className="btn btn-primary btn-sm"
+            title={formData.documentLinks.length === 0 ? 'Add document links first' : 'Generate AI content for this topic'}
           >
             <Sparkles size={16} />
-            {generatingAI ? 'Generating AI Content...' : 'Generate AI Content'}
+            {generatingAI ? (aiGenerationStatus || 'Generating AI Content...') : 'Generate AI Content'}
           </button>
           <button onClick={handleSave} className="btn btn-secondary btn-sm" disabled={loading}>
             <Save size={16} />
@@ -354,14 +477,21 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
         {activeTab === 'details' && (
           <div className="tab-panel">
             <div className="topic-detail-section">
-              <h3>Description</h3>
+              <h3>Textbook Content</h3>
               <textarea
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
-                placeholder="Enter topic description (optional)"
-                rows={3}
+                placeholder="Textbook content will appear here after uploading a PDF or can be entered manually"
+                rows={6}
+                readOnly={!!formData.description}
               />
+              {formData.description && (
+                <p className="form-help-text">
+                  This content is used by AI to generate lesson plans and teaching guides. 
+                  Upload a PDF to automatically extract textbook content.
+                </p>
+              )}
             </div>
 
             <div className="topic-detail-section">
@@ -454,6 +584,13 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
 
         {activeTab === 'lesson-plan' && topic.aiContent?.lessonPlan && (
           <div className="tab-panel lesson-plan-panel">
+            {topic.aiContent.generatedAt && (
+              <div className="ai-content-info">
+                <span className="generated-timestamp">
+                  Generated on {new Date(topic.aiContent.generatedAt).toLocaleDateString()} at {new Date(topic.aiContent.generatedAt).toLocaleTimeString()}
+                </span>
+              </div>
+            )}
             <LessonPlanDisplay
               lessonPlan={topic.aiContent.lessonPlan}
               classLevel={topic.aiContent.classLevel || 'Class 1'}
@@ -461,6 +598,28 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
               subject={currentPath.subject?.name}
               onSectionUpdate={handleSectionUpdate}
               onLessonPlanUpdate={handleLessonPlanUpdate}
+            />
+          </div>
+        )}
+
+        {activeTab === 'teaching-guide' && (topic.aiContent?.teachingGuide || teachingGuide) && (
+          <div className="tab-panel teaching-guide-panel">
+            <TeachingGuideDisplay
+              teachingGuide={topic.aiContent?.teachingGuide || teachingGuide || ''}
+              topicName={topic.name}
+              classLevel={currentPath.class?.name || 'Class 1'}
+              subject={currentPath.subject?.name}
+            />
+          </div>
+        )}
+
+        {activeTab === 'images' && ((topic.aiContent?.images && topic.aiContent.images.length > 0) || (images && images.length > 0)) && (
+          <div className="tab-panel images-panel">
+            <ImageDisplay
+              images={topic.aiContent?.images || images || []}
+              topicName={topic.name}
+              classLevel={currentPath.class?.name || 'Class 1'}
+              subject={currentPath.subject?.name}
             />
           </div>
         )}

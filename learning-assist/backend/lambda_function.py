@@ -430,6 +430,13 @@ def update_topic(table, topic_id, update_data):
     try:
         print(f"DEBUG: update_topic called with topic_id: {topic_id}")
         print(f"DEBUG: update_data: {update_data}")
+        print(f"DEBUG: aiContent in update_data: {update_data.get('aiContent', 'NOT_FOUND')}")
+        if 'aiContent' in update_data:
+            ai_content = update_data['aiContent']
+            print(f"DEBUG: aiContent type: {type(ai_content)}")
+            print(f"DEBUG: aiContent keys: {list(ai_content.keys()) if isinstance(ai_content, dict) else 'Not a dict'}")
+            print(f"DEBUG: teachingGuide in aiContent: {'teachingGuide' in ai_content if isinstance(ai_content, dict) else 'N/A'}")
+            print(f"DEBUG: images in aiContent: {'images' in ai_content if isinstance(ai_content, dict) else 'N/A'}")
         # Check if topic exists
         existing_response = table.get_item(Key={'id': topic_id})
         if 'Item' not in existing_response:

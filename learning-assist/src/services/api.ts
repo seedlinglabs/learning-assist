@@ -33,8 +33,6 @@ export interface ApiTopic {
 
 // Transform API response to frontend Topic format
 const transformApiTopicToTopic = (apiTopic: any): Topic => {
-  console.log('DEBUG API Transform - Raw API topic:', apiTopic);
-  console.log('DEBUG API Transform - Raw ai_content:', apiTopic.ai_content);
   
   const transformed = {
     id: apiTopic.id,
@@ -45,6 +43,8 @@ const transformApiTopicToTopic = (apiTopic: any): Topic => {
       : undefined,
     aiContent: apiTopic.ai_content ? {
       lessonPlan: apiTopic.ai_content.lessonPlan,
+      teachingGuide: apiTopic.ai_content.teachingGuide,
+      images: apiTopic.ai_content.images || undefined,
       generatedAt: apiTopic.ai_content.generatedAt ? new Date(apiTopic.ai_content.generatedAt) : undefined,
       classLevel: apiTopic.ai_content.classLevel,
       videos: apiTopic.ai_content.videos || undefined,
@@ -52,9 +52,6 @@ const transformApiTopicToTopic = (apiTopic: any): Topic => {
     createdAt: new Date(apiTopic.created_at),
     updatedAt: new Date(apiTopic.updated_at)
   };
-  
-  console.log('DEBUG API Transform - Transformed topic:', transformed);
-  console.log('DEBUG API Transform - Transformed aiContent:', transformed.aiContent);
   
   return transformed;
 };
@@ -206,6 +203,7 @@ export const topicsAPI = {
   // Update existing topic
   async update(topicId: string, updates: UpdateTopicRequest): Promise<Topic> {
     try {
+      
       const response = await fetch(`${API_BASE_URL}/topics/${topicId}`, {
         method: 'PUT',
         headers: {
@@ -215,6 +213,7 @@ export const topicsAPI = {
       });
       
       const data = await handleResponse(response);
+      console.log('PUT Topic Response:', data);
       return transformApiTopicToTopic(data);
     } catch (error) {
       console.error('Error updating topic:', error);

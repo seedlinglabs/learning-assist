@@ -37,6 +37,7 @@ export interface GeminiResponse {
   success: boolean;
   data?: any;
   error?: string;
+  details?: string;
   usage?: {
     daily_requests: number;
     limit: number;
@@ -46,6 +47,7 @@ export interface GeminiResponse {
 class SecureGeminiService {
   private async makeSecureRequest(endpoint: string, payload: any): Promise<GeminiResponse> {
     try {
+      
       // Get auth token if available (for usage tracking)
       const authToken = localStorage.getItem('authToken');
       
@@ -62,6 +64,7 @@ class SecureGeminiService {
         headers,
         body: JSON.stringify(payload),
       });
+      
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -77,6 +80,15 @@ class SecureGeminiService {
           };
         }
         
+        // Handle API key errors specifically
+        if (response.status === 400 && errorData.error?.message?.includes('API key not valid')) {
+          return {
+            success: false,
+            error: 'AI service is temporarily unavailable. Please contact support or try again later.',
+            details: 'The AI service requires configuration. This is a development environment issue.'
+          };
+        }
+        
         throw new Error(errorData.error || `HTTP ${response.status}`);
       }
 
@@ -88,6 +100,7 @@ class SecureGeminiService {
 
     } catch (error) {
       console.error(`Secure Gemini API error (${endpoint}):`, error);
+      console.error(`DEBUG makeSecureRequest: Error details:`, error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred'
@@ -139,6 +152,75 @@ class SecureGeminiService {
         success: false, 
         error: 'Failed to parse generated content' 
       };
+    }
+  }
+
+  async generateTeachingGuide(
+    topicName: string,
+    description: string,
+    documentUrls: string[],
+    classLevel: string,
+    subject: string
+  ): Promise<{ success: boolean; teachingGuide?: string; error?: string }> {
+    
+    
+    const prompt = this.buildTeachingGuidePrompt(topicName, description, documentUrls, classLevel, subject);
+    
+    const payload = {
+      contents: [{
+        parts: [{
+          text: prompt
+        }]
+      }],
+      generationConfig: {
+        temperature: 0.8,
+        topK: 40,
+        topP: 0.95,
+        maxOutputTokens: 4096,
+      }
+    };
+
+    const response = await this.makeSecureRequest('generate-content', payload);
+    
+    if (!response.success) {
+      return { success: false, error: response.error };
+    }
+
+    try {
+      const generatedText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!generatedText) {
+        return { success: false, error: 'No teaching guide generated' };
+      }
+      return { success: true, teachingGuide: generatedText };
+      
+    } catch (error) {
+      return { 
+        success: false, 
+        error: 'Failed to parse generated teaching guide' 
+      };
+    }
+  }
+
+  // Image generation is now handled by imageSearchService
+  // This method is kept for backward compatibility but not used
+
+  private extractSourceFromUrl(url: string): string {
+    try {
+      const urlObj = new URL(url);
+      const hostname = urlObj.hostname;
+      
+      if (hostname.includes('unsplash.com')) return 'Unsplash';
+      if (hostname.includes('pexels.com')) return 'Pexels';
+      if (hostname.includes('pixabay.com')) return 'Pixabay';
+      if (hostname.includes('freepik.com')) return 'Freepik';
+      if (hostname.includes('shutterstock.com')) return 'Shutterstock';
+      if (hostname.includes('gettyimages.com')) return 'Getty Images';
+      if (hostname.includes('wikipedia.org')) return 'Wikipedia';
+      if (hostname.includes('commons.wikimedia.org')) return 'Wikimedia Commons';
+      
+      return hostname.replace('www.', '');
+    } catch {
+      return 'Unknown Source';
     }
   }
 
@@ -290,11 +372,23 @@ class SecureGeminiService {
 
   // Private helper methods (same as original service)
   private buildTopicPrompt(topicName: string, description: string, documentUrls: string[], classLevel: string, subject: string): string {
-    return `Create a comprehensive lesson plan for a ${classLevel} ${subject} topic.
+    // Check if description contains PDF content (longer than typical descriptions)
+    const isPDFContent = description && description.length > 500;
+    
+    const basePrompt = `Create a comprehensive lesson plan for a ${classLevel} ${subject} topic.
 
 Topic: ${topicName}
-Description: ${description}
-Referenced Documents: ${documentUrls.length > 0 ? documentUrls.join(', ') : 'None provided'}
+Referenced Documents: ${documentUrls.length > 0 ? documentUrls.join(', ') : 'None provided'}`;
+
+    const descriptionSection = isPDFContent 
+      ? `TEXTBOOK CONTENT (Use this as your primary reference):
+${description}
+
+IMPORTANT: Base your entire lesson plan on the specific content provided above. Reference specific sections, examples, and information from this textbook content. Use the actual content, data, and examples from the textbook in your lesson plan.`
+      : `Description: ${description || 'No description provided'}`;
+
+    return `${basePrompt}
+${descriptionSection}
 
 Please generate a detailed 40-minute lesson plan in this exact JSON format:
 {
@@ -322,10 +416,94 @@ Requirements:
 - Clear instructions for teachers
 - Include timing for each lesson segment
 - Include specific educational resource URLs where applicable
-- Align with ${subject} curriculum standards
+- Align with ${subject} curriculum standards${isPDFContent ? `
+- Use specific content, examples, and data from the provided textbook material
+- Reference specific sections or pages when applicable
+- Base all activities and explanations on the textbook content
+- Show students exactly where to find information in their textbook` : ''}
 
 Make all content immediately usable in the classroom.`;
   }
+
+  private buildTeachingGuidePrompt(topicName: string, description: string, documentUrls: string[], classLevel: string, subject: string): string {
+    // Check if description contains PDF content (longer than typical descriptions)
+    const isPDFContent = description && description.length > 500;
+    
+    const basePrompt = `You are an expert teacher delivering a ${classLevel} ${subject} lesson on "${topicName}".
+
+Topic: ${topicName}
+Referenced Documents: ${documentUrls.length > 0 ? documentUrls.join(', ') : 'None provided'}`;
+
+    const descriptionSection = isPDFContent 
+      ? `TEXTBOOK CONTENT (Use this as your primary reference):
+${description}
+
+IMPORTANT: Base your entire teaching approach on the specific content provided above. Reference specific sections, examples, and information from this textbook content. Use the actual content, data, and examples from the textbook in your teaching.`
+      : `Description: ${description || 'No description provided'}`;
+
+    return `${basePrompt}
+${descriptionSection}
+
+TEACHING SCENARIO:
+Imagine you are the actual teacher in the classroom right now. The students are sitting in front of you, and you need to teach this topic in a 40-minute class period. You must:
+
+1. **BE THE TEACHER** - Act as if you are personally delivering this lesson
+2. **ENGAGE STUDENTS** - Use your voice, gestures, and teaching presence
+3. **TEACH CONVERSATIONALLY** - Write as if you are speaking directly to students
+4. **USE CLASSROOM MANAGEMENT** - Handle questions, maintain attention, manage time
+5. **ADAPT IN REAL-TIME** - Respond to student reactions and adjust your teaching
+
+TEACHING GUIDE STRUCTURE:
+
+**CLASSROOM SETUP (2 minutes)**
+- How you greet students and set the tone
+- What you write on the board
+- How you organize materials
+- Your opening attention-grabbing statement
+
+**LESSON DELIVERY (35 minutes)**
+- Your exact words and explanations
+- When you pause for questions
+- How you use the textbook/whiteboard
+- Specific examples you give
+- Questions you ask students
+- How you handle student responses
+- When you check for understanding
+- How you manage time and transitions
+
+**STUDENT INTERACTION (Throughout)**
+- How you encourage participation
+- How you handle different learning styles
+- How you manage disruptive behavior
+- How you keep everyone engaged
+
+**CLOSING (3 minutes)**
+- How you summarize key points
+- How you assign homework
+- How you preview the next lesson
+- Your closing statement
+
+TEACHING STYLE REQUIREMENTS:
+- Use "I" statements (e.g., "I'm going to show you...", "Let me explain...")
+- Include specific dialogue and conversations
+- Show your teaching personality and enthusiasm
+- Demonstrate classroom management techniques
+- Use age-appropriate language for ${classLevel} students
+- Include specific examples and demonstrations
+- Show how you adapt to different student needs
+
+${isPDFContent ? `
+TEXTBOOK INTEGRATION:
+- Reference specific pages, sections, or examples from the provided textbook
+- Use actual content, data, and examples from the textbook
+- Show students exactly where to find information
+- Base all explanations on the textbook material
+- Use textbook diagrams, charts, or illustrations in your teaching` : ''}
+
+Write this as a complete teaching script that shows exactly how you would deliver this lesson if you were the teacher in the classroom right now.`;
+  }
+
+  // Image discovery prompt removed - now using imageSearchService
 
   private buildDocumentDiscoveryPrompt(request: DocumentDiscoveryRequest): string {
     return `Suggest educational documents and resources for ${request.classLevel} ${request.subject} students.

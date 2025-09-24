@@ -53,8 +53,9 @@ export const schools: School[] = [
   - Subjects per class: Science, Social Studies, Mathematics, Kannada, English, Computers
   - Topics: Loaded dynamically from backend API
 
-- **Seedling Test School**
-  - Classes: 1-3 (for testing purposes)
-  - Subjects per class: Science, Social Studies, Mathematics, Kannada, English, Computers
+- **Content Development**
+  - Classes: Grade 6, Grade 7, Grade 8
+  - Subjects per class: Science, Mathematics, English, Social Studies, Computers
   - Topics: Loaded dynamically from backend API
-  - Purpose: Development and testing environment
+  - Purpose: Content development and educational material creation
+  - Source: [Google Drive Folder](https://drive.google.com/drive/folders/1G4Gk7Kq6RfIyQ_hCpmNdfLd58xMA3uD0?usp=drive_link)

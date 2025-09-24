@@ -1,0 +1,282 @@
+.teaching-guide-display {
+  max-width: 100%;
+  margin: 0;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.teaching-guide-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.teaching-guide-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.teaching-guide-title h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.teaching-guide-meta {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.class-level,
+.subject {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  backdrop-filter: blur(10px);
+}
+
+.teaching-guide-intro {
+  padding: 1.5rem;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.teaching-guide-intro p {
+  margin: 0;
+  color: #475569;
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+.teaching-guide-content {
+  padding: 0;
+}
+
+.teaching-guide-section {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.teaching-guide-section:last-child {
+  border-bottom: none;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.25rem 1.5rem;
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.section-header h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.section-content {
+  padding: 1.5rem;
+  line-height: 1.7;
+}
+
+.teaching-guide-paragraph {
+  margin: 0 0 1rem 0;
+  color: #374151;
+  font-size: 0.95rem;
+}
+
+.teaching-guide-paragraph:last-child {
+  margin-bottom: 0;
+}
+
+.teaching-guide-bullet {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  color: #374151;
+  font-size: 0.95rem;
+}
+
+.bullet-point {
+  color: #667eea;
+  font-weight: bold;
+  margin-top: 0.125rem;
+  flex-shrink: 0;
+}
+
+.bullet-content {
+  flex: 1;
+  line-height: 1.6;
+}
+
+.teaching-guide-numbered {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  color: #374151;
+  font-size: 0.95rem;
+}
+
+.number {
+  background: #667eea;
+  color: white;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: bold;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.numbered-content {
+  flex: 1;
+  line-height: 1.6;
+}
+
+.teaching-guide-raw {
+  padding: 1.5rem;
+}
+
+.teaching-guide-text {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1rem;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: #374151;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-x: auto;
+  margin: 0;
+}
+
+.teaching-guide-footer {
+  padding: 1.5rem;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+}
+
+.teaching-tips h4 {
+  margin: 0 0 1rem 0;
+  color: #1e293b;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.teaching-tips ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: #475569;
+}
+
+.teaching-tips li {
+  margin-bottom: 0.5rem;
+  line-height: 1.5;
+  font-size: 0.9rem;
+}
+
+.teaching-tips li:last-child {
+  margin-bottom: 0;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .teaching-guide-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  
+  .teaching-guide-title h2 {
+    font-size: 1.25rem;
+  }
+  
+  .teaching-guide-meta {
+    flex-wrap: wrap;
+  }
+  
+  .section-header {
+    padding: 1rem;
+  }
+  
+  .section-content {
+    padding: 1rem;
+  }
+  
+  .teaching-guide-intro,
+  .teaching-guide-footer {
+    padding: 1rem;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .teaching-guide-display {
+    background: #1e293b;
+    color: #f1f5f9;
+  }
+  
+  .teaching-guide-intro {
+    background: #334155;
+    border-bottom-color: #475569;
+  }
+  
+  .teaching-guide-intro p {
+    color: #cbd5e1;
+  }
+  
+  .section-header {
+    background: #334155;
+    border-bottom-color: #475569;
+  }
+  
+  .section-header h3 {
+    color: #f1f5f9;
+  }
+  
+  .teaching-guide-paragraph,
+  .bullet-content,
+  .numbered-content {
+    color: #cbd5e1;
+  }
+  
+  .teaching-guide-text {
+    background: #334155;
+    border-color: #475569;
+    color: #cbd5e1;
+  }
+  
+  .teaching-guide-footer {
+    background: #334155;
+    border-top-color: #475569;
+  }
+  
+  .teaching-tips h4 {
+    color: #f1f5f9;
+  }
+  
+  .teaching-tips li {
+    color: #cbd5e1;
+  }
+}
