@@ -157,13 +157,115 @@ const createClasses = (): Class[] => {
     ]
   });
 
+  // Grade 9
+  classes.push({
+    id: 'content-dev-grade-9',
+    name: 'Grade 9',
+    description: 'Grade 9 - Content Development',
+    createdAt: new Date('2024-09-23'),
+    updatedAt: new Date('2024-09-23'),
+    subjects: [
+      {
+        id: 'content-dev-grade-9-science',
+        name: 'Science',
+        description: 'Grade 9 Science - Content Development',
+        topics: [],
+        createdAt: new Date('2024-09-23'),
+        updatedAt: new Date('2024-09-23')
+      },
+      {
+        id: 'content-dev-grade-9-mathematics',
+        name: 'Mathematics',
+        description: 'Grade 9 Mathematics - Content Development',
+        topics: [],
+        createdAt: new Date('2024-09-23'),
+        updatedAt: new Date('2024-09-23')
+      },
+      {
+        id: 'content-dev-grade-9-english',
+        name: 'English',
+        description: 'Grade 9 English - Content Development',
+        topics: [],
+        createdAt: new Date('2024-09-23'),
+        updatedAt: new Date('2024-09-23')
+      },
+      {
+        id: 'content-dev-grade-9-social-studies',
+        name: 'Social Studies',
+        description: 'Grade 9 Social Studies - Content Development',
+        topics: [],
+        createdAt: new Date('2024-09-23'),
+        updatedAt: new Date('2024-09-23')
+      },
+      {
+        id: 'content-dev-grade-9-computers',
+        name: 'Computers',
+        description: 'Grade 9 Computers - Content Development',
+        topics: [],
+        createdAt: new Date('2024-09-23'),
+        updatedAt: new Date('2024-09-23')
+      }
+    ]
+  });
+
+  // Grade 10
+  classes.push({
+    id: 'content-dev-grade-10',
+    name: 'Grade 10',
+    description: 'Grade 10 - Content Development',
+    createdAt: new Date('2024-09-23'),
+    updatedAt: new Date('2024-09-23'),
+    subjects: [
+      {
+        id: 'content-dev-grade-10-science',
+        name: 'Science',
+        description: 'Grade 10 Science - Content Development',
+        topics: [],
+        createdAt: new Date('2024-09-23'),
+        updatedAt: new Date('2024-09-23')
+      },
+      {
+        id: 'content-dev-grade-10-mathematics',
+        name: 'Mathematics',
+        description: 'Grade 10 Mathematics - Content Development',
+        topics: [],
+        createdAt: new Date('2024-09-23'),
+        updatedAt: new Date('2024-09-23')
+      },
+      {
+        id: 'content-dev-grade-10-english',
+        name: 'English',
+        description: 'Grade 10 English - Content Development',
+        topics: [],
+        createdAt: new Date('2024-09-23'),
+        updatedAt: new Date('2024-09-23')
+      },
+      {
+        id: 'content-dev-grade-10-social-studies',
+        name: 'Social Studies',
+        description: 'Grade 10 Social Studies - Content Development',
+        topics: [],
+        createdAt: new Date('2024-09-23'),
+        updatedAt: new Date('2024-09-23')
+      },
+      {
+        id: 'content-dev-grade-10-computers',
+        name: 'Computers',
+        description: 'Grade 10 Computers - Content Development',
+        topics: [],
+        createdAt: new Date('2024-09-23'),
+        updatedAt: new Date('2024-09-23')
+      }
+    ]
+  });
+
   return classes;
 };
 
 export const contentDevelopmentSchool: School = {
   id: 'content-development-school',
   name: 'Content Development',
-  description: 'Content Development School - Focused on creating educational content for Grades 6-8',
+  description: 'Content Development School - Focused on creating educational content for Grades 6-10',
   createdAt: new Date('2024-09-23'),
   updatedAt: new Date('2024-09-23'),
   classes: createClasses()
