@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Calendar, ExternalLink, Trash2, Save, Sparkles, GraduationCap, Search, Youtube, User, Image, Users } from 'lucide-react';
+import { FileText, Calendar, ExternalLink, Trash2, Save, Sparkles, GraduationCap, Search, Youtube, User, Users } from 'lucide-react';
 import { Topic, DocumentLink } from '../types';
 import { useApp } from '../context/AppContext';
 import { secureGeminiService } from '../services/secureGeminiService';
 import { youtubeService } from '../services/youtubeService';
-import { imageSearchService } from '../services/imageSearchService';
 import DocumentDiscoveryModal from './DocumentDiscoveryModal';
 import LessonPlanDisplay from './LessonPlanDisplay';
 import TeachingGuideDisplay from './TeachingGuideDisplay';
 import GroupDiscussionDisplay from './GroupDiscussionDisplay';
-import ImageDisplay from './ImageDisplay';
 import { PDFUpload } from './PDFUpload';
 import '../styles/LessonPlanDisplay.css';
 
@@ -18,7 +16,7 @@ interface TopicTabbedViewProps {
   onTopicDeleted: () => void;
 }
 
-type TabType = 'details' | 'lesson-plan' | 'teaching-guide' | 'group-discussion' | 'images' | 'videos';
+type TabType = 'details' | 'lesson-plan' | 'teaching-guide' | 'group-discussion' | 'videos';
 
 const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted }) => {
   const { updateTopic, deleteTopic, loading, error, clearError, currentPath } = useApp();
@@ -30,7 +28,6 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
   const [enhancedLessonPlan, setEnhancedLessonPlan] = useState<string | null>(null);
   const [teachingGuide, setTeachingGuide] = useState<string | null>(null);
   const [groupDiscussion, setGroupDiscussion] = useState<string | null>(null);
-  const [images, setImages] = useState<Array<{ title: string; description: string; url: string; source: string }>>([]);
   const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -60,9 +57,6 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
       setGroupDiscussion(topic.aiContent.groupDiscussion);
     }
     
-    if (topic.aiContent?.images) {
-      setImages(topic.aiContent.images);
-    }
   }, [topic]);
 
   const formatDate = (date: Date) => {
@@ -243,56 +237,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
         console.error('Group discussion result details:', groupDiscussionResult);
       }
 
-      // Step 4: Find Educational Images
-      setAiGenerationStatus('Finding educational images...');
-      try {
-        // Add timeout to image search
-        const imageSearchPromise = imageSearchService.searchTopicImages(
-          formData.name,
-          classLevel,
-          subject
-        );
-        
-        const imageTimeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Image search timeout after 15 seconds')), 15000)
-        );
-        
-        const imageResult = await Promise.race([imageSearchPromise, imageTimeoutPromise]) as any;
-        
-        
-        if (imageResult.success && imageResult.images) {
-          // Convert ImageSearchResult to the format expected by ImageDisplay
-          const formattedImages = imageResult.images.map((img: any) => ({
-            title: img.title,
-            description: img.description,
-            url: img.url,
-            source: img.source
-          }));
-          setImages(formattedImages);
-          
-          // Accumulate the images content
-          accumulatedAiContent = {
-            ...accumulatedAiContent,
-            images: formattedImages
-          };
-          
-          // Update topic with images
-          const imagesUpdate = {
-            name: formData.name.trim(),
-            description: formData.description.trim() || undefined,
-            documentLinks: formData.documentLinks,
-            aiContent: accumulatedAiContent,
-          };
-          await updateTopic(topic.id, imagesUpdate);
-        } else {
-          console.error('Failed to find images:', imageResult.error);
-          console.error('Image result details:', imageResult);
-        }
-      } catch (error) {
-        console.error('Error finding images:', error);
-      }
-
-      // Step 5: Find Videos
+      // Step 4: Find Videos
       setAiGenerationStatus('Searching for educational videos...');
       await findVideosForTopic(accumulatedAiContent);
 
@@ -463,7 +408,6 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     { id: 'lesson-plan', label: 'Lesson Plan', icon: GraduationCap, disabled: !topic.aiContent?.lessonPlan },
     { id: 'teaching-guide', label: 'Teaching Guide', icon: User, disabled: !topic.aiContent?.teachingGuide && !teachingGuide },
     { id: 'group-discussion', label: 'Group Discussion', icon: Users, disabled: !topic.aiContent?.groupDiscussion && !groupDiscussion },
-    { id: 'images', label: 'Images', icon: Image, disabled: (!topic.aiContent?.images || topic.aiContent.images.length === 0) && (!images || images.length === 0) },
     { id: 'videos', label: 'Videos', icon: Youtube, disabled: !topic.aiContent?.videos || topic.aiContent.videos.length === 0 },
   ];
 
@@ -706,16 +650,6 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
           </div>
         )}
 
-        {activeTab === 'images' && ((topic.aiContent?.images && topic.aiContent.images.length > 0) || (images && images.length > 0)) && (
-          <div className="tab-panel images-panel">
-            <ImageDisplay
-              images={topic.aiContent?.images || images || []}
-              topicName={topic.name}
-              classLevel={currentPath.class?.name || 'Class 1'}
-              subject={currentPath.subject?.name}
-            />
-          </div>
-        )}
 
         {activeTab === 'videos' && topic.aiContent?.videos && topic.aiContent.videos.length > 0 && (
           <div className="tab-panel videos-panel">
