@@ -48,14 +48,23 @@ export const schools: School[] = [
 
 ## Current Schools
 
-- **Sri Vidyaniketan Educational Institutions**
-  - Classes: 1-10
-  - Subjects per class: Science, Social Studies, Mathematics, Kannada, English, Computers
-  - Topics: Loaded dynamically from backend API
-
 - **Content Development**
   - Classes: Grade 6, Grade 7, Grade 8
   - Subjects per class: Science, Mathematics, English, Social Studies, Computers
   - Topics: Loaded dynamically from backend API
   - Purpose: Content development and educational material creation
   - Source: [Google Drive Folder](https://drive.google.com/drive/folders/1G4Gk7Kq6RfIyQ_hCpmNdfLd58xMA3uD0?usp=drive_link)
+
+- **Sri Vidyaniketan Public School (CBSE)**
+  - Classes: Grade 1-10
+  - Subjects per class: Science, Mathematics, English
+  - Topics: Loaded dynamically from backend API
+  - Purpose: CBSE curriculum focused on core subjects
+  - Board: Central Board of Secondary Education (CBSE)
+
+- **Sri Vidyaniketan International School (ICSE)**
+  - Classes: Grade 1-10
+  - Subjects per class: Science, Mathematics, Social Studies
+  - Topics: Loaded dynamically from backend API
+  - Purpose: ICSE curriculum with international perspective
+  - Board: Indian Certificate of Secondary Education (ICSE)
