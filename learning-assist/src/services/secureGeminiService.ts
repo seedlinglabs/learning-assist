@@ -47,8 +47,6 @@ export interface GeminiResponse {
 class SecureGeminiService {
   private async makeSecureRequest(endpoint: string, payload: any): Promise<GeminiResponse> {
     try {
-      console.log(`DEBUG makeSecureRequest: Starting request to ${endpoint}`);
-      console.log(`DEBUG makeSecureRequest: Payload size:`, JSON.stringify(payload).length);
       
       // Get auth token if available (for usage tracking)
       const authToken = localStorage.getItem('authToken');
@@ -61,14 +59,12 @@ class SecureGeminiService {
         headers['Authorization'] = `Bearer ${authToken}`;
       }
 
-      console.log(`DEBUG makeSecureRequest: Making fetch request to ${GEMINI_PROXY_URL}/${endpoint}`);
       const response = await fetch(`${GEMINI_PROXY_URL}/${endpoint}`, {
         method: 'POST',
         headers,
         body: JSON.stringify(payload),
       });
       
-      console.log(`DEBUG makeSecureRequest: Response status: ${response.status}`);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -97,7 +93,6 @@ class SecureGeminiService {
       }
 
       const data = await response.json();
-      console.log(`DEBUG makeSecureRequest: Response data received, size:`, JSON.stringify(data).length);
       return {
         success: true,
         data
@@ -168,15 +163,8 @@ class SecureGeminiService {
     subject: string
   ): Promise<{ success: boolean; teachingGuide?: string; error?: string }> {
     
-    console.log('DEBUG secureGeminiService: Starting generateTeachingGuide');
-    console.log('DEBUG secureGeminiService: Topic name:', topicName);
-    console.log('DEBUG secureGeminiService: Description length:', description.length);
-    console.log('DEBUG secureGeminiService: Document URLs:', documentUrls);
-    console.log('DEBUG secureGeminiService: Class level:', classLevel);
-    console.log('DEBUG secureGeminiService: Subject:', subject);
     
     const prompt = this.buildTeachingGuidePrompt(topicName, description, documentUrls, classLevel, subject);
-    console.log('DEBUG secureGeminiService: Generated prompt length:', prompt.length);
     
     const payload = {
       contents: [{
@@ -192,28 +180,20 @@ class SecureGeminiService {
       }
     };
 
-    console.log('DEBUG secureGeminiService: Calling makeSecureRequest for teaching guide');
     const response = await this.makeSecureRequest('generate-content', payload);
-    console.log('DEBUG secureGeminiService: Teaching guide response:', response);
     
     if (!response.success) {
-      console.log('DEBUG secureGeminiService: Teaching guide generation failed:', response.error);
       return { success: false, error: response.error };
     }
 
     try {
       const generatedText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      console.log('DEBUG secureGeminiService: Generated text length:', generatedText?.length || 0);
       if (!generatedText) {
-        console.log('DEBUG secureGeminiService: No teaching guide text generated');
         return { success: false, error: 'No teaching guide generated' };
       }
-
-      console.log('DEBUG secureGeminiService: Teaching guide generated successfully');
       return { success: true, teachingGuide: generatedText };
       
     } catch (error) {
-      console.log('DEBUG secureGeminiService: Error parsing teaching guide:', error);
       return { 
         success: false, 
         error: 'Failed to parse generated teaching guide' 

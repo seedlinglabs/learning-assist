@@ -177,10 +177,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         aiContent: updates.aiContent,
       };
 
-      console.log('DEBUG: Update request being sent:', updateRequest);
-      console.log('DEBUG: AI Content in request:', updates.aiContent);
-      console.log('DEBUG: Teaching Guide in aiContent:', updates.aiContent?.teachingGuide ? 'PRESENT' : 'MISSING');
-      console.log('DEBUG: Images in aiContent:', updates.aiContent?.images ? `PRESENT (${updates.aiContent.images.length} items)` : 'MISSING');
+      console.log('PUT Topic Payload:', updateRequest);
 
       const updatedTopic = await topicsAPI.update(topicId, updateRequest);
 
@@ -331,7 +328,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   // Refresh topics for current subject
   const refreshTopics = async (): Promise<void> => {
     if (currentPath.subject) {
-      console.log('Refreshing topics for subject:', currentPath.subject.id);
       const topics = await loadTopicsForSubject(currentPath.subject.id);
       const nextSchools = schoolsData.map(school => ({
         ...school,

@@ -128,7 +128,6 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
       );
 
       if (lessonPlanResult.success && lessonPlanResult.aiContent) {
-        console.log('DEBUG: Generated lesson plan');
         
         // Accumulate the lesson plan content
         accumulatedAiContent = {
@@ -150,21 +149,25 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
 
       // Step 2: Generate Teaching Guide
       setAiGenerationStatus('Generating teaching guide...');
-      console.log('DEBUG: Starting teaching guide generation...');
-      const teachingGuideResult = await secureGeminiService.generateTeachingGuide(
+      
+      // Add timeout to teaching guide generation
+      const teachingGuidePromise = secureGeminiService.generateTeachingGuide(
         formData.name,
         formData.description || '',
         documentUrls,
         classLevel,
         subject
       );
+      
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Teaching guide generation timeout after 30 seconds')), 30000)
+      );
+      
+      const teachingGuideResult = await Promise.race([teachingGuidePromise, timeoutPromise]) as any;
 
-      console.log('DEBUG: Teaching guide result:', teachingGuideResult);
 
       if (teachingGuideResult.success && teachingGuideResult.teachingGuide) {
         setTeachingGuide(teachingGuideResult.teachingGuide);
-        console.log('DEBUG: Generated teaching guide successfully');
-        console.log('DEBUG: Teaching guide length:', teachingGuideResult.teachingGuide.length);
         
         // Accumulate the teaching guide content
         accumulatedAiContent = {
@@ -179,9 +182,6 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
           documentLinks: formData.documentLinks,
           aiContent: accumulatedAiContent,
         };
-        console.log('DEBUG: Current accumulatedAiContent:', accumulatedAiContent);
-        console.log('DEBUG: Teaching Guide Update Payload:', teachingGuideUpdate);
-        console.log('DEBUG: Teaching Guide Content:', teachingGuideResult.teachingGuide?.substring(0, 200) + '...');
         await updateTopic(topic.id, teachingGuideUpdate);
       } else {
         console.error('Failed to generate teaching guide:', teachingGuideResult.error);
@@ -190,27 +190,30 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
 
       // Step 3: Find Educational Images
       setAiGenerationStatus('Finding educational images...');
-      console.log('DEBUG: Starting image search...');
       try {
-        const imageResult = await imageSearchService.searchTopicImages(
+        // Add timeout to image search
+        const imageSearchPromise = imageSearchService.searchTopicImages(
           formData.name,
           classLevel,
           subject
         );
         
-        console.log('DEBUG: Image search result:', imageResult);
+        const imageTimeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Image search timeout after 15 seconds')), 15000)
+        );
+        
+        const imageResult = await Promise.race([imageSearchPromise, imageTimeoutPromise]) as any;
+        
         
         if (imageResult.success && imageResult.images) {
           // Convert ImageSearchResult to the format expected by ImageDisplay
-          const formattedImages = imageResult.images.map(img => ({
+          const formattedImages = imageResult.images.map((img: any) => ({
             title: img.title,
             description: img.description,
             url: img.url,
             source: img.source
           }));
           setImages(formattedImages);
-          console.log('DEBUG: Found images successfully:', formattedImages.length);
-          console.log('DEBUG: Formatted images:', formattedImages);
           
           // Accumulate the images content
           accumulatedAiContent = {
@@ -225,9 +228,6 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
             documentLinks: formData.documentLinks,
             aiContent: accumulatedAiContent,
           };
-          console.log('DEBUG: Current accumulatedAiContent for images:', accumulatedAiContent);
-          console.log('DEBUG: Images Update Payload:', imagesUpdate);
-          console.log('DEBUG: Images Count:', formattedImages.length);
           await updateTopic(topic.id, imagesUpdate);
         } else {
           console.error('Failed to find images:', imageResult.error);
@@ -239,7 +239,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
 
       // Step 4: Find Videos
       setAiGenerationStatus('Searching for educational videos...');
-      await findVideosForTopic();
+      await findVideosForTopic(accumulatedAiContent);
 
       setAiGenerationStatus('Complete!');
       
@@ -270,22 +270,22 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     }
   };
 
-  const findVideosForTopic = async () => {
-    if (!topic.aiContent?.lessonPlan) return;
+  const findVideosForTopic = async (accumulatedAiContent: any) => {
+    if (!accumulatedAiContent?.lessonPlan) return;
     
     setFindingVideos(true);
     try {
       // Search for videos related to this topic
       const videoResults = await youtubeService.searchTopicVideos(
         topic.name,
-        topic.aiContent.classLevel || 'Class 1',
+        accumulatedAiContent.classLevel || 'Class 1',
         currentPath.subject?.name
       );
 
       if (videoResults.videos.length > 0) {
-        // Update the topic's AI content with videos
+        // Update the accumulated AI content with videos
         const updatedAIContent = {
-          ...topic.aiContent,
+          ...accumulatedAiContent,
           videos: videoResults.videos
         };
 
@@ -401,12 +401,6 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
 
   // Debug logging for AI content
   React.useEffect(() => {
-    console.log('DEBUG TopicTabbedView - Full topic object:', topic);
-    console.log('DEBUG TopicTabbedView - AI Content:', topic.aiContent);
-    if (topic.aiContent) {
-      console.log('DEBUG TopicTabbedView - Has lessonPlan:', !!topic.aiContent.lessonPlan);
-      console.log('DEBUG TopicTabbedView - LessonPlan value:', topic.aiContent.lessonPlan);
-    }
   }, [topic]);
 
   const tabs = [
