@@ -114,7 +114,6 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
   }, [handleFileSelect]);
 
   const handleClick = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
     e.stopPropagation();
     if (!disabled && fileInputRef.current) {
       fileInputRef.current.click();
