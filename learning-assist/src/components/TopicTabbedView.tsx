@@ -10,6 +10,7 @@ import LessonPlanDisplay from './LessonPlanDisplay';
 import TeachingGuideDisplay from './TeachingGuideDisplay';
 import GroupDiscussionDisplay from './GroupDiscussionDisplay';
 import ImageDisplay from './ImageDisplay';
+import { PDFUpload } from './PDFUpload';
 import '../styles/LessonPlanDisplay.css';
 
 interface TopicTabbedViewProps {
@@ -31,6 +32,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
   const [groupDiscussion, setGroupDiscussion] = useState<string | null>(null);
   const [images, setImages] = useState<Array<{ title: string; description: string; url: string; source: string }>>([]);
   const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: topic.name,
     description: topic.description || '',
@@ -100,12 +102,19 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     }));
   };
 
-  const generateAllAIContent = async () => {
-    if (!formData.documentLinks || formData.documentLinks.length === 0) {
-      setAiError('Please add at least one document link before generating AI content.');
-      return;
-    }
+  const handlePDFTextExtracted = (extractedText: string, fileName: string) => {
+    setFormData(prev => ({
+      ...prev,
+      description: extractedText
+    }));
+    setPdfError(null);
+  };
 
+  const handlePDFError = (error: string) => {
+    setPdfError(error);
+  };
+
+  const generateAllAIContent = async () => {
     if (!formData.name.trim()) {
       setAiError('Please enter a topic name before generating AI content.');
       return;
@@ -475,9 +484,9 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
         <div className="topic-detail-actions">
           <button
             onClick={generateAllAIContent}
-            disabled={generatingAI || loading || formData.documentLinks.length === 0}
+            disabled={generatingAI || loading}
             className="btn btn-primary btn-sm"
-            title={formData.documentLinks.length === 0 ? 'Add document links first' : 'Generate AI content for this topic'}
+            title="Generate AI content for this topic"
           >
             <Sparkles size={16} />
             {generatingAI ? (aiGenerationStatus || 'Generating AI Content...') : 'Generate AI Content'}
@@ -525,19 +534,46 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
           <div className="tab-panel">
             <div className="topic-detail-section">
               <h3>Textbook Content</h3>
-              <textarea
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                placeholder="Textbook content will appear here after uploading a PDF or can be entered manually"
-                rows={6}
-                readOnly={!!formData.description}
-              />
-              {formData.description && (
-                <p className="form-help-text">
-                  This content is used by AI to generate lesson plans and teaching guides. 
-                  Upload a PDF to automatically extract textbook content.
-                </p>
+              
+              {!formData.description ? (
+                <div className="pdf-upload-section">
+                  <PDFUpload
+                    onTextExtracted={handlePDFTextExtracted}
+                    onError={handlePDFError}
+                    disabled={false}
+                  />
+                  {pdfError && (
+                    <div className="error-message">
+                      <span>{pdfError}</span>
+                      <button onClick={() => setPdfError(null)}>×</button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="textbook-content-display">
+                  <div className="textbook-content-header">
+                    <span className="content-label">Textbook Content (from PDF)</span>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => setFormData(prev => ({ ...prev, description: '' }))}
+                    >
+                      Replace Content
+                    </button>
+                  </div>
+                  <textarea
+                    name="description"
+                    value={formData.description}
+                    onChange={handleChange}
+                    placeholder="Textbook content will appear here after uploading a PDF or can be entered manually"
+                    rows={6}
+                    className="textbook-content-textarea"
+                  />
+                  <p className="form-help-text">
+                    This content is used by AI to generate lesson plans and teaching guides. 
+                    Click "Replace Content" to upload a new PDF.
+                  </p>
+                </div>
               )}
             </div>
 

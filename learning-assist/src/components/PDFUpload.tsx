@@ -32,6 +32,11 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
   });
 
   const handleFileSelect = useCallback(async (file: File) => {
+    // Prevent multiple simultaneous file processing
+    if (state.isProcessing) {
+      return;
+    }
+
     // Validate file
     const validation = PDFExtractorService.validatePDFFile(file);
     if (!validation.valid) {
@@ -69,7 +74,7 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
       }));
       onError(errorMessage);
     }
-  }, [onTextExtracted, onError]);
+  }, [onTextExtracted, onError, state.isProcessing]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -103,10 +108,14 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
     const file = e.target.files?.[0];
     if (file) {
       handleFileSelect(file);
+      // Reset the input value to allow selecting the same file again
+      e.target.value = '';
     }
   }, [handleFileSelect]);
 
-  const handleClick = useCallback(() => {
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (!disabled && fileInputRef.current) {
       fileInputRef.current.click();
     }
