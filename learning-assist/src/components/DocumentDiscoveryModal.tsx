@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Search, Plus, Video, Volume2, Gamepad2, FileText, Atom, Presentation, BookOpen, Microscope, FileSpreadsheet, GraduationCap } from 'lucide-react';
+import { X, Search, Plus, Video, FileText, Atom, Presentation, FileSpreadsheet } from 'lucide-react';
 import { DocumentLink } from '../types';
 import { secureGeminiService } from '../services/secureGeminiService';
 import { ContentType } from '../services/geminiService';
@@ -30,15 +30,10 @@ const DocumentDiscoveryModal: React.FC<DocumentDiscoveryModalProps> = ({
 
   const contentTypeOptions = [
     { type: 'video' as ContentType, label: 'Videos', icon: Video, description: 'Educational videos and tutorials' },
-    { type: 'audio' as ContentType, label: 'Audio', icon: Volume2, description: 'Podcasts and audio lessons' },
-    { type: 'interactive' as ContentType, label: 'Interactive', icon: Atom, description: 'Interactive websites and tools' },
-    { type: 'games' as ContentType, label: 'Games', icon: Gamepad2, description: 'Educational games and gamification' },
     { type: 'articles' as ContentType, label: 'Articles', icon: FileText, description: 'Articles and written content' },
-    { type: 'simulations' as ContentType, label: 'Simulations', icon: Microscope, description: 'Virtual labs and simulations' },
+    { type: 'interactive' as ContentType, label: 'Interactive', icon: Atom, description: 'Interactive websites and tools' },
     { type: 'worksheets' as ContentType, label: 'Worksheets', icon: FileSpreadsheet, description: 'Downloadable activities' },
-    { type: 'presentations' as ContentType, label: 'Presentations', icon: Presentation, description: 'Slideshows and presentations' },
-    { type: 'books' as ContentType, label: 'Books', icon: BookOpen, description: 'E-books and digital textbooks' },
-    { type: 'research' as ContentType, label: 'Research', icon: GraduationCap, description: 'Academic and research content' }
+    { type: 'presentations' as ContentType, label: 'Presentations', icon: Presentation, description: 'Slideshows and presentations' }
   ];
 
   const handleContentTypeToggle = (contentType: ContentType) => {
@@ -121,11 +116,10 @@ const DocumentDiscoveryModal: React.FC<DocumentDiscoveryModalProps> = ({
         <div className="modal-form">
           <div className="discovery-info">
             <h3>Topic: {topicName}</h3>
-            {description && <p className="topic-description">{description}</p>}
             <p className="class-level">Class Level: {classLevel}</p>
             {existingDocuments.length > 0 && (
               <p className="existing-docs">
-                {existingDocuments.length} document(s) already added - AI will suggest complementary resources
+                {existingDocuments.length} document(s) already added
               </p>
             )}
           </div>
@@ -138,18 +132,18 @@ const DocumentDiscoveryModal: React.FC<DocumentDiscoveryModalProps> = ({
               id="customPrompt"
               value={customPrompt}
               onChange={(e) => setCustomPrompt(e.target.value)}
-              placeholder="e.g., 'Focus on hands-on experiments', 'Include multilingual resources', 'Find resources for visual learners'..."
-              rows={3}
+              placeholder="e.g., 'Focus on hands-on experiments', 'Include visual resources'..."
+              rows={2}
               className="custom-prompt-input"
             />
             <small className="form-help">
-              Provide additional guidance to help AI find more specific types of resources
+              Optional: Add specific requirements for the AI search
             </small>
           </div>
 
           <div className="form-group">
             <label>Content Type Preferences <span className="optional">(Optional)</span></label>
-            <p className="form-help">Select the types of content you prefer. Leave empty for mixed content.</p>
+            <p className="form-help">Choose preferred content types or leave empty for mixed content.</p>
             <div className="content-type-grid">
               {contentTypeOptions.map(option => {
                 const Icon = option.icon;

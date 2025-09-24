@@ -6,6 +6,7 @@ export interface DocumentLink {
 export interface AIContent {
   lessonPlan?: string;
   teachingGuide?: string;
+  groupDiscussion?: string;
   images?: EducationalImage[];
   videos?: YouTubeVideo[];
   generatedAt?: Date;

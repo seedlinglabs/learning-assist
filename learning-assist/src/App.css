@@ -67,6 +67,34 @@ body {
   backdrop-filter: blur(10px);
 }
 
+.nav-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  text-decoration: none;
+}
+
+.nav-button:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-1px);
+}
+
+.nav-button.active {
+  background: rgba(255, 255, 255, 0.9);
+  color: #1e40af;
+  border-color: rgba(255, 255, 255, 0.9);
+}
+
 .user-name {
   color: white;
   font-weight: 500;

@@ -44,6 +44,7 @@ const transformApiTopicToTopic = (apiTopic: any): Topic => {
     aiContent: apiTopic.ai_content ? {
       lessonPlan: apiTopic.ai_content.lessonPlan,
       teachingGuide: apiTopic.ai_content.teachingGuide,
+      groupDiscussion: apiTopic.ai_content.groupDiscussion,
       images: apiTopic.ai_content.images || undefined,
       generatedAt: apiTopic.ai_content.generatedAt ? new Date(apiTopic.ai_content.generatedAt) : undefined,
       classLevel: apiTopic.ai_content.classLevel,

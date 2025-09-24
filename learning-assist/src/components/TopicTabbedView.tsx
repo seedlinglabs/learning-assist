@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Calendar, ExternalLink, Trash2, Save, Sparkles, GraduationCap, Search, Youtube, User, Image } from 'lucide-react';
+import { FileText, Calendar, ExternalLink, Trash2, Save, Sparkles, GraduationCap, Search, Youtube, User, Image, Users } from 'lucide-react';
 import { Topic, DocumentLink } from '../types';
 import { useApp } from '../context/AppContext';
 import { secureGeminiService } from '../services/secureGeminiService';
@@ -8,6 +8,7 @@ import { imageSearchService } from '../services/imageSearchService';
 import DocumentDiscoveryModal from './DocumentDiscoveryModal';
 import LessonPlanDisplay from './LessonPlanDisplay';
 import TeachingGuideDisplay from './TeachingGuideDisplay';
+import GroupDiscussionDisplay from './GroupDiscussionDisplay';
 import ImageDisplay from './ImageDisplay';
 import '../styles/LessonPlanDisplay.css';
 
@@ -16,7 +17,7 @@ interface TopicTabbedViewProps {
   onTopicDeleted: () => void;
 }
 
-type TabType = 'details' | 'lesson-plan' | 'teaching-guide' | 'images' | 'videos';
+type TabType = 'details' | 'lesson-plan' | 'teaching-guide' | 'group-discussion' | 'images' | 'videos';
 
 const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted }) => {
   const { updateTopic, deleteTopic, loading, error, clearError, currentPath } = useApp();
@@ -27,6 +28,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
   const [aiError, setAiError] = useState<string | null>(null);
   const [enhancedLessonPlan, setEnhancedLessonPlan] = useState<string | null>(null);
   const [teachingGuide, setTeachingGuide] = useState<string | null>(null);
+  const [groupDiscussion, setGroupDiscussion] = useState<string | null>(null);
   const [images, setImages] = useState<Array<{ title: string; description: string; url: string; source: string }>>([]);
   const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
   const [formData, setFormData] = useState({
@@ -50,6 +52,10 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     // Load saved AI content
     if (topic.aiContent?.teachingGuide) {
       setTeachingGuide(topic.aiContent.teachingGuide);
+    }
+    
+    if (topic.aiContent?.groupDiscussion) {
+      setGroupDiscussion(topic.aiContent.groupDiscussion);
     }
     
     if (topic.aiContent?.images) {
@@ -188,7 +194,47 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
         console.error('Teaching guide result details:', teachingGuideResult);
       }
 
-      // Step 3: Find Educational Images
+      // Step 3: Generate Group Discussion
+      setAiGenerationStatus('Generating group discussion activities...');
+      
+      // Add timeout to group discussion generation
+      const groupDiscussionPromise = secureGeminiService.generateGroupDiscussion(
+        formData.name,
+        formData.description || '',
+        documentUrls,
+        classLevel,
+        subject
+      );
+      
+      const groupDiscussionTimeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Group discussion generation timeout after 30 seconds')), 30000)
+      );
+      
+      const groupDiscussionResult = await Promise.race([groupDiscussionPromise, groupDiscussionTimeoutPromise]) as any;
+
+      if (groupDiscussionResult.success && groupDiscussionResult.groupDiscussion) {
+        setGroupDiscussion(groupDiscussionResult.groupDiscussion);
+        
+        // Accumulate the group discussion content
+        accumulatedAiContent = {
+          ...accumulatedAiContent,
+          groupDiscussion: groupDiscussionResult.groupDiscussion
+        };
+        
+        // Update topic with group discussion
+        const groupDiscussionUpdate = {
+          name: formData.name.trim(),
+          description: formData.description.trim() || undefined,
+          documentLinks: formData.documentLinks,
+          aiContent: accumulatedAiContent,
+        };
+        await updateTopic(topic.id, groupDiscussionUpdate);
+      } else {
+        console.error('Failed to generate group discussion:', groupDiscussionResult.error);
+        console.error('Group discussion result details:', groupDiscussionResult);
+      }
+
+      // Step 4: Find Educational Images
       setAiGenerationStatus('Finding educational images...');
       try {
         // Add timeout to image search
@@ -237,7 +283,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
         console.error('Error finding images:', error);
       }
 
-      // Step 4: Find Videos
+      // Step 5: Find Videos
       setAiGenerationStatus('Searching for educational videos...');
       await findVideosForTopic(accumulatedAiContent);
 
@@ -407,6 +453,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     { id: 'details', label: 'Topic Details', icon: FileText },
     { id: 'lesson-plan', label: 'Lesson Plan', icon: GraduationCap, disabled: !topic.aiContent?.lessonPlan },
     { id: 'teaching-guide', label: 'Teaching Guide', icon: User, disabled: !topic.aiContent?.teachingGuide && !teachingGuide },
+    { id: 'group-discussion', label: 'Group Discussion', icon: Users, disabled: !topic.aiContent?.groupDiscussion && !groupDiscussion },
     { id: 'images', label: 'Images', icon: Image, disabled: (!topic.aiContent?.images || topic.aiContent.images.length === 0) && (!images || images.length === 0) },
     { id: 'videos', label: 'Videos', icon: Youtube, disabled: !topic.aiContent?.videos || topic.aiContent.videos.length === 0 },
   ];
@@ -609,6 +656,16 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
               topicName={topic.name}
               classLevel={currentPath.class?.name || 'Class 1'}
               subject={currentPath.subject?.name}
+            />
+          </div>
+        )}
+
+        {activeTab === 'group-discussion' && (topic.aiContent?.groupDiscussion || groupDiscussion) && (
+          <div className="tab-panel group-discussion-panel">
+            <GroupDiscussionDisplay
+              groupDiscussion={topic.aiContent?.groupDiscussion || groupDiscussion || ''}
+              topicName={topic.name}
+              classLevel={currentPath.class?.name || 'Class 1'}
             />
           </div>
         )}
