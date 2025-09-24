@@ -149,7 +149,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
         await updateTopic(topic.id, {
           name: formData.name.trim(),
           description: formData.description.trim() || undefined,
-          documentLinks: formData.documentLinks,
+          documentLinks: formData.documentLinks || [],
           aiContent: accumulatedAiContent,
         });
       } else {
@@ -188,7 +188,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
         const teachingGuideUpdate = {
           name: formData.name.trim(),
           description: formData.description.trim() || undefined,
-          documentLinks: formData.documentLinks,
+          documentLinks: formData.documentLinks || [],
           aiContent: accumulatedAiContent,
         };
         await updateTopic(topic.id, teachingGuideUpdate);
@@ -228,7 +228,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
         const groupDiscussionUpdate = {
           name: formData.name.trim(),
           description: formData.description.trim() || undefined,
-          documentLinks: formData.documentLinks,
+          documentLinks: formData.documentLinks || [],
           aiContent: accumulatedAiContent,
         };
         await updateTopic(topic.id, groupDiscussionUpdate);
@@ -296,7 +296,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
         await updateTopic(topic.id, {
           name: formData.name.trim(),
           description: formData.description.trim() || undefined,
-          documentLinks: formData.documentLinks,
+          documentLinks: formData.documentLinks || [],
           aiContent: updatedAIContent,
         });
         
@@ -365,7 +365,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
       await updateTopic(topic.id, {
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
-        documentLinks: formData.documentLinks,
+        documentLinks: formData.documentLinks || [],
         aiContent: {
           ...topic.aiContent,
           lessonPlan: lessonPlanToSave

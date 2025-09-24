@@ -204,6 +204,8 @@ export const topicsAPI = {
   // Update existing topic
   async update(topicId: string, updates: UpdateTopicRequest): Promise<Topic> {
     try {
+      console.log('API Update Request:', updates);
+      console.log('API Update Request JSON:', JSON.stringify(updates));
       
       const response = await fetch(`${API_BASE_URL}/topics/${topicId}`, {
         method: 'PUT',
