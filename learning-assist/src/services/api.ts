@@ -206,6 +206,11 @@ export const topicsAPI = {
   // Update existing topic
   async update(topicId: string, updates: UpdateTopicRequest): Promise<Topic> {
     try {
+      console.log('DEBUG API: Raw updates object:', updates);
+      console.log('DEBUG API: JSON stringified body:', JSON.stringify(updates));
+      console.log('DEBUG API: Teaching Guide in updates:', updates.aiContent?.teachingGuide ? 'PRESENT' : 'MISSING');
+      console.log('DEBUG API: Images in updates:', updates.aiContent?.images ? `PRESENT (${updates.aiContent.images.length} items)` : 'MISSING');
+      
       const response = await fetch(`${API_BASE_URL}/topics/${topicId}`, {
         method: 'PUT',
         headers: {

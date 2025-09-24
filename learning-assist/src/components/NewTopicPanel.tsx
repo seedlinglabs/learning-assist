@@ -5,6 +5,7 @@ import { useApp } from '../context/AppContext';
 // import { secureGeminiService, ContentType } from '../services/secureGeminiService';
 import { DocumentLink } from '../types';
 import DocumentDiscoveryModal from './DocumentDiscoveryModal';
+import { PDFUpload } from './PDFUpload';
 
 interface NewTopicPanelProps {
   subjectId: string;
@@ -28,6 +29,7 @@ const NewTopicPanel: React.FC<NewTopicPanelProps> = ({
     documentLinkNameInput: '',
     documentLinks: [] as { name: string; url: string }[],
   });
+  const [pdfError, setPdfError] = useState<string>('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData(prev => ({
@@ -86,7 +88,20 @@ const NewTopicPanel: React.FC<NewTopicPanelProps> = ({
 
   const handleCancel = () => {
     clearError();
+    setPdfError('');
     onCancel();
+  };
+
+  const handlePDFTextExtracted = (text: string, fileName: string) => {
+    setFormData(prev => ({
+      ...prev,
+      description: text
+    }));
+    setPdfError('');
+  };
+
+  const handlePDFError = (error: string) => {
+    setPdfError(error);
   };
 
   return (
@@ -130,15 +145,22 @@ const NewTopicPanel: React.FC<NewTopicPanelProps> = ({
         </div>
 
         <div className="topic-detail-section">
-          <h3>Description</h3>
-          <textarea
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            placeholder="Enter a brief description of this topic (optional)"
-            rows={3}
+          <h3>Textbook Content</h3>
+          <p className="form-help-text">
+            Upload a PDF file to extract textbook content for this topic. This content will be used for AI-generated lesson plans and teaching guides.
+          </p>
+          <PDFUpload
+            onTextExtracted={handlePDFTextExtracted}
+            onError={handlePDFError}
+            disabled={loading}
           />
+          {pdfError && (
+            <div className="error-message" style={{ marginTop: '0.5rem', padding: '0.5rem', backgroundColor: '#fef2f2', color: '#dc2626', borderRadius: '0.375rem', fontSize: '0.875rem' }}>
+              {pdfError}
+            </div>
+          )}
         </div>
+
 
         <div className="topic-detail-section">
           <div className="document-section-header">

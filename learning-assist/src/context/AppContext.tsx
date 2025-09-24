@@ -179,6 +179,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
       console.log('DEBUG: Update request being sent:', updateRequest);
       console.log('DEBUG: AI Content in request:', updates.aiContent);
+      console.log('DEBUG: Teaching Guide in aiContent:', updates.aiContent?.teachingGuide ? 'PRESENT' : 'MISSING');
+      console.log('DEBUG: Images in aiContent:', updates.aiContent?.images ? `PRESENT (${updates.aiContent.images.length} items)` : 'MISSING');
 
       const updatedTopic = await topicsAPI.update(topicId, updateRequest);
 

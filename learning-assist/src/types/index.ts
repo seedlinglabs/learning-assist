@@ -5,10 +5,18 @@ export interface DocumentLink {
 
 export interface AIContent {
   lessonPlan?: string;
-  // Future AI content types can be added here
+  teachingGuide?: string;
+  images?: EducationalImage[];
+  videos?: YouTubeVideo[];
   generatedAt?: Date;
   classLevel?: string;
-  videos?: YouTubeVideo[];
+}
+
+export interface EducationalImage {
+  title: string;
+  description: string;
+  url: string;
+  source: string;
 }
 
 export interface YouTubeVideo {

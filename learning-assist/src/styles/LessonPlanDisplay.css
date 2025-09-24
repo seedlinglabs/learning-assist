@@ -819,3 +819,26 @@
     border: 2px solid #000;
   }
 }
+
+/* AI Content Info */
+.ai-content-info {
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.generated-timestamp {
+  font-size: 0.875rem;
+  color: #0369a1;
+  font-weight: 500;
+}
+
+.generated-timestamp::before {
+  content: "🤖 ";
+  margin-right: 0.25rem;
+}
