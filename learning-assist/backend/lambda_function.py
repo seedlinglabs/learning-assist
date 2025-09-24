@@ -233,29 +233,7 @@ def create_topic(table, topic_data):
                     'body': json.dumps({'error': f'Missing required field: {field}'})
                 }
         
-        # Validate document links if present
-        if 'documentLinks' in topic_data or 'document_links' in topic_data:
-            links = topic_data.get('documentLinks') or topic_data.get('document_links')
-            if not isinstance(links, list):
-                return {
-                    'statusCode': 400,
-                    'headers': {
-                        'Content-Type': 'application/json',
-                        'Access-Control-Allow-Origin': '*'
-                    },
-                    'body': json.dumps({'error': 'Document links must be an array'})
-                }
-            for link in links:
-                is_valid, error = validate_document_link(link)
-                if not is_valid:
-                    return {
-                        'statusCode': 400,
-                        'headers': {
-                            'Content-Type': 'application/json',
-                            'Access-Control-Allow-Origin': '*'
-                        },
-                        'body': json.dumps({'error': error})
-                    }
+        # Document links are optional - no validation required
         
         # Generate unique ID and timestamps
         topic_id = str(uuid.uuid4())
@@ -449,29 +427,7 @@ def update_topic(table, topic_id, update_data):
                 'body': json.dumps({'error': 'Topic not found'})
             }
         
-        # Validate document links if present
-        if 'documentLinks' in update_data or 'document_links' in update_data:
-            links = update_data.get('documentLinks') or update_data.get('document_links')
-            if not isinstance(links, list):
-                return {
-                    'statusCode': 400,
-                    'headers': {
-                        'Content-Type': 'application/json',
-                        'Access-Control-Allow-Origin': '*'
-                    },
-                    'body': json.dumps({'error': 'Document links must be an array'})
-                }
-            for link in links:
-                is_valid, error = validate_document_link(link)
-                if not is_valid:
-                    return {
-                        'statusCode': 400,
-                        'headers': {
-                            'Content-Type': 'application/json',
-                            'Access-Control-Allow-Origin': '*'
-                        },
-                        'body': json.dumps({'error': error})
-                    }
+        # Document links are optional - no validation required
         
         # Prepare update expression with expression attribute names for reserved keywords
         update_expression = "SET updated_at = :updated_at"
