@@ -128,7 +128,7 @@ const AssessmentDisplay: React.FC<AssessmentDisplayProps> = ({
   const playAssessment = () => {
     if (!speechSupported) return;
 
-    const sections = parseAssessment(assessmentQuestions);
+    const sections = parseAssessment(getAssessmentContent());
     if (sections.length === 0) return;
 
     setIsPlaying(true);
@@ -354,7 +354,60 @@ const AssessmentDisplay: React.FC<AssessmentDisplayProps> = ({
     return <Circle size={16} className="option-circle" />;
   };
 
-  const sections = parseAssessment(assessmentQuestions);
+  // Use sample data if no assessment content is provided (for testing)
+  const getAssessmentContent = () => {
+    if (assessmentQuestions && assessmentQuestions.trim() !== '') {
+      return assessmentQuestions;
+    }
+    
+    // Return sample assessment data for testing
+    return JSON.stringify({
+      mcqs: [
+        {
+          question: "What is the primary goal of science?",
+          options: [
+            "To memorize facts",
+            "To understand the natural world through observation and experimentation",
+            "To prove theories",
+            "To create new technologies"
+          ],
+          correct: "B",
+          explanation: "Science aims to understand the natural world through systematic observation, experimentation, and evidence-based reasoning."
+        },
+        {
+          question: "Which of the following is NOT a step in the scientific method?",
+          options: [
+            "Observation",
+            "Hypothesis",
+            "Conclusion",
+            "Opinion"
+          ],
+          correct: "D",
+          explanation: "Opinion is not part of the scientific method. The scientific method involves observation, hypothesis formation, experimentation, data collection, and conclusion."
+        }
+      ],
+      shortAnswers: [
+        {
+          question: "Define the term 'hypothesis' in science.",
+          sampleAnswer: "A hypothesis is a proposed explanation for a phenomenon that can be tested through observation or experimentation."
+        }
+      ],
+      longAnswers: [
+        {
+          question: "Explain why the scientific method is important for understanding the world around us.",
+          sampleAnswer: "The scientific method is important because it provides a systematic, objective approach to understanding phenomena. It ensures that conclusions are based on evidence rather than assumptions, allows for replication of results, and helps eliminate bias. This process leads to reliable, testable knowledge that can be used to make predictions and solve problems."
+        }
+      ],
+      cfuQuestions: [
+        {
+          question: "Can you think of a time when you used observation to learn something new?",
+          parentGuidance: "Ask your child to describe a specific example of when they observed something and learned from it. This helps them connect the concept of observation to their own experiences."
+        }
+      ]
+    });
+  };
+
+  const sections = parseAssessment(getAssessmentContent());
 
   return (
     <div className="assessment-display">
