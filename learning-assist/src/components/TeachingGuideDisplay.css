@@ -46,6 +46,45 @@
   backdrop-filter: blur(10px);
 }
 
+.audio-controls {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.audio-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  backdrop-filter: blur(10px);
+}
+
+.audio-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.audio-btn.play {
+  background: rgba(34, 197, 94, 0.8);
+}
+
+.audio-btn.stop {
+  background: rgba(239, 68, 68, 0.8);
+}
+
+.audio-btn.pause {
+  background: rgba(245, 158, 11, 0.8);
+}
+
 .teaching-guide-intro {
   padding: 1.5rem;
   background: #f8fafc;
@@ -65,10 +104,17 @@
 
 .teaching-guide-section {
   border-bottom: 1px solid #e2e8f0;
+  transition: all 0.3s ease;
 }
 
 .teaching-guide-section:last-child {
   border-bottom: none;
+}
+
+.teaching-guide-section.currently-playing {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
 }
 
 .section-header {
@@ -85,6 +131,29 @@
   font-size: 1.125rem;
   font-weight: 600;
   color: #1e293b;
+  flex: 1;
+}
+
+.playing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(102, 126, 234, 0.1);
+  color: #667eea;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
 
 .section-content {

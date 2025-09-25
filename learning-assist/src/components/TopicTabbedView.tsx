@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Calendar, ExternalLink, Trash2, Save, Sparkles, GraduationCap, Search, Youtube, User, Image } from 'lucide-react';
+import { FileText, Calendar, ExternalLink, Trash2, Save, Sparkles, GraduationCap, Search, Youtube, User, Users, ClipboardList, BookOpen } from 'lucide-react';
 import { Topic, DocumentLink } from '../types';
 import { useApp } from '../context/AppContext';
 import { secureGeminiService } from '../services/secureGeminiService';
 import { youtubeService } from '../services/youtubeService';
-import { imageSearchService } from '../services/imageSearchService';
 import DocumentDiscoveryModal from './DocumentDiscoveryModal';
 import LessonPlanDisplay from './LessonPlanDisplay';
 import TeachingGuideDisplay from './TeachingGuideDisplay';
-import ImageDisplay from './ImageDisplay';
+import GroupDiscussionDisplay from './GroupDiscussionDisplay';
+import { PDFUpload } from './PDFUpload';
 import '../styles/LessonPlanDisplay.css';
 
 interface TopicTabbedViewProps {
@@ -16,7 +16,7 @@ interface TopicTabbedViewProps {
   onTopicDeleted: () => void;
 }
 
-type TabType = 'details' | 'lesson-plan' | 'teaching-guide' | 'images' | 'videos';
+type TabType = 'details' | 'lesson-plan' | 'teaching-guide' | 'group-discussion' | 'videos' | 'assessment' | 'worksheets';
 
 const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted }) => {
   const { updateTopic, deleteTopic, loading, error, clearError, currentPath } = useApp();
@@ -27,8 +27,25 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
   const [aiError, setAiError] = useState<string | null>(null);
   const [enhancedLessonPlan, setEnhancedLessonPlan] = useState<string | null>(null);
   const [teachingGuide, setTeachingGuide] = useState<string | null>(null);
-  const [images, setImages] = useState<Array<{ title: string; description: string; url: string; source: string }>>([]);
+  const [groupDiscussion, setGroupDiscussion] = useState<string | null>(null);
+  const [assessmentQuestions, setAssessmentQuestions] = useState<string | null>(null);
+  const [worksheets, setWorksheets] = useState<string | null>(null);
+  const [isGeneratingContent, setIsGeneratingContent] = useState(false);
   const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+  
+  // Editing states for AI content
+  const [isEditingLessonPlan, setIsEditingLessonPlan] = useState(false);
+  const [isEditingTeachingGuide, setIsEditingTeachingGuide] = useState(false);
+  const [isEditingGroupDiscussion, setIsEditingGroupDiscussion] = useState(false);
+  const [isEditingAssessmentQuestions, setIsEditingAssessmentQuestions] = useState(false);
+  const [isEditingWorksheets, setIsEditingWorksheets] = useState(false);
+  const [editingLessonPlan, setEditingLessonPlan] = useState<string>('');
+  const [editingTeachingGuide, setEditingTeachingGuide] = useState<string>('');
+  const [editingGroupDiscussion, setEditingGroupDiscussion] = useState<string>('');
+  const [editingAssessmentQuestions, setEditingAssessmentQuestions] = useState<string>('');
+  const [editingWorksheets, setEditingWorksheets] = useState<string>('');
+  const [savingContent, setSavingContent] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: topic.name,
     description: topic.description || '',
@@ -44,18 +61,66 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
       description: topic.description || '',
       documentLinkInput: '',
       documentLinkNameInput: '',
-      documentLinks: topic.documentLinks ? [...topic.documentLinks] : [],
+      documentLinks: topic.documentLinks ? [...topic.documentLinks] : [] as { name: string; url: string }[],
     });
     
-    // Load saved AI content
+    // Load saved AI content or clear if not available
     if (topic.aiContent?.teachingGuide) {
       setTeachingGuide(topic.aiContent.teachingGuide);
+    } else {
+      setTeachingGuide(null);
     }
     
-    if (topic.aiContent?.images) {
-      setImages(topic.aiContent.images);
+    if (topic.aiContent?.groupDiscussion) {
+      setGroupDiscussion(topic.aiContent.groupDiscussion);
+    } else {
+      setGroupDiscussion(null);
     }
-  }, [topic]);
+    
+    if (topic.aiContent?.assessmentQuestions) {
+      setAssessmentQuestions(topic.aiContent.assessmentQuestions);
+    } else if (!isGeneratingContent) {
+      setAssessmentQuestions(null);
+    }
+    
+    if (topic.aiContent?.worksheets) {
+      setWorksheets(topic.aiContent.worksheets);
+    } else if (!isGeneratingContent) {
+      setWorksheets(null);
+    }
+    
+    // Initialize editing states with current content or clear if not available
+    if (topic.aiContent?.lessonPlan) {
+      setEditingLessonPlan(topic.aiContent.lessonPlan);
+    } else {
+      setEditingLessonPlan('');
+    }
+    
+    if (topic.aiContent?.teachingGuide) {
+      setEditingTeachingGuide(topic.aiContent.teachingGuide);
+    } else {
+      setEditingTeachingGuide('');
+    }
+    
+    if (topic.aiContent?.groupDiscussion) {
+      setEditingGroupDiscussion(topic.aiContent.groupDiscussion);
+    } else {
+      setEditingGroupDiscussion('');
+    }
+    
+    if (topic.aiContent?.assessmentQuestions) {
+      setEditingAssessmentQuestions(topic.aiContent.assessmentQuestions);
+    } else {
+      setEditingAssessmentQuestions('');
+    }
+    
+    if (topic.aiContent?.worksheets) {
+      setEditingWorksheets(topic.aiContent.worksheets);
+    } else {
+      setEditingWorksheets('');
+    }
+    
+  }, [topic, isGeneratingContent]);
 
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {
@@ -94,12 +159,199 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     }));
   };
 
-  const generateAllAIContent = async () => {
-    if (!formData.documentLinks || formData.documentLinks.length === 0) {
-      setAiError('Please add at least one document link before generating AI content.');
-      return;
-    }
+  const handlePDFTextExtracted = (extractedText: string, fileName: string) => {
+    setFormData(prev => ({
+      ...prev,
+      description: extractedText
+    }));
+    setPdfError(null);
+  };
 
+  const handlePDFError = (error: string) => {
+    setPdfError(error);
+  };
+
+  // AI Content editing handlers
+  const handleStartEditingLessonPlan = () => {
+    setIsEditingLessonPlan(true);
+    setEditingLessonPlan(topic.aiContent?.lessonPlan || '');
+  };
+
+  const handleSaveLessonPlan = async () => {
+    setSavingContent('lesson-plan');
+    try {
+      await updateTopic(topic.id, {
+        aiContent: {
+          ...topic.aiContent,
+          lessonPlan: editingLessonPlan,
+          generatedAt: new Date()
+        }
+      });
+      setIsEditingLessonPlan(false);
+    } catch (error) {
+      console.error('Failed to save lesson plan:', error);
+    } finally {
+      setSavingContent(null);
+    }
+  };
+
+  const handleCancelEditingLessonPlan = () => {
+    setIsEditingLessonPlan(false);
+    setEditingLessonPlan(topic.aiContent?.lessonPlan || '');
+  };
+
+  const handleStartEditingTeachingGuide = () => {
+    setIsEditingTeachingGuide(true);
+    setEditingTeachingGuide(topic.aiContent?.teachingGuide || '');
+  };
+
+  const handleSaveTeachingGuide = async () => {
+    setSavingContent('teaching-guide');
+    try {
+      await updateTopic(topic.id, {
+        aiContent: {
+          ...topic.aiContent,
+          teachingGuide: editingTeachingGuide,
+          generatedAt: new Date()
+        }
+      });
+      setIsEditingTeachingGuide(false);
+    } catch (error) {
+      console.error('Failed to save teaching guide:', error);
+    } finally {
+      setSavingContent(null);
+    }
+  };
+
+  const handleCancelEditingTeachingGuide = () => {
+    setIsEditingTeachingGuide(false);
+    setEditingTeachingGuide(topic.aiContent?.teachingGuide || '');
+  };
+
+  const handleStartEditingGroupDiscussion = () => {
+    setIsEditingGroupDiscussion(true);
+    setEditingGroupDiscussion(topic.aiContent?.groupDiscussion || '');
+  };
+
+  const handleSaveGroupDiscussion = async () => {
+    setSavingContent('group-discussion');
+    try {
+      await updateTopic(topic.id, {
+        aiContent: {
+          ...topic.aiContent,
+          groupDiscussion: editingGroupDiscussion,
+          generatedAt: new Date()
+        }
+      });
+      setIsEditingGroupDiscussion(false);
+    } catch (error) {
+      console.error('Failed to save group discussion:', error);
+    } finally {
+      setSavingContent(null);
+    }
+  };
+
+  const handleCancelEditingGroupDiscussion = () => {
+    setIsEditingGroupDiscussion(false);
+    setEditingGroupDiscussion(topic.aiContent?.groupDiscussion || '');
+  };
+
+  const handleStartEditingAssessmentQuestions = () => {
+    setIsEditingAssessmentQuestions(true);
+    setEditingAssessmentQuestions(topic.aiContent?.assessmentQuestions || '');
+  };
+
+  const handleSaveAssessmentQuestions = async () => {
+    setSavingContent('assessment-questions');
+    try {
+      await updateTopic(topic.id, {
+        aiContent: {
+          ...topic.aiContent,
+          assessmentQuestions: editingAssessmentQuestions,
+          generatedAt: new Date()
+        }
+      });
+      setIsEditingAssessmentQuestions(false);
+    } catch (error) {
+      console.error('Failed to save assessment questions:', error);
+    } finally {
+      setSavingContent(null);
+    }
+  };
+
+  const handleCancelEditingAssessmentQuestions = () => {
+    setIsEditingAssessmentQuestions(false);
+    setEditingAssessmentQuestions(topic.aiContent?.assessmentQuestions || '');
+  };
+
+  const handleStartEditingWorksheets = () => {
+    setIsEditingWorksheets(true);
+    setEditingWorksheets(topic.aiContent?.worksheets || '');
+  };
+
+  const handleSaveWorksheets = async () => {
+    setSavingContent('worksheets');
+    try {
+      await updateTopic(topic.id, {
+        aiContent: {
+          ...topic.aiContent,
+          worksheets: editingWorksheets,
+          generatedAt: new Date()
+        }
+      });
+      setIsEditingWorksheets(false);
+    } catch (error) {
+      console.error('Failed to save worksheets:', error);
+    } finally {
+      setSavingContent(null);
+    }
+  };
+
+  const handleCancelEditingWorksheets = () => {
+    setIsEditingWorksheets(false);
+    setEditingWorksheets(topic.aiContent?.worksheets || '');
+  };
+
+  // Keyboard shortcuts for editing
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === 's') {
+          e.preventDefault();
+          if (isEditingLessonPlan) {
+            handleSaveLessonPlan();
+          } else if (isEditingTeachingGuide) {
+            handleSaveTeachingGuide();
+          } else if (isEditingGroupDiscussion) {
+            handleSaveGroupDiscussion();
+          } else if (isEditingAssessmentQuestions) {
+            handleSaveAssessmentQuestions();
+          } else if (isEditingWorksheets) {
+            handleSaveWorksheets();
+          }
+        } else if (e.key === 'Escape') {
+          if (isEditingLessonPlan) {
+            handleCancelEditingLessonPlan();
+          } else if (isEditingTeachingGuide) {
+            handleCancelEditingTeachingGuide();
+          } else if (isEditingGroupDiscussion) {
+            handleCancelEditingGroupDiscussion();
+          } else if (isEditingAssessmentQuestions) {
+            handleCancelEditingAssessmentQuestions();
+          } else if (isEditingWorksheets) {
+            handleCancelEditingWorksheets();
+          }
+        }
+      }
+    };
+
+    if (isEditingLessonPlan || isEditingTeachingGuide || isEditingGroupDiscussion || isEditingAssessmentQuestions || isEditingWorksheets) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [isEditingLessonPlan, isEditingTeachingGuide, isEditingGroupDiscussion, isEditingAssessmentQuestions, isEditingWorksheets]);
+
+  const generateAllAIContent = async () => {
     if (!formData.name.trim()) {
       setAiError('Please enter a topic name before generating AI content.');
       return;
@@ -110,6 +362,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     const subject = currentPath.subject?.name || 'General';
 
     setGeneratingAI(true);
+    setIsGeneratingContent(true);
     setAiError(null);
     setAiGenerationStatus('');
 
@@ -140,7 +393,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
         await updateTopic(topic.id, {
           name: formData.name.trim(),
           description: formData.description.trim() || undefined,
-          documentLinks: formData.documentLinks,
+          documentLinks: formData.documentLinks || [],
           aiContent: accumulatedAiContent,
         });
       } else {
@@ -179,7 +432,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
         const teachingGuideUpdate = {
           name: formData.name.trim(),
           description: formData.description.trim() || undefined,
-          documentLinks: formData.documentLinks,
+          documentLinks: formData.documentLinks || [],
           aiContent: accumulatedAiContent,
         };
         await updateTopic(topic.id, teachingGuideUpdate);
@@ -188,56 +441,123 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
         console.error('Teaching guide result details:', teachingGuideResult);
       }
 
-      // Step 3: Find Educational Images
-      setAiGenerationStatus('Finding educational images...');
-      try {
-        // Add timeout to image search
-        const imageSearchPromise = imageSearchService.searchTopicImages(
-          formData.name,
-          classLevel,
-          subject
-        );
+      // Step 3: Generate Group Discussion
+      setAiGenerationStatus('Generating group discussion activities...');
+      
+      // Add timeout to group discussion generation
+      const groupDiscussionPromise = secureGeminiService.generateGroupDiscussion(
+        formData.name,
+        formData.description || '',
+        documentUrls,
+        classLevel,
+        subject
+      );
+      
+      const groupDiscussionTimeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Group discussion generation timeout after 30 seconds')), 30000)
+      );
+      
+      const groupDiscussionResult = await Promise.race([groupDiscussionPromise, groupDiscussionTimeoutPromise]) as any;
+
+      if (groupDiscussionResult.success && groupDiscussionResult.groupDiscussion) {
+        setGroupDiscussion(groupDiscussionResult.groupDiscussion);
         
-        const imageTimeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Image search timeout after 15 seconds')), 15000)
-        );
+        // Accumulate the group discussion content
+        accumulatedAiContent = {
+          ...accumulatedAiContent,
+          groupDiscussion: groupDiscussionResult.groupDiscussion
+        };
         
-        const imageResult = await Promise.race([imageSearchPromise, imageTimeoutPromise]) as any;
-        
-        
-        if (imageResult.success && imageResult.images) {
-          // Convert ImageSearchResult to the format expected by ImageDisplay
-          const formattedImages = imageResult.images.map((img: any) => ({
-            title: img.title,
-            description: img.description,
-            url: img.url,
-            source: img.source
-          }));
-          setImages(formattedImages);
-          
-          // Accumulate the images content
-          accumulatedAiContent = {
-            ...accumulatedAiContent,
-            images: formattedImages
-          };
-          
-          // Update topic with images
-          const imagesUpdate = {
-            name: formData.name.trim(),
-            description: formData.description.trim() || undefined,
-            documentLinks: formData.documentLinks,
-            aiContent: accumulatedAiContent,
-          };
-          await updateTopic(topic.id, imagesUpdate);
-        } else {
-          console.error('Failed to find images:', imageResult.error);
-          console.error('Image result details:', imageResult);
-        }
-      } catch (error) {
-        console.error('Error finding images:', error);
+        // Update topic with group discussion
+        const groupDiscussionUpdate = {
+          name: formData.name.trim(),
+          description: formData.description.trim() || undefined,
+          documentLinks: formData.documentLinks || [],
+          aiContent: accumulatedAiContent,
+        };
+        await updateTopic(topic.id, groupDiscussionUpdate);
+      } else {
+        console.error('Failed to generate group discussion:', groupDiscussionResult.error);
+        console.error('Group discussion result details:', groupDiscussionResult);
       }
 
-      // Step 4: Find Videos
+      // Step 4: Generate Assessment Questions
+      setAiGenerationStatus('Generating assessment questions...');
+      
+      const assessmentPromise = secureGeminiService.generateAssessmentQuestions(
+        formData.name,
+        formData.description || '',
+        documentUrls,
+        classLevel,
+        subject
+      );
+      
+      const assessmentTimeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Assessment generation timeout after 30 seconds')), 30000)
+      );
+      
+      const assessmentResult = await Promise.race([assessmentPromise, assessmentTimeoutPromise]) as any;
+
+      if (assessmentResult.success && assessmentResult.assessmentQuestions) {
+        setAssessmentQuestions(assessmentResult.assessmentQuestions);
+        
+        // Accumulate the assessment questions content
+        accumulatedAiContent = {
+          ...accumulatedAiContent,
+          assessmentQuestions: assessmentResult.assessmentQuestions
+        };
+        
+        // Update topic with assessment questions
+        const assessmentUpdate = {
+          name: formData.name.trim(),
+          description: formData.description.trim() || undefined,
+          documentLinks: formData.documentLinks || [],
+          aiContent: accumulatedAiContent,
+        };
+        await updateTopic(topic.id, assessmentUpdate);
+      } else {
+        console.error('Failed to generate assessment questions:', assessmentResult.error);
+      }
+
+      // Step 5: Generate Worksheets
+      setAiGenerationStatus('Generating worksheets...');
+      
+      const worksheetsPromise = secureGeminiService.generateWorksheets(
+        formData.name,
+        formData.description || '',
+        documentUrls,
+        classLevel,
+        subject
+      );
+      
+      const worksheetsTimeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Worksheets generation timeout after 30 seconds')), 30000)
+      );
+      
+      const worksheetsResult = await Promise.race([worksheetsPromise, worksheetsTimeoutPromise]) as any;
+
+      if (worksheetsResult.success && worksheetsResult.worksheets) {
+        setWorksheets(worksheetsResult.worksheets);
+        
+        // Accumulate the worksheets content
+        accumulatedAiContent = {
+          ...accumulatedAiContent,
+          worksheets: worksheetsResult.worksheets
+        };
+        
+        // Update topic with worksheets
+        const worksheetsUpdate = {
+          name: formData.name.trim(),
+          description: formData.description.trim() || undefined,
+          documentLinks: formData.documentLinks || [],
+          aiContent: accumulatedAiContent,
+        };
+        await updateTopic(topic.id, worksheetsUpdate);
+      } else {
+        console.error('Failed to generate worksheets:', worksheetsResult.error);
+      }
+
+      // Step 6: Find Videos
       setAiGenerationStatus('Searching for educational videos...');
       await findVideosForTopic(accumulatedAiContent);
 
@@ -254,6 +574,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
       }
     } finally {
       setGeneratingAI(false);
+      setIsGeneratingContent(false);
       // Clear status after a short delay
       setTimeout(() => setAiGenerationStatus(''), 2000);
     }
@@ -296,7 +617,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
         await updateTopic(topic.id, {
           name: formData.name.trim(),
           description: formData.description.trim() || undefined,
-          documentLinks: formData.documentLinks,
+          documentLinks: formData.documentLinks || [],
           aiContent: updatedAIContent,
         });
         
@@ -365,7 +686,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
       await updateTopic(topic.id, {
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
-        documentLinks: formData.documentLinks,
+        documentLinks: formData.documentLinks || [],
         aiContent: {
           ...topic.aiContent,
           lessonPlan: lessonPlanToSave
@@ -407,14 +728,16 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     { id: 'details', label: 'Topic Details', icon: FileText },
     { id: 'lesson-plan', label: 'Lesson Plan', icon: GraduationCap, disabled: !topic.aiContent?.lessonPlan },
     { id: 'teaching-guide', label: 'Teaching Guide', icon: User, disabled: !topic.aiContent?.teachingGuide && !teachingGuide },
-    { id: 'images', label: 'Images', icon: Image, disabled: (!topic.aiContent?.images || topic.aiContent.images.length === 0) && (!images || images.length === 0) },
+    { id: 'group-discussion', label: 'Group Discussion', icon: Users, disabled: !topic.aiContent?.groupDiscussion && !groupDiscussion },
+    { id: 'assessment', label: 'Assessment', icon: ClipboardList, disabled: !topic.aiContent?.assessmentQuestions && !assessmentQuestions },
+    { id: 'worksheets', label: 'Worksheets', icon: BookOpen, disabled: !topic.aiContent?.worksheets && !worksheets },
     { id: 'videos', label: 'Videos', icon: Youtube, disabled: !topic.aiContent?.videos || topic.aiContent.videos.length === 0 },
   ];
 
   return (
     <div className="topic-tabbed-view">
       <div className="topic-detail-header">
-        <div className="topic-detail-title">
+        <div className="topic-name-row">
           <FileText size={24} />
           <input
             type="text"
@@ -428,9 +751,9 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
         <div className="topic-detail-actions">
           <button
             onClick={generateAllAIContent}
-            disabled={generatingAI || loading || formData.documentLinks.length === 0}
+            disabled={generatingAI || loading}
             className="btn btn-primary btn-sm"
-            title={formData.documentLinks.length === 0 ? 'Add document links first' : 'Generate AI content for this topic'}
+            title="Generate AI content for this topic"
           >
             <Sparkles size={16} />
             {generatingAI ? (aiGenerationStatus || 'Generating AI Content...') : 'Generate AI Content'}
@@ -478,19 +801,46 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
           <div className="tab-panel">
             <div className="topic-detail-section">
               <h3>Textbook Content</h3>
-              <textarea
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                placeholder="Textbook content will appear here after uploading a PDF or can be entered manually"
-                rows={6}
-                readOnly={!!formData.description}
-              />
-              {formData.description && (
-                <p className="form-help-text">
-                  This content is used by AI to generate lesson plans and teaching guides. 
-                  Upload a PDF to automatically extract textbook content.
-                </p>
+              
+              {!formData.description ? (
+                <div className="pdf-upload-section">
+                  <PDFUpload
+                    onTextExtracted={handlePDFTextExtracted}
+                    onError={handlePDFError}
+                    disabled={false}
+                  />
+                  {pdfError && (
+                    <div className="error-message">
+                      <span>{pdfError}</span>
+                      <button onClick={() => setPdfError(null)}>×</button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="textbook-content-display">
+                  <div className="textbook-content-header">
+                    <span className="content-label">Textbook Content (from PDF)</span>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => setFormData(prev => ({ ...prev, description: '' }))}
+                    >
+                      Replace Content
+                    </button>
+                  </div>
+                  <textarea
+                    name="description"
+                    value={formData.description}
+                    onChange={handleChange}
+                    placeholder="Textbook content will appear here after uploading a PDF or can be entered manually"
+                    rows={6}
+                    className="textbook-content-textarea"
+                  />
+                  <p className="form-help-text">
+                    This content is used by AI to generate lesson plans and teaching guides. 
+                    Click "Replace Content" to upload a new PDF.
+                  </p>
+                </div>
               )}
             </div>
 
@@ -584,43 +934,359 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
 
         {activeTab === 'lesson-plan' && topic.aiContent?.lessonPlan && (
           <div className="tab-panel lesson-plan-panel">
-            {topic.aiContent.generatedAt && (
-              <div className="ai-content-info">
-                <span className="generated-timestamp">
-                  Generated on {new Date(topic.aiContent.generatedAt).toLocaleDateString()} at {new Date(topic.aiContent.generatedAt).toLocaleTimeString()}
-                </span>
+            <div className="ai-content-header">
+              {topic.aiContent.generatedAt && (
+                <div className="ai-content-info">
+                  <span className="generated-timestamp">
+                    Generated on {new Date(topic.aiContent.generatedAt).toLocaleDateString()} at {new Date(topic.aiContent.generatedAt).toLocaleTimeString()}
+                  </span>
+                </div>
+              )}
+              <div className="ai-content-actions">
+                {!isEditingLessonPlan ? (
+                  <button 
+                    onClick={handleStartEditingLessonPlan}
+                    className="btn btn-secondary btn-sm"
+                  >
+                    <FileText size={16} />
+                    Edit Content
+                  </button>
+                ) : (
+                  <div className="editing-actions">
+                    <button 
+                      onClick={handleSaveLessonPlan}
+                      className="btn btn-primary btn-sm"
+                      disabled={savingContent === 'lesson-plan'}
+                    >
+                      {savingContent === 'lesson-plan' ? (
+                        <>
+                          <div className="spinner" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save size={16} />
+                          Save Changes
+                        </>
+                      )}
+                    </button>
+                    <button 
+                      onClick={handleCancelEditingLessonPlan}
+                      className="btn btn-secondary btn-sm"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
               </div>
+            </div>
+            
+            {isEditingLessonPlan ? (
+              <div className="editable-content">
+                <div className="editing-help">
+                  <p>💡 <strong>Keyboard shortcuts:</strong> Ctrl+S to save, Esc to cancel</p>
+                </div>
+                <textarea
+                  value={editingLessonPlan}
+                  onChange={(e) => setEditingLessonPlan(e.target.value)}
+                  className="content-textarea"
+                  rows={20}
+                  placeholder="Enter your lesson plan content..."
+                />
+              </div>
+            ) : (
+              <LessonPlanDisplay
+                lessonPlan={topic.aiContent.lessonPlan}
+                classLevel={topic.aiContent.classLevel || 'Class 1'}
+                topicName={topic.name}
+                subject={currentPath.subject?.name}
+                onSectionUpdate={handleSectionUpdate}
+                onLessonPlanUpdate={handleLessonPlanUpdate}
+              />
             )}
-            <LessonPlanDisplay
-              lessonPlan={topic.aiContent.lessonPlan}
-              classLevel={topic.aiContent.classLevel || 'Class 1'}
-              topicName={topic.name}
-              subject={currentPath.subject?.name}
-              onSectionUpdate={handleSectionUpdate}
-              onLessonPlanUpdate={handleLessonPlanUpdate}
-            />
           </div>
         )}
 
         {activeTab === 'teaching-guide' && (topic.aiContent?.teachingGuide || teachingGuide) && (
           <div className="tab-panel teaching-guide-panel">
-            <TeachingGuideDisplay
-              teachingGuide={topic.aiContent?.teachingGuide || teachingGuide || ''}
-              topicName={topic.name}
-              classLevel={currentPath.class?.name || 'Class 1'}
-              subject={currentPath.subject?.name}
-            />
+            <div className="ai-content-header">
+              {topic.aiContent?.generatedAt && (
+                <div className="ai-content-info">
+                  <span className="generated-timestamp">
+                    Generated on {new Date(topic.aiContent.generatedAt).toLocaleDateString()} at {new Date(topic.aiContent.generatedAt).toLocaleTimeString()}
+                  </span>
+                </div>
+              )}
+              <div className="ai-content-actions">
+                {!isEditingTeachingGuide ? (
+                  <button 
+                    onClick={handleStartEditingTeachingGuide}
+                    className="btn btn-secondary btn-sm"
+                  >
+                    <User size={16} />
+                    Edit Content
+                  </button>
+                ) : (
+                  <div className="editing-actions">
+                    <button 
+                      onClick={handleSaveTeachingGuide}
+                      className="btn btn-primary btn-sm"
+                      disabled={savingContent === 'teaching-guide'}
+                    >
+                      {savingContent === 'teaching-guide' ? (
+                        <>
+                          <div className="spinner" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save size={16} />
+                          Save Changes
+                        </>
+                      )}
+                    </button>
+                    <button 
+                      onClick={handleCancelEditingTeachingGuide}
+                      className="btn btn-secondary btn-sm"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {isEditingTeachingGuide ? (
+              <div className="editable-content">
+                <textarea
+                  value={editingTeachingGuide}
+                  onChange={(e) => setEditingTeachingGuide(e.target.value)}
+                  className="content-textarea"
+                  rows={20}
+                  placeholder="Enter your teaching guide content..."
+                />
+              </div>
+            ) : (
+              <TeachingGuideDisplay
+                teachingGuide={topic.aiContent?.teachingGuide || teachingGuide || ''}
+                topicName={topic.name}
+                classLevel={currentPath.class?.name || 'Class 1'}
+                subject={currentPath.subject?.name}
+              />
+            )}
           </div>
         )}
 
-        {activeTab === 'images' && ((topic.aiContent?.images && topic.aiContent.images.length > 0) || (images && images.length > 0)) && (
-          <div className="tab-panel images-panel">
-            <ImageDisplay
-              images={topic.aiContent?.images || images || []}
-              topicName={topic.name}
-              classLevel={currentPath.class?.name || 'Class 1'}
-              subject={currentPath.subject?.name}
-            />
+        {activeTab === 'group-discussion' && (topic.aiContent?.groupDiscussion || groupDiscussion) && (
+          <div className="tab-panel group-discussion-panel">
+            <div className="ai-content-header">
+              {topic.aiContent?.generatedAt && (
+                <div className="ai-content-info">
+                  <span className="generated-timestamp">
+                    Generated on {new Date(topic.aiContent.generatedAt).toLocaleDateString()} at {new Date(topic.aiContent.generatedAt).toLocaleTimeString()}
+                  </span>
+                </div>
+              )}
+              <div className="ai-content-actions">
+                {!isEditingGroupDiscussion ? (
+                  <button 
+                    onClick={handleStartEditingGroupDiscussion}
+                    className="btn btn-secondary btn-sm"
+                  >
+                    <Users size={16} />
+                    Edit Content
+                  </button>
+                ) : (
+                  <div className="editing-actions">
+                    <button 
+                      onClick={handleSaveGroupDiscussion}
+                      className="btn btn-primary btn-sm"
+                      disabled={savingContent === 'group-discussion'}
+                    >
+                      {savingContent === 'group-discussion' ? (
+                        <>
+                          <div className="spinner" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save size={16} />
+                          Save Changes
+                        </>
+                      )}
+                    </button>
+                    <button 
+                      onClick={handleCancelEditingGroupDiscussion}
+                      className="btn btn-secondary btn-sm"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {isEditingGroupDiscussion ? (
+              <div className="editable-content">
+                <textarea
+                  value={editingGroupDiscussion}
+                  onChange={(e) => setEditingGroupDiscussion(e.target.value)}
+                  className="content-textarea"
+                  rows={20}
+                  placeholder="Enter your group discussion content..."
+                />
+              </div>
+            ) : (
+              <GroupDiscussionDisplay
+                groupDiscussion={topic.aiContent?.groupDiscussion || groupDiscussion || ''}
+                topicName={topic.name}
+                classLevel={currentPath.class?.name || 'Class 1'}
+              />
+            )}
+          </div>
+        )}
+
+        {activeTab === 'assessment' && (topic.aiContent?.assessmentQuestions || assessmentQuestions) && (
+          <div className="tab-panel assessment-panel">
+            <div className="ai-content-header">
+              {topic.aiContent?.generatedAt && (
+                <div className="ai-content-info">
+                  <span className="generated-timestamp">
+                    Generated on {new Date(topic.aiContent.generatedAt).toLocaleDateString()} at {new Date(topic.aiContent.generatedAt).toLocaleTimeString()}
+                  </span>
+                </div>
+              )}
+              <div className="ai-content-actions">
+                {!isEditingAssessmentQuestions ? (
+                  <button 
+                    onClick={handleStartEditingAssessmentQuestions}
+                    className="btn btn-secondary btn-sm"
+                  >
+                    <ClipboardList size={16} />
+                    Edit Content
+                  </button>
+                ) : (
+                  <div className="editing-actions">
+                    <button 
+                      onClick={handleSaveAssessmentQuestions}
+                      className="btn btn-primary btn-sm"
+                      disabled={savingContent === 'assessment-questions'}
+                    >
+                      {savingContent === 'assessment-questions' ? (
+                        <>
+                          <div className="spinner" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save size={16} />
+                          Save Changes
+                        </>
+                      )}
+                    </button>
+                    <button 
+                      onClick={handleCancelEditingAssessmentQuestions}
+                      className="btn btn-secondary btn-sm"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {isEditingAssessmentQuestions ? (
+              <div className="editable-content">
+                <div className="editing-help">
+                  <p>💡 <strong>Keyboard shortcuts:</strong> Ctrl+S to save, Esc to cancel</p>
+                </div>
+                <textarea
+                  value={editingAssessmentQuestions}
+                  onChange={(e) => setEditingAssessmentQuestions(e.target.value)}
+                  className="content-textarea"
+                  rows={20}
+                  placeholder="Enter your assessment questions content..."
+                />
+              </div>
+            ) : (
+              <div className="assessment-content">
+                <pre className="assessment-text">
+                  {topic.aiContent?.assessmentQuestions || assessmentQuestions || ''}
+                </pre>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'worksheets' && (topic.aiContent?.worksheets || worksheets) && (
+          <div className="tab-panel worksheets-panel">
+            <div className="ai-content-header">
+              {topic.aiContent?.generatedAt && (
+                <div className="ai-content-info">
+                  <span className="generated-timestamp">
+                    Generated on {new Date(topic.aiContent.generatedAt).toLocaleDateString()} at {new Date(topic.aiContent.generatedAt).toLocaleTimeString()}
+                  </span>
+                </div>
+              )}
+              <div className="ai-content-actions">
+                {!isEditingWorksheets ? (
+                  <button 
+                    onClick={handleStartEditingWorksheets}
+                    className="btn btn-secondary btn-sm"
+                  >
+                    <BookOpen size={16} />
+                    Edit Content
+                  </button>
+                ) : (
+                  <div className="editing-actions">
+                    <button 
+                      onClick={handleSaveWorksheets}
+                      className="btn btn-primary btn-sm"
+                      disabled={savingContent === 'worksheets'}
+                    >
+                      {savingContent === 'worksheets' ? (
+                        <>
+                          <div className="spinner" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save size={16} />
+                          Save Changes
+                        </>
+                      )}
+                    </button>
+                    <button 
+                      onClick={handleCancelEditingWorksheets}
+                      className="btn btn-secondary btn-sm"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {isEditingWorksheets ? (
+              <div className="editable-content">
+                <div className="editing-help">
+                  <p>💡 <strong>Keyboard shortcuts:</strong> Ctrl+S to save, Esc to cancel</p>
+                </div>
+                <textarea
+                  value={editingWorksheets}
+                  onChange={(e) => setEditingWorksheets(e.target.value)}
+                  className="content-textarea"
+                  rows={20}
+                  placeholder="Enter your worksheets content..."
+                />
+              </div>
+            ) : (
+              <div className="worksheets-content">
+                <pre className="worksheets-text">
+                  {topic.aiContent?.worksheets || worksheets || ''}
+                </pre>
+              </div>
+            )}
           </div>
         )}
 

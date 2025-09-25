@@ -123,7 +123,7 @@ else
         --role $ROLE_ARN \
         --handler lambda_function.lambda_handler \
         --zip-file fileb://gemini-lambda.zip \
-        --timeout 30 \
+        --timeout 60 \
         --memory-size 256 \
         --environment Variables="{GEMINI_API_KEY=$GEMINI_API_KEY}" > /dev/null
         
@@ -233,7 +233,7 @@ fi
 echo "🚀 Deploying API..."
 aws apigateway create-deployment \
     --rest-api-id $API_ID \
-    --stage-name prod > /dev/null
+    --stage-name pre-prod > /dev/null
 
 echo -e "${GREEN}✅ API deployed${NC}"
 
@@ -245,7 +245,7 @@ echo ""
 echo "🎉 Gemini Proxy Deployment Complete!"
 echo "===================================="
 echo -e "${GREEN}✅ Lambda Function: $FUNCTION_NAME${NC}"
-echo -e "${GREEN}✅ API Endpoint: https://$API_ID.execute-api.$REGION.amazonaws.com/prod/gemini/{NC}"
+echo -e "${GREEN}✅ API Endpoint: https://$API_ID.execute-api.$REGION.amazonaws.com/pre-prod/gemini/{NC}"
 echo -e "${GREEN}✅ Usage Tracking: Enabled${NC}"
 echo -e "${GREEN}✅ Rate Limiting: 100 requests/day per user${NC}"
 
@@ -254,6 +254,7 @@ echo "📋 Available Endpoints:"
 echo "  POST /gemini/generate-content"
 echo "  POST /gemini/discover-documents" 
 echo "  POST /gemini/enhance-section"
+echo "  POST /gemini/analyze-chapter"
 
 echo ""
 echo -e "${YELLOW}⚠️  Security Notes:${NC}"

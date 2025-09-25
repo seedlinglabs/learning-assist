@@ -67,6 +67,34 @@ body {
   backdrop-filter: blur(10px);
 }
 
+.nav-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  text-decoration: none;
+}
+
+.nav-button:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-1px);
+}
+
+.nav-button.active {
+  background: rgba(255, 255, 255, 0.9);
+  color: #1e40af;
+  border-color: rgba(255, 255, 255, 0.9);
+}
+
 .user-name {
   color: white;
   font-weight: 500;
@@ -289,7 +317,6 @@ body {
 /* Main content */
 .app-main {
   flex: 1;
-  max-width: 1200px;
   margin: 0 auto;
   width: 100%;
   padding: 2rem 1.5rem;
@@ -564,7 +591,7 @@ body {
   background: white;
   border-radius: 1rem;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  max-width: 500px;
+ 
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
@@ -1142,4 +1169,192 @@ body {
 
 .space-y-8 > * + * {
   margin-top: 2rem;
+}
+
+/* Textbook Content Display Styles */
+.pdf-upload-section {
+  margin: 1rem 0;
+}
+
+.textbook-content-display {
+  margin: 1rem 0;
+}
+
+.textbook-content-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.content-label {
+  font-weight: 600;
+  color: #374151;
+  font-size: 0.875rem;
+}
+
+.textbook-content-textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-family: inherit;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  resize: vertical;
+  background-color: #f9fafb;
+  color: #374151;
+}
+
+.textbook-content-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.textbook-content-textarea::placeholder {
+  color: #9ca3af;
+}
+
+.form-help-text {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+/* AI Content Editing Styles */
+.ai-content-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.ai-content-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.editing-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.editable-content {
+  margin-top: 1rem;
+}
+
+.content-textarea {
+  width: 100%;
+  min-height: 400px;
+  padding: 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  resize: vertical;
+  background: #fafafa;
+  transition: all 0.2s ease;
+}
+
+.content-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  background: white;
+}
+
+.content-textarea::placeholder {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+/* Spinner for loading states */
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-right: 0.5rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive adjustments for editing */
+@media (max-width: 768px) {
+  .ai-content-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .ai-content-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  
+  .editing-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .editing-actions .btn {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+/* Subject Card with Chapter Planner */
+.subject-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.subject-main-card {
+  flex: 1;
+}
+
+.subject-actions {
+  display: flex;
+  justify-content: center;
+  padding: 0 1rem;
+}
+
+.chapter-planner-btn {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.chapter-planner-btn:hover {
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+.chapter-planner-btn:active {
+  transform: translateY(0);
 }

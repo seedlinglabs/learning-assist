@@ -1,5 +1,5 @@
-import React from 'react';
-import { User, Clock, BookOpen, Users, Lightbulb } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { User, Clock, BookOpen, Users, Lightbulb, Volume2, VolumeX, Play, Pause } from 'lucide-react';
 import './TeachingGuideDisplay.css';
 
 interface TeachingGuideDisplayProps {
@@ -15,6 +15,98 @@ const TeachingGuideDisplay: React.FC<TeachingGuideDisplayProps> = ({
   classLevel,
   subject
 }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [currentSection, setCurrentSection] = useState(0);
+  const [speechSupported, setSpeechSupported] = useState(false);
+  const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  // Check if speech synthesis is supported
+  useEffect(() => {
+    setSpeechSupported('speechSynthesis' in window);
+  }, []);
+
+  // Clean up speech synthesis on unmount
+  useEffect(() => {
+    return () => {
+      if (speechSynthesisRef.current) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  // Speech synthesis functions
+  const speakText = (text: string, onEnd?: () => void) => {
+    if (!speechSupported) return;
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.8; // Slightly slower for better comprehension
+    utterance.pitch = 1;
+    utterance.volume = 1;
+
+    utterance.onend = () => {
+      if (onEnd) onEnd();
+    };
+
+    utterance.onerror = () => {
+      setIsPlaying(false);
+      setIsPaused(false);
+    };
+
+    speechSynthesisRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const stopSpeaking = () => {
+    if (speechSupported) {
+      window.speechSynthesis.cancel();
+      setIsPlaying(false);
+      setIsPaused(false);
+      setCurrentSection(0);
+    }
+  };
+
+  const pauseSpeaking = () => {
+    if (speechSupported) {
+      if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
+        window.speechSynthesis.pause();
+        setIsPaused(true);
+      } else if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+        setIsPaused(false);
+      }
+    }
+  };
+
+  const playTeachingGuide = () => {
+    if (!speechSupported) return;
+
+    const sections = parseTeachingGuide(teachingGuide);
+    if (sections.length === 0) return;
+
+    setIsPlaying(true);
+    setIsPaused(false);
+    setCurrentSection(0);
+
+    const speakSection = (index: number) => {
+      if (index >= sections.length) {
+        setIsPlaying(false);
+        setCurrentSection(0);
+        return;
+      }
+
+      setCurrentSection(index);
+      const section = sections[index];
+      const textToSpeak = `${section.title}. ${section.content}`;
+      
+      speakText(textToSpeak, () => {
+        speakSection(index + 1);
+      });
+    };
+
+    speakSection(0);
+  };
+
   // Parse the teaching guide content to extract sections
   const parseTeachingGuide = (content: string) => {
     const sections = [];
@@ -113,6 +205,28 @@ const TeachingGuideDisplay: React.FC<TeachingGuideDisplayProps> = ({
           <span className="class-level">{classLevel}</span>
           {subject && <span className="subject">{subject}</span>}
         </div>
+        {speechSupported && (
+          <div className="audio-controls">
+            <button
+              onClick={isPlaying ? stopSpeaking : playTeachingGuide}
+              className={`audio-btn ${isPlaying ? 'stop' : 'play'}`}
+              title={isPlaying ? 'Stop listening' : 'Listen to teaching guide'}
+            >
+              {isPlaying ? <VolumeX size={16} /> : <Volume2 size={16} />}
+              {isPlaying ? 'Stop' : 'Listen'}
+            </button>
+            {isPlaying && (
+              <button
+                onClick={pauseSpeaking}
+                className="audio-btn pause"
+                title={isPaused ? 'Resume' : 'Pause'}
+              >
+                {isPaused ? <Play size={16} /> : <Pause size={16} />}
+                {isPaused ? 'Resume' : 'Pause'}
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="teaching-guide-intro">
@@ -127,11 +241,18 @@ const TeachingGuideDisplay: React.FC<TeachingGuideDisplayProps> = ({
         {sections.length > 0 ? (
           sections.map((section, index) => {
             const Icon = section.icon;
+            const isCurrentSection = isPlaying && currentSection === index;
             return (
-              <div key={index} className="teaching-guide-section">
+              <div key={index} className={`teaching-guide-section ${isCurrentSection ? 'currently-playing' : ''}`}>
                 <div className="section-header">
                   <Icon size={20} />
                   <h3>{section.title}</h3>
+                  {isCurrentSection && (
+                    <div className="playing-indicator">
+                      <Volume2 size={16} />
+                      <span>Playing...</span>
+                    </div>
+                  )}
                 </div>
                 <div className="section-content">
                   {formatContent(section.content)}

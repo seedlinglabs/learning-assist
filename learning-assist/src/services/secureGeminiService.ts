@@ -201,6 +201,51 @@ class SecureGeminiService {
     }
   }
 
+  async generateGroupDiscussion(
+    topicName: string,
+    description: string,
+    documentUrls: string[],
+    classLevel: string,
+    subject: string
+  ): Promise<{ success: boolean; groupDiscussion?: string; error?: string }> {
+    
+    const prompt = this.buildGroupDiscussionPrompt(topicName, description, documentUrls, classLevel, subject);
+    
+    const payload = {
+      contents: [{
+        parts: [{
+          text: prompt
+        }]
+      }],
+      generationConfig: {
+        temperature: 0.7,
+        topK: 40,
+        topP: 0.9,
+        maxOutputTokens: 2048,
+      }
+    };
+
+    const response = await this.makeSecureRequest('generate-content', payload);
+    
+    if (!response.success) {
+      return { success: false, error: response.error };
+    }
+
+    try {
+      const generatedText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!generatedText) {
+        return { success: false, error: 'No group discussion generated' };
+      }
+      return { success: true, groupDiscussion: generatedText };
+      
+    } catch (error) {
+      return { 
+        success: false, 
+        error: 'Failed to parse generated group discussion' 
+      };
+    }
+  }
+
   // Image generation is now handled by imageSearchService
   // This method is kept for backward compatibility but not used
 
@@ -456,10 +501,7 @@ Imagine you are the actual teacher in the classroom right now. The students are 
 TEACHING GUIDE STRUCTURE:
 
 **CLASSROOM SETUP (2 minutes)**
-- How you greet students and set the tone
-- What you write on the board
-- How you organize materials
-- Your opening attention-grabbing statement
+- Opening questions to grab students' attention
 
 **LESSON DELIVERY (35 minutes)**
 - Your exact words and explanations
@@ -501,6 +543,118 @@ TEXTBOOK INTEGRATION:
 - Use textbook diagrams, charts, or illustrations in your teaching` : ''}
 
 Write this as a complete teaching script that shows exactly how you would deliver this lesson if you were the teacher in the classroom right now.`;
+  }
+
+  private buildGroupDiscussionPrompt(topicName: string, description: string, documentUrls: string[], classLevel: string, subject: string): string {
+    // Check if description contains PDF content (longer than typical descriptions)
+    const isPDFContent = description && description.length > 500;
+    
+    const basePrompt = `You are an expert teacher creating group discussion activities for a ${classLevel} ${subject} lesson on "${topicName}".
+
+Topic: ${topicName}
+Referenced Documents: ${documentUrls.length > 0 ? documentUrls.join(', ') : 'None provided'}`;
+
+    const descriptionSection = isPDFContent 
+      ? `TEXTBOOK CONTENT (Use this as your primary reference):
+${description}
+
+IMPORTANT: Base your discussion ideas on the specific content provided above. Reference specific sections, examples, and information from this textbook content.`
+      : `Description: ${description || 'No description provided'}`;
+
+    return `${basePrompt}
+${descriptionSection}
+
+GROUP DISCUSSION OBJECTIVES:
+Create engaging group discussion activities that help students:
+- Deepen their understanding of the topic
+- Connect concepts to real-world applications
+- Develop critical thinking skills
+- Practice communication and collaboration
+- Build confidence in expressing ideas
+
+DISCUSSION ACTIVITY STRUCTURE:
+
+**SMALL GROUP DISCUSSIONS (15-20 minutes)**
+- 3-4 students per group
+- Specific discussion questions or scenarios
+- Clear roles and responsibilities
+- Time limits for each part
+
+**WHOLE CLASS SHARING (10-15 minutes)**
+- Groups present key insights
+- Class-wide discussion of different perspectives
+- Teacher facilitation and synthesis
+
+**REFLECTION AND APPLICATION (5-10 minutes)**
+- Individual reflection questions
+- Connection to real-world examples
+- Preview of next lesson connections
+
+DISCUSSION ACTIVITY TYPES TO INCLUDE:
+
+1. **Case Study Discussions**
+   - Real-world scenarios related to the topic
+   - Problem-solving situations
+   - Ethical dilemmas or decision-making
+
+2. **Concept Mapping**
+   - Visual representation of relationships
+   - Collaborative mind mapping
+   - Connection to prior knowledge
+
+3. **Debate and Perspective Taking**
+   - Multiple viewpoints on the topic
+   - Structured arguments with evidence
+   - Respectful disagreement practice
+
+4. **Application Scenarios**
+   - How concepts apply in different contexts
+   - Personal relevance and connections
+   - Future implications and predictions
+
+5. **Question Generation**
+   - Students create their own questions
+   - Peer-to-peer questioning
+   - Deep thinking prompts
+
+DISCUSSION FACILITATION GUIDELINES:
+
+**For Teachers:**
+- Provide clear instructions and expectations
+- Monitor group dynamics and participation
+- Ask probing questions to deepen thinking
+- Ensure all voices are heard
+- Connect discussions to learning objectives
+
+**For Students:**
+- Listen actively to peers
+- Build on others' ideas
+- Ask clarifying questions
+- Support opinions with evidence
+- Respect different perspectives
+
+${isPDFContent ? `
+TEXTBOOK INTEGRATION:
+- Reference specific pages, sections, or examples from the provided textbook
+- Use actual content, data, and examples from the textbook
+- Connect discussion questions to textbook material
+- Encourage students to cite textbook information in discussions` : ''}
+
+AGE-APPROPRIATE CONSIDERATIONS FOR ${classLevel}:
+- Discussion time limits appropriate for attention spans
+- Clear, simple language and instructions
+- Visual aids and concrete examples
+- Structured formats to support participation
+- Positive reinforcement and encouragement
+
+Create 3-4 specific group discussion activities with:
+- Clear objectives for each activity
+- Step-by-step instructions
+- Discussion questions or prompts
+- Expected outcomes
+- Assessment criteria
+
+Make these activities engaging, educational, and suitable for ${classLevel} students learning about "${topicName}".`;
   }
 
   // Image discovery prompt removed - now using imageSearchService
@@ -650,6 +804,336 @@ Return only the enhanced content with specific, working links.`;
     }
 
     return [];
+  }
+
+  /**
+   * Generate assessment questions for a topic
+   */
+  async generateAssessmentQuestions(
+    topicName: string,
+    description: string,
+    documentUrls: string[],
+    classLevel: string,
+    subject: string
+  ): Promise<{ success: boolean; assessmentQuestions?: string; error?: string }> {
+    try {
+      const prompt = `Generate comprehensive assessment questions for the topic "${topicName}" for ${classLevel} students studying ${subject}.
+
+Topic Description: ${description}
+
+Please create a structured assessment with the following components:
+
+1. **Multiple Choice Questions (MCQs)** - 5 questions with 4 options each
+2. **Short Answer Questions** - 3 questions requiring 2-3 sentence answers
+3. **Long Answer Questions** - 2 questions requiring detailed explanations
+4. **Check for Understanding (CFU) Questions** - 5 questions that parents can use to engage their children at home
+
+Format the response as structured JSON with clear sections. Make questions age-appropriate and aligned with the topic content.
+
+${documentUrls.length > 0 ? `Reference these documents: ${documentUrls.join(', ')}` : ''}
+
+Return only valid JSON in this format:
+{
+  "mcqs": [
+    {
+      "question": "Question text",
+      "options": ["A", "B", "C", "D"],
+      "correct": "A",
+      "explanation": "Why this is correct"
+    }
+  ],
+  "shortAnswers": [
+    {
+      "question": "Question text",
+      "sampleAnswer": "Expected answer"
+    }
+  ],
+  "longAnswers": [
+    {
+      "question": "Question text",
+      "sampleAnswer": "Detailed expected answer"
+    }
+  ],
+  "cfuQuestions": [
+    {
+      "question": "Question text",
+      "parentGuidance": "How parents can help"
+    }
+  ]
+}`;
+
+      const payload = {
+        contents: [{
+          parts: [{
+            text: prompt
+          }]
+        }],
+        generationConfig: {
+          temperature: 0.7,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 2048,
+        }
+      };
+
+      const response = await this.makeSecureRequest('generate-content', payload);
+      
+      if (response.success && response.data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+        const content = response.data.candidates[0].content.parts[0].text;
+        
+        // Try to extract JSON from the response (handle markdown code blocks)
+        let jsonText = content;
+        
+        // Remove markdown code blocks if present
+        if (content.includes('```json')) {
+          const codeBlockMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
+          if (codeBlockMatch) {
+            jsonText = codeBlockMatch[1];
+          }
+        } else {
+          // Try to find JSON object directly
+          const jsonMatch = content.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            jsonText = jsonMatch[0];
+          }
+        }
+        
+        if (jsonText) {
+          try {
+            const assessmentData = JSON.parse(jsonText);
+            const formattedQuestions = this.formatAssessmentQuestions(assessmentData);
+            
+            return {
+              success: true,
+              assessmentQuestions: formattedQuestions
+            };
+          } catch (parseError) {
+            console.error('Failed to parse assessment questions JSON:', parseError);
+            console.error('JSON text:', jsonText);
+            return {
+              success: false,
+              error: 'Failed to parse assessment questions response'
+            };
+          }
+        }
+      }
+      
+      return {
+        success: false,
+        error: 'Failed to generate assessment questions'
+      };
+    } catch (error) {
+      console.error('Error generating assessment questions:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      };
+    }
+  }
+
+  /**
+   * Generate worksheets for a topic using NCERT-style content
+   */
+  async generateWorksheets(
+    topicName: string,
+    description: string,
+    documentUrls: string[],
+    classLevel: string,
+    subject: string
+  ): Promise<{ success: boolean; worksheets?: string; error?: string }> {
+    try {
+      const prompt = `Generate comprehensive worksheets for the topic "${topicName}" for ${classLevel} students studying ${subject}.
+
+Topic Description: ${description}
+
+Create worksheets inspired by NCERT's approach (referencing https://ncert.nic.in/cncl/worksheet.php) with the following structure:
+
+1. **Worksheet 1: Foundation Practice** - Basic concepts and skills
+2. **Worksheet 2: Application Practice** - Problem-solving and application
+3. **Worksheet 3: Extension Activities** - Advanced challenges and creative tasks
+
+Each worksheet should include:
+- Clear instructions
+- Age-appropriate activities
+- Varied question types (fill-in-the-blanks, matching, short answers, etc.)
+- Visual elements where helpful
+- Answer keys for teachers
+- Parent engagement suggestions
+
+Format the response as structured JSON. Make content engaging, educational, and suitable for both classroom and homework use.
+
+${documentUrls.length > 0 ? `Reference these documents: ${documentUrls.join(', ')}` : ''}
+
+Return only valid JSON in this format:
+{
+  "worksheets": [
+    {
+      "title": "Worksheet 1: Foundation Practice",
+      "instructions": "Clear instructions for students",
+      "activities": [
+        {
+          "type": "fill-in-the-blank",
+          "question": "Question text with ___ blanks",
+          "answer": "Expected answer"
+        }
+      ],
+      "answerKey": "Answers for teachers",
+      "parentTips": "How parents can help"
+    }
+  ]
+}`;
+
+      const payload = {
+        contents: [{
+          parts: [{
+            text: prompt
+          }]
+        }],
+        generationConfig: {
+          temperature: 0.7,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 2048,
+        }
+      };
+
+      const response = await this.makeSecureRequest('generate-content', payload);
+      
+      if (response.success && response.data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+        const content = response.data.candidates[0].content.parts[0].text;
+        
+        // Try to extract JSON from the response (handle markdown code blocks)
+        let jsonText = content;
+        
+        // Remove markdown code blocks if present
+        if (content.includes('```json')) {
+          const codeBlockMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
+          if (codeBlockMatch) {
+            jsonText = codeBlockMatch[1];
+          }
+        } else {
+          // Try to find JSON object directly
+          const jsonMatch = content.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            jsonText = jsonMatch[0];
+          }
+        }
+        
+        if (jsonText) {
+          try {
+            const worksheetData = JSON.parse(jsonText);
+            const formattedWorksheets = this.formatWorksheets(worksheetData);
+            
+            return {
+              success: true,
+              worksheets: formattedWorksheets
+            };
+          } catch (parseError) {
+            console.error('Failed to parse worksheets JSON:', parseError);
+            console.error('JSON text:', jsonText);
+            return {
+              success: false,
+              error: 'Failed to parse worksheets response'
+            };
+          }
+        }
+      }
+      
+      return {
+        success: false,
+        error: 'Failed to generate worksheets'
+      };
+    } catch (error) {
+      console.error('Error generating worksheets:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      };
+    }
+  }
+
+  /**
+   * Format assessment questions into readable text
+   */
+  private formatAssessmentQuestions(data: any): string {
+    let formatted = '# Assessment Questions\n\n';
+    
+    if (data.mcqs && data.mcqs.length > 0) {
+      formatted += '## Multiple Choice Questions\n\n';
+      data.mcqs.forEach((mcq: any, index: number) => {
+        formatted += `**Q${index + 1}:** ${mcq.question}\n`;
+        mcq.options.forEach((option: string, optIndex: number) => {
+          formatted += `${String.fromCharCode(65 + optIndex)}. ${option}\n`;
+        });
+        formatted += `**Answer:** ${mcq.correct}\n`;
+        formatted += `**Explanation:** ${mcq.explanation}\n\n`;
+      });
+    }
+    
+    if (data.shortAnswers && data.shortAnswers.length > 0) {
+      formatted += '## Short Answer Questions\n\n';
+      data.shortAnswers.forEach((q: any, index: number) => {
+        formatted += `**Q${index + 1}:** ${q.question}\n`;
+        formatted += `**Sample Answer:** ${q.sampleAnswer}\n\n`;
+      });
+    }
+    
+    if (data.longAnswers && data.longAnswers.length > 0) {
+      formatted += '## Long Answer Questions\n\n';
+      data.longAnswers.forEach((q: any, index: number) => {
+        formatted += `**Q${index + 1}:** ${q.question}\n`;
+        formatted += `**Sample Answer:** ${q.sampleAnswer}\n\n`;
+      });
+    }
+    
+    if (data.cfuQuestions && data.cfuQuestions.length > 0) {
+      formatted += '## Check for Understanding (CFU) Questions\n';
+      formatted += '*These questions can be shared with parents to engage their children at home*\n\n';
+      data.cfuQuestions.forEach((q: any, index: number) => {
+        formatted += `**Q${index + 1}:** ${q.question}\n`;
+        formatted += `**Parent Guidance:** ${q.parentGuidance}\n\n`;
+      });
+    }
+    
+    return formatted;
+  }
+
+  /**
+   * Format worksheets into readable text
+   */
+  private formatWorksheets(data: any): string {
+    let formatted = '# Worksheets\n\n';
+    formatted += '*Inspired by NCERT worksheet methodology*\n\n';
+    
+    if (data.worksheets && data.worksheets.length > 0) {
+      data.worksheets.forEach((worksheet: any, index: number) => {
+        formatted += `## ${worksheet.title}\n\n`;
+        formatted += `**Instructions:** ${worksheet.instructions}\n\n`;
+        
+        if (worksheet.activities && worksheet.activities.length > 0) {
+          formatted += '### Activities\n\n';
+          worksheet.activities.forEach((activity: any, actIndex: number) => {
+            formatted += `**Activity ${actIndex + 1}:** ${activity.type}\n`;
+            formatted += `${activity.question}\n`;
+            if (activity.answer) {
+              formatted += `*Answer: ${activity.answer}*\n\n`;
+            }
+          });
+        }
+        
+        if (worksheet.answerKey) {
+          formatted += `### Answer Key\n${worksheet.answerKey}\n\n`;
+        }
+        
+        if (worksheet.parentTips) {
+          formatted += `### Parent Tips\n${worksheet.parentTips}\n\n`;
+        }
+        
+        formatted += '---\n\n';
+      });
+    }
+    
+    return formatted;
   }
 }
 

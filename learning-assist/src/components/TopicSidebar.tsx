@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { FileText, Plus, Search, Calendar } from 'lucide-react';
+import { FileText, Plus, Search, Calendar, Sparkles } from 'lucide-react';
 import { Topic } from '../types';
+import ChapterPlannerModal from './ChapterPlannerModal';
 
 interface TopicSidebarProps {
   topics: Topic[];
@@ -10,6 +11,10 @@ interface TopicSidebarProps {
   subjectId: string;
   subjectName: string;
   isCreatingNewTopic?: boolean;
+  subject: any;
+  class: any;
+  school: any;
+  onTopicsCreated: (topics: Topic[]) => void;
 }
 
 const TopicSidebar: React.FC<TopicSidebarProps> = ({ 
@@ -19,9 +24,14 @@ const TopicSidebar: React.FC<TopicSidebarProps> = ({
   onNewTopicClick,
   subjectId, 
   subjectName,
-  isCreatingNewTopic = false
+  isCreatingNewTopic = false,
+  subject,
+  class: cls,
+  school,
+  onTopicsCreated
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [showChapterPlanner, setShowChapterPlanner] = useState(false);
 
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {
@@ -42,13 +52,22 @@ const TopicSidebar: React.FC<TopicSidebarProps> = ({
           <h3>{subjectName} Topics</h3>
           <span className="topic-count">{topics.length}</span>
         </div>
-        <button
-          onClick={onNewTopicClick}
-          className={`btn btn-primary btn-sm ${isCreatingNewTopic ? 'active' : ''}`}
-          title="Add new topic"
-        >
-          <Plus size={16} />
-        </button>
+        <div className="sidebar-actions">
+          <button
+            onClick={() => setShowChapterPlanner(true)}
+            className="btn btn-secondary btn-sm"
+            title="Chapter Planner"
+          >
+            <Sparkles size={16} />
+          </button>
+          <button
+            onClick={onNewTopicClick}
+            className={`btn btn-primary btn-sm ${isCreatingNewTopic ? 'active' : ''}`}
+            title="Add new topic"
+          >
+            <Plus size={16} />
+          </button>
+        </div>
       </div>
 
       <div className="sidebar-search">
@@ -126,6 +145,15 @@ const TopicSidebar: React.FC<TopicSidebarProps> = ({
         )}
       </div>
 
+      {showChapterPlanner && (
+        <ChapterPlannerModal
+          subject={subject}
+          class={cls}
+          school={school}
+          onClose={() => setShowChapterPlanner(false)}
+          onTopicsCreated={onTopicsCreated}
+        />
+      )}
     </div>
   );
 };

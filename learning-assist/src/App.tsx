@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Breadcrumb from './components/Breadcrumb';
@@ -8,7 +8,8 @@ import ClassList from './components/ClassList';
 import SubjectList from './components/SubjectList';
 import TopicList from './components/TopicList';
 import ProtectedRoute from './components/ProtectedRoute';
-import LoginForm from './components/LoginForm';
+import TeacherTraining from './components/TeacherTraining';
+import { GraduationCap, Home } from 'lucide-react';
 import './App.css';
 import './styles/Auth.css';
 
@@ -16,9 +17,12 @@ const AppContent: React.FC = () => {
   const { currentPath } = useApp();
   const { user, logout } = useAuth();
   const { school, class: cls, subject } = currentPath;
+  const [showTraining, setShowTraining] = useState(false);
 
   const renderContent = () => {
-    if (!school) {
+    if (showTraining) {
+      return <TeacherTraining />;
+    } else if (!school) {
       return <SchoolList />;
     } else if (!cls) {
       return <ClassList />;
@@ -41,6 +45,14 @@ const AppContent: React.FC = () => {
             <SearchBar />
             {user && (
               <div className="user-info">
+                <button 
+                  onClick={() => setShowTraining(!showTraining)} 
+                  className={`nav-button ${showTraining ? 'active' : ''}`}
+                  title={showTraining ? 'Back to Main' : 'Teacher Training'}
+                >
+                  {showTraining ? <Home size={16} /> : <GraduationCap size={16} />}
+                  {showTraining ? 'Back to Main' : 'Training'}
+                </button>
                 <span className={`user-type-badge user-type-${user.user_type}`}>
                   {user.user_type}
                 </span>
