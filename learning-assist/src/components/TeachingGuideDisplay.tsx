@@ -81,56 +81,67 @@ const TeachingGuideDisplay: React.FC<TeachingGuideDisplayProps> = ({
   const playTeachingGuide = () => {
     if (!speechSupported) return;
 
-    const sections = parseTeachingGuide(teachingGuide);
-    if (sections.length === 0) return;
-
     setIsPlaying(true);
     setIsPaused(false);
     setCurrentSection(0);
 
-    const speakSection = (index: number) => {
-      if (index >= sections.length) {
-        setIsPlaying(false);
-        setCurrentSection(0);
-        return;
-      }
-
-      setCurrentSection(index);
-      const section = sections[index];
-      const textToSpeak = `${section.title}. ${section.content}`;
-      
-      speakText(textToSpeak, () => {
-        speakSection(index + 1);
-      });
-    };
-
-    speakSection(0);
+    // Extract text content from HTML for speech
+    const textContent = teachingGuide.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    
+    speakText(textContent, () => {
+      setIsPlaying(false);
+      setCurrentSection(-1);
+    });
   };
 
   // Parse the teaching guide content to extract sections
   const parseTeachingGuide = (content: string) => {
+    // First, clean the content by removing any HTML headings
+    let cleanContent = content
+      .replace(/<h[1-6][^>]*>.*?<\/h[1-6]>/gi, '') // Remove all HTML headings
+      .replace(/^\s*#+\s*/gm, '') // Remove markdown headings
+      .trim();
+    
     const sections = [];
-    const lines = content.split('\n');
+    const lines = cleanContent.split('\n');
     let currentSection = { title: '', content: '', icon: BookOpen };
+    
+    // Define section patterns to look for
+    const sectionPatterns = [
+      { pattern: /materials needed|classroom setup|learning objectives/i, title: 'Preparation (5 minutes)', icon: User },
+      { pattern: /opening activity|main teaching points|key questions|examples and demonstrations|student activities|assessment checkpoints/i, title: 'Lesson Delivery (30 minutes)', icon: BookOpen },
+      { pattern: /discussion prompts|group work|individual practice|understanding checks/i, title: 'Student Engagement', icon: Users },
+      { pattern: /summary|homework|preview/i, title: 'Closing (5 minutes)', icon: Clock },
+      { pattern: /page references|content usage|student guidance|explanation basis|visual aids/i, title: 'Textbook Integration', icon: BookOpen }
+    ];
     
     for (const line of lines) {
       const trimmedLine = line.trim();
       
-      // Check for section headers
-      if (trimmedLine.startsWith('**') && trimmedLine.endsWith('**')) {
-        // Save previous section if it has content
-        if (currentSection.content.trim()) {
-          sections.push({ ...currentSection });
+      // Skip empty lines
+      if (!trimmedLine) continue;
+      
+      // Check if this line starts a new section based on content patterns
+      let foundSection = false;
+      for (const sectionPattern of sectionPatterns) {
+        if (sectionPattern.pattern.test(trimmedLine)) {
+          // Save previous section if it has content
+          if (currentSection.content.trim()) {
+            sections.push({ ...currentSection });
+          }
+          
+          // Start new section
+          currentSection = {
+            title: sectionPattern.title,
+            content: '',
+            icon: sectionPattern.icon
+          };
+          foundSection = true;
+          break;
         }
-        
-        // Start new section
-        const title = trimmedLine.replace(/\*\*/g, '').trim();
-        currentSection = {
-          title,
-          content: '',
-          icon: getSectionIcon(title)
-        };
-      } else if (trimmedLine) {
+      }
+      
+      if (!foundSection) {
         // Add content to current section
         currentSection.content += (currentSection.content ? '\n' : '') + line;
       }
@@ -139,6 +150,15 @@ const TeachingGuideDisplay: React.FC<TeachingGuideDisplayProps> = ({
     // Add the last section
     if (currentSection.content.trim()) {
       sections.push(currentSection);
+    }
+    
+    // If no sections were found, create a single section with all content
+    if (sections.length === 0 && cleanContent.trim()) {
+      sections.push({
+        title: 'Teaching Guide',
+        content: cleanContent,
+        icon: BookOpen
+      });
     }
     
     return sections;
@@ -192,91 +212,35 @@ const TeachingGuideDisplay: React.FC<TeachingGuideDisplayProps> = ({
       });
   };
 
-  const sections = parseTeachingGuide(teachingGuide);
+  // Simplified - no parsing needed, AI generates formatted HTML
 
   return (
     <div className="teaching-guide-display">
-      <div className="teaching-guide-header">
-        <div className="teaching-guide-title">
-          <User size={24} />
-          <h2>Teaching Guide: {topicName}</h2>
-        </div>
-        <div className="teaching-guide-meta">
-          <span className="class-level">{classLevel}</span>
-          {subject && <span className="subject">{subject}</span>}
-        </div>
-        {speechSupported && (
-          <div className="audio-controls">
+      {speechSupported && (
+        <div className="audio-controls-top">
+          <button
+            onClick={isPlaying ? stopSpeaking : playTeachingGuide}
+            className={`audio-btn ${isPlaying ? 'stop' : 'play'}`}
+            title={isPlaying ? 'Stop listening' : 'Listen to teaching guide'}
+          >
+            {isPlaying ? <VolumeX size={16} /> : <Volume2 size={16} />}
+            {isPlaying ? 'Stop' : 'Listen'}
+          </button>
+          {isPlaying && (
             <button
-              onClick={isPlaying ? stopSpeaking : playTeachingGuide}
-              className={`audio-btn ${isPlaying ? 'stop' : 'play'}`}
-              title={isPlaying ? 'Stop listening' : 'Listen to teaching guide'}
+              onClick={pauseSpeaking}
+              className="audio-btn pause"
+              title={isPaused ? 'Resume' : 'Pause'}
             >
-              {isPlaying ? <VolumeX size={16} /> : <Volume2 size={16} />}
-              {isPlaying ? 'Stop' : 'Listen'}
+              {isPaused ? <Play size={16} /> : <Pause size={16} />}
+              {isPaused ? 'Resume' : 'Pause'}
             </button>
-            {isPlaying && (
-              <button
-                onClick={pauseSpeaking}
-                className="audio-btn pause"
-                title={isPaused ? 'Resume' : 'Pause'}
-              >
-                {isPaused ? <Play size={16} /> : <Pause size={16} />}
-                {isPaused ? 'Resume' : 'Pause'}
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-
-      <div className="teaching-guide-intro">
-        <p>
-          <strong>Teacher's Perspective:</strong> This guide shows exactly how to deliver this lesson 
-          as if you were the teacher in the classroom. It includes your exact words, classroom 
-          management techniques, and real-time teaching strategies.
-        </p>
-      </div>
+          )}
+        </div>
+      )}
 
       <div className="teaching-guide-content">
-        {sections.length > 0 ? (
-          sections.map((section, index) => {
-            const Icon = section.icon;
-            const isCurrentSection = isPlaying && currentSection === index;
-            return (
-              <div key={index} className={`teaching-guide-section ${isCurrentSection ? 'currently-playing' : ''}`}>
-                <div className="section-header">
-                  <Icon size={20} />
-                  <h3>{section.title}</h3>
-                  {isCurrentSection && (
-                    <div className="playing-indicator">
-                      <Volume2 size={16} />
-                      <span>Playing...</span>
-                    </div>
-                  )}
-                </div>
-                <div className="section-content">
-                  {formatContent(section.content)}
-                </div>
-              </div>
-            );
-          })
-        ) : (
-          <div className="teaching-guide-raw">
-            <pre className="teaching-guide-text">{teachingGuide}</pre>
-          </div>
-        )}
-      </div>
-
-      <div className="teaching-guide-footer">
-        <div className="teaching-tips">
-          <h4>💡 Teaching Tips</h4>
-          <ul>
-            <li>Use the exact dialogue provided to maintain consistency</li>
-            <li>Adapt the timing based on your students' responses</li>
-            <li>Be prepared to answer questions that may arise</li>
-            <li>Use the classroom management techniques suggested</li>
-          </ul>
-        </div>
+        <div className="teaching-guide-html" dangerouslySetInnerHTML={{ __html: teachingGuide }} />
       </div>
     </div>
   );

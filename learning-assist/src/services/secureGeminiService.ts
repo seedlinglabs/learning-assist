@@ -474,7 +474,7 @@ Make all content immediately usable in the classroom.`;
     // Check if description contains PDF content (longer than typical descriptions)
     const isPDFContent = description && description.length > 500;
     
-    const basePrompt = `You are an expert teacher delivering a ${classLevel} ${subject} lesson on "${topicName}".
+    const basePrompt = `Create a concise teaching guide for ${classLevel} ${subject} lesson on "${topicName}".
 
 Topic: ${topicName}
 Referenced Documents: ${documentUrls.length > 0 ? documentUrls.join(', ') : 'None provided'}`;
@@ -489,60 +489,137 @@ IMPORTANT: Base your entire teaching approach on the specific content provided a
     return `${basePrompt}
 ${descriptionSection}
 
-TEACHING SCENARIO:
-Imagine you are the actual teacher in the classroom right now. The students are sitting in front of you, and you need to teach this topic in a 40-minute class period. You must:
+TEACHING GUIDE FORMAT:
+Create a comprehensive, well-formatted teaching guide using clean HTML. Write in second person ("You should...", "Have students...") as instructions for the teacher.
 
-1. **BE THE TEACHER** - Act as if you are personally delivering this lesson
-2. **ENGAGE STUDENTS** - Use your voice, gestures, and teaching presence
-3. **TEACH CONVERSATIONALLY** - Write as if you are speaking directly to students
-4. **USE CLASSROOM MANAGEMENT** - Handle questions, maintain attention, manage time
-5. **ADAPT IN REAL-TIME** - Respond to student reactions and adjust your teaching
+Generate a complete HTML document with proper sections and formatting. Use the following structure:
 
-TEACHING GUIDE STRUCTURE:
+<div class="teaching-guide">
+  <section class="preparation-section">
+    <h2>🎯 Preparation (5 minutes)</h2>
+    <div class="section-content">
+      <h3>Materials Needed</h3>
+      <ul>
+        <li>Specific item 1</li>
+        <li>Specific item 2</li>
+      </ul>
+      
+      <h3>Classroom Setup</h3>
+      <ul>
+        <li>Setup instruction 1</li>
+        <li>Setup instruction 2</li>
+      </ul>
+      
+      <h3>Learning Objectives</h3>
+      <ul>
+        <li>Students will be able to...</li>
+        <li>Students will understand...</li>
+      </ul>
+    </div>
+  </section>
 
-**CLASSROOM SETUP (2 minutes)**
-- Opening questions to grab students' attention
+  <section class="lesson-delivery-section">
+    <h2>📚 Lesson Delivery (30 minutes)</h2>
+    <div class="section-content">
+      <h3>Opening Activity</h3>
+      <p>Specific engagement strategy with exact questions to ask students.</p>
+      
+      <h3>Main Teaching Points</h3>
+      <ul>
+        <li><strong>Key Concept 1:</strong> Detailed explanation</li>
+        <li><strong>Key Concept 2:</strong> Detailed explanation</li>
+        <li><strong>Key Concept 3:</strong> Detailed explanation</li>
+      </ul>
+      
+      <h3>Key Questions to Ask</h3>
+      <ul>
+        <li>"Specific question 1?"</li>
+        <li>"Specific question 2?"</li>
+        <li>"Specific question 3?"</li>
+      </ul>
+      
+      <h3>Examples and Demonstrations</h3>
+      <ul>
+        <li>Specific example 1</li>
+        <li>Specific example 2</li>
+      </ul>
+      
+      <h3>Student Activities</h3>
+      <ul>
+        <li>Activity 1 description</li>
+        <li>Activity 2 description</li>
+      </ul>
+    </div>
+  </section>
 
-**LESSON DELIVERY (35 minutes)**
-- Your exact words and explanations
-- When you pause for questions
-- How you use the textbook/whiteboard
-- Specific examples you give
-- Questions you ask students
-- How you handle student responses
-- When you check for understanding
-- How you manage time and transitions
+  <section class="engagement-section">
+    <h2>👥 Student Engagement</h2>
+    <div class="section-content">
+      <h3>Discussion Prompts</h3>
+      <ul>
+        <li>Discussion question 1</li>
+        <li>Discussion question 2</li>
+      </ul>
+      
+      <h3>Group Activities</h3>
+      <ul>
+        <li>Group activity 1</li>
+        <li>Group activity 2</li>
+      </ul>
+    </div>
+  </section>
 
-**STUDENT INTERACTION (Throughout)**
-- How you encourage participation
-- How you handle different learning styles
-- How you manage disruptive behavior
-- How you keep everyone engaged
+  <section class="closing-section">
+    <h2>🎯 Closing (5 minutes)</h2>
+    <div class="section-content">
+      <h3>Summary</h3>
+      <ul>
+        <li>Key point 1 to review</li>
+        <li>Key point 2 to review</li>
+      </ul>
+      
+      <h3>Homework Assignment</h3>
+      <p>Specific homework task</p>
+      
+      <h3>Next Lesson Preview</h3>
+      <p>Brief preview of what's coming next</p>
+    </div>
+  </section>
+</div>
 
-**CLOSING (3 minutes)**
-- How you summarize key points
-- How you assign homework
-- How you preview the next lesson
-- Your closing statement
-
-TEACHING STYLE REQUIREMENTS:
-- Use "I" statements (e.g., "I'm going to show you...", "Let me explain...")
-- Include specific dialogue and conversations
-- Show your teaching personality and enthusiasm
-- Demonstrate classroom management techniques
-- Use age-appropriate language for ${classLevel} students
-- Include specific examples and demonstrations
-- Show how you adapt to different student needs
+FORMATTING REQUIREMENTS:
+- Use semantic HTML with proper sections
+- Include emoji icons in section headings for visual appeal
+- Use h2 for main sections, h3 for subsections
+- Use <strong> for emphasis on key terms
+- Use <em> for important notes
+- Keep content concise but specific
+- Include exact questions and examples
+- Make everything immediately actionable for teachers
 
 ${isPDFContent ? `
-TEXTBOOK INTEGRATION:
-- Reference specific pages, sections, or examples from the provided textbook
-- Use actual content, data, and examples from the textbook
-- Show students exactly where to find information
-- Base all explanations on the textbook material
-- Use textbook diagrams, charts, or illustrations in your teaching` : ''}
+  <section class="textbook-integration-section">
+    <h2>📖 Textbook Integration</h2>
+    <div class="section-content">
+      <h3>Page References</h3>
+      <ul>
+        <li>Reference specific pages, sections, or examples from the provided textbook</li>
+      </ul>
+      
+      <h3>Content Usage</h3>
+      <ul>
+        <li>Use actual content, data, and examples from the textbook</li>
+        <li>Show students exactly where to find information</li>
+      </ul>
+      
+      <h3>Visual Aids</h3>
+      <ul>
+        <li>Use textbook diagrams, charts, or illustrations in your teaching</li>
+      </ul>
+    </div>
+  </section>` : ''}
 
-Write this as a complete teaching script that shows exactly how you would deliver this lesson if you were the teacher in the classroom right now.`;
+Create a practical, actionable teaching guide that any teacher can follow step-by-step.`;
   }
 
   private buildGroupDiscussionPrompt(topicName: string, description: string, documentUrls: string[], classLevel: string, subject: string): string {
