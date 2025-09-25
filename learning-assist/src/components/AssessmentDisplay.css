@@ -351,37 +351,92 @@
   }
 }
 
-/* Dark mode support */
+/* Professional Dark Mode Styles */
 .dark-mode .assessment-display {
-  background: #1e293b;
-  color: #f1f5f9;
+  background: #0f172a;
+  color: #f8fafc;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+}
+
+.dark-mode .assessment-header {
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  border-bottom: 1px solid #475569;
+}
+
+.dark-mode .assessment-title h2 {
+  color: #f8fafc;
+}
+
+.dark-mode .assessment-meta .class-level,
+.dark-mode .assessment-meta .subject {
+  background: rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .dark-mode .assessment-intro {
-  background: #451a03;
-  border-bottom-color: #f59e0b;
+  background: #1e293b;
+  border-bottom-color: #475569;
 }
 
 .dark-mode .assessment-intro p {
-  color: #fbbf24;
+  color: #cbd5e1;
+}
+
+.dark-mode .assessment-section {
+  border-bottom-color: #475569;
+}
+
+.dark-mode .assessment-section.currently-playing {
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .dark-mode .section-header {
-  background: #451a03;
-  border-bottom-color: #f59e0b;
+  background: #334155;
+  border-bottom-color: #475569;
 }
 
 .dark-mode .section-header h3 {
-  color: #fbbf24;
+  color: #f8fafc;
+}
+
+.dark-mode .playing-indicator {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.dark-mode .questions-container {
+  background: #1e293b;
 }
 
 .dark-mode .question-card {
   background: #334155;
   border-color: #475569;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.2);
+}
+
+.dark-mode .question-card:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+}
+
+.dark-mode .question-header {
+  border-bottom-color: #475569;
+}
+
+.dark-mode .question-number {
+  background: #475569;
+  color: #f8fafc;
 }
 
 .dark-mode .question-text {
-  color: #f1f5f9;
+  color: #f8fafc;
+}
+
+.dark-mode .options-list {
+  background: #1e293b;
 }
 
 .dark-mode .option-item {
@@ -391,10 +446,12 @@
 
 .dark-mode .option-item:hover {
   background: #475569;
+  border-color: #64748b;
 }
 
 .dark-mode .option-letter {
-  color: white;
+  color: #f8fafc;
+  font-weight: 600;
 }
 
 .dark-mode .option-text {
@@ -403,22 +460,39 @@
 
 .dark-mode .answer-section {
   background: #334155;
+  border-top-color: #475569;
 }
 
 .dark-mode .answer-header {
-  color: #86efac;
+  color: #10b981;
+}
+
+.dark-mode .answer-header strong {
+  color: #10b981;
 }
 
 .dark-mode .answer-content {
   color: #cbd5e1;
 }
 
+.dark-mode .explanation {
+  border-top-color: #475569;
+}
+
 .dark-mode .explanation-header {
-  color: #fbbf24;
+  color: #f59e0b;
+}
+
+.dark-mode .explanation-header strong {
+  color: #f59e0b;
 }
 
 .dark-mode .explanation-text {
   color: #cbd5e1;
+}
+
+.dark-mode .assessment-raw {
+  background: #1e293b;
 }
 
 .dark-mode .assessment-text {
@@ -428,14 +502,23 @@
 }
 
 .dark-mode .assessment-footer {
-  background: #451a03;
-  border-top-color: #f59e0b;
+  background: #1e293b;
+  border-top-color: #475569;
+}
+
+.dark-mode .assessment-tips {
+  background: #334155;
+  border-color: #475569;
 }
 
 .dark-mode .assessment-tips h4 {
-  color: #fbbf24;
+  color: #f59e0b;
+}
+
+.dark-mode .assessment-tips ul {
+  color: #cbd5e1;
 }
 
 .dark-mode .assessment-tips li {
-  color: #fbbf24;
+  color: #cbd5e1;
 }
