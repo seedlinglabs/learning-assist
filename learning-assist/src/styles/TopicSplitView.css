@@ -1076,10 +1076,309 @@ textarea:disabled {
   }
 }
 
+/* Professional Dark Mode Styles */
+.dark-mode .topic-split-view {
+  background: #0f172a;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+}
+
+.dark-mode .split-sidebar {
+  background: #1e293b;
+  border-right-color: #475569;
+}
+
+.dark-mode .split-main {
+  background: #0f172a;
+}
+
+/* Sidebar Dark Mode */
+.dark-mode .sidebar-header {
+  background: #334155;
+  border-bottom-color: #475569;
+}
+
+.dark-mode .sidebar-title h3 {
+  color: #f8fafc;
+}
+
+.dark-mode .topic-count {
+  background: #475569;
+  color: #cbd5e1;
+}
+
+.dark-mode .sidebar-search {
+  background: #1e293b;
+  border-bottom-color: #475569;
+}
+
+.dark-mode .search-input-container svg {
+  color: #94a3b8;
+}
+
+.dark-mode .search-input {
+  background: #334155;
+  border-color: #475569;
+  color: #f8fafc;
+}
+
+.dark-mode .search-input::placeholder {
+  color: #94a3b8;
+}
+
+.dark-mode .search-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Topic Items Dark Mode */
+.dark-mode .topic-item {
+  background: transparent;
+  border-color: transparent;
+}
+
+.dark-mode .topic-item:hover {
+  background: #334155;
+  border-color: #475569;
+}
+
+.dark-mode .topic-item.selected {
+  background: #1e40af;
+  border-color: #3b82f6;
+  box-shadow: 0 1px 3px 0 rgba(59, 130, 246, 0.3);
+}
+
+.dark-mode .topic-item-header svg {
+  color: #94a3b8;
+}
+
+.dark-mode .topic-name {
+  color: #f8fafc;
+}
+
+.dark-mode .topic-preview {
+  color: #cbd5e1;
+}
+
+.dark-mode .topic-summary-badge {
+  background: #1e40af;
+  color: #93c5fd;
+}
+
+.dark-mode .topic-item-meta {
+  color: #94a3b8;
+}
+
+.dark-mode .doc-count {
+  background: #475569;
+  color: #cbd5e1;
+}
+
+/* Empty States Dark Mode */
+.dark-mode .no-results svg,
+.dark-mode .no-topics svg {
+  color: #64748b;
+}
+
+.dark-mode .no-results p,
+.dark-mode .no-topics p {
+  color: #cbd5e1;
+}
+
+/* New Topic Info Dark Mode */
+.dark-mode .new-topic-info {
+  background: #1e3a8a;
+  border-color: #3b82f6;
+}
+
+.dark-mode .new-topic-info h4 {
+  color: #93c5fd;
+}
+
+.dark-mode .new-topic-info p {
+  color: #bfdbfe;
+}
+
+.dark-mode .summary-help {
+  background: #334155;
+  border-left-color: #3b82f6;
+}
+
+.dark-mode .summary-help p {
+  color: #cbd5e1;
+}
+
+/* Topic Detail Panel Dark Mode */
+.dark-mode .topic-detail-panel {
+  background: #0f172a;
+}
+
+.dark-mode .topic-detail-header {
+  background: #334155;
+  border-bottom-color: #475569;
+}
+
+.dark-mode .topic-name-row svg,
+.dark-mode .topic-detail-title svg {
+  color: #3b82f6;
+}
+
+.dark-mode .topic-detail-title h2 {
+  color: #f8fafc;
+}
+
+.dark-mode .topic-name-input {
+  background: #334155;
+  border-color: #475569;
+  color: #f8fafc;
+}
+
+.dark-mode .topic-name-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.dark-mode .topic-detail-section h3 {
+  color: #f8fafc;
+}
+
+.dark-mode .topic-description {
+  color: #cbd5e1;
+}
+
+/* Document Link Form Dark Mode */
+.dark-mode .document-link-form input {
+  background: #334155;
+  border-color: #475569;
+  color: #f8fafc;
+}
+
+.dark-mode .document-link-form input::placeholder {
+  color: #94a3b8;
+}
+
+.dark-mode .document-link-form input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Topic Tabs Dark Mode */
+.dark-mode .topic-tabs {
+  background: #334155;
+  border-bottom-color: #475569;
+}
+
+.dark-mode .topic-tabs::after {
+  background: linear-gradient(to right, transparent, #334155);
+}
+
+.dark-mode .topic-tabs::-webkit-scrollbar-thumb {
+  background: #64748b;
+}
+
+.dark-mode .topic-tabs::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.dark-mode .tab-button {
+  color: #cbd5e1;
+}
+
+.dark-mode .tab-button:hover:not(.disabled) {
+  color: #f8fafc;
+  background: #475569;
+}
+
+.dark-mode .tab-button.active {
+  color: #3b82f6;
+  background: #0f172a;
+  border-color: #475569;
+  border-bottom-color: #0f172a;
+  box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.dark-mode .tab-button.disabled {
+  color: #64748b;
+}
+
+.dark-mode .tab-button.disabled svg {
+  color: #64748b;
+}
+
+.dark-mode .topic-tab-content {
+  background: #0f172a;
+}
+
+.dark-mode .tab-panel {
+  background: #0f172a;
+}
+
+/* AI Content Header Dark Mode */
+.dark-mode .ai-content-header {
+  border-bottom-color: #475569;
+}
+
+.dark-mode .ai-content-header h3 {
+  color: #f8fafc;
+}
+
+.dark-mode .ai-badge {
+  background: #1e40af;
+  color: #93c5fd;
+}
+
+.dark-mode .ai-content-display {
+  background: #334155;
+  border-color: #475569;
+}
+
+/* Suggested Documents Dark Mode */
+.dark-mode .suggested-document-item {
+  background: #334155;
+  border-color: #10b981;
+}
+
+.dark-mode .suggested-document-info strong {
+  color: #10b981;
+}
+
+.dark-mode .suggested-document-url {
+  color: #10b981;
+}
+
+.dark-mode .manual-document-section h4,
+.dark-mode .current-documents h4 {
+  color: #f8fafc;
+}
+
+/* Empty State Large Dark Mode */
+.dark-mode .empty-state-large {
+  color: #cbd5e1;
+}
+
+.dark-mode .empty-state-large h3 {
+  color: #f8fafc;
+}
+
+.dark-mode .empty-state-large p {
+  color: #cbd5e1;
+}
+
+/* Responsive Dark Mode Adjustments */
+@media (max-width: 768px) {
+  .dark-mode .split-sidebar {
+    border-bottom-color: #475569;
+  }
+}
+
 /* Assessment and Worksheets styles */
 .assessment-panel,
 .worksheets-panel {
   padding: 1.5rem;
+}
+
+.dark-mode .assessment-panel,
+.dark-mode .worksheets-panel {
+  background: #0f172a;
 }
 
 .assessment-content,
@@ -1088,6 +1387,12 @@ textarea:disabled {
   border-radius: 8px;
   padding: 1.5rem;
   border: 1px solid #e5e7eb;
+}
+
+.dark-mode .assessment-content,
+.dark-mode .worksheets-content {
+  background: #1e293b;
+  border-color: #475569;
 }
 
 .assessment-text,

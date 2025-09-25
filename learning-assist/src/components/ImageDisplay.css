@@ -151,25 +151,23 @@
 }
 
 /* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .image-card {
-    background: #334155;
-    border-color: #475569;
-  }
-  
-  .image-thumbnail {
-    background: #475569;
-  }
-  
-  .image-title {
-    color: #f1f5f9;
-  }
-  
-  .image-source {
-    color: #cbd5e1;
-  }
-  
-  .image-description {
-    color: #cbd5e1;
-  }
+.dark-mode .image-card {
+  background: #334155;
+  border-color: #475569;
+}
+
+.dark-mode .image-thumbnail {
+  background: #475569;
+}
+
+.dark-mode .image-title {
+  color: #f1f5f9;
+}
+
+.dark-mode .image-source {
+  color: #cbd5e1;
+}
+
+.dark-mode .image-description {
+  color: #cbd5e1;
 }

@@ -972,7 +972,7 @@ Return only valid JSON in this format:
       "instructions": "Clear instructions for students",
       "activities": [
         {
-          "type": "fill-in-the-blank",
+          "type": "fill in the blanks",
           "question": "Question text with ___ blanks",
           "answer": "Expected answer"
         }

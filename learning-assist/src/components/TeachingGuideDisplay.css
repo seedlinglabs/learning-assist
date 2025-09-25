@@ -300,52 +300,50 @@
 }
 
 /* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .teaching-guide-display {
-    background: #1e293b;
-    color: #f1f5f9;
-  }
-  
-  .teaching-guide-intro {
-    background: #334155;
-    border-bottom-color: #475569;
-  }
-  
-  .teaching-guide-intro p {
-    color: #cbd5e1;
-  }
-  
-  .section-header {
-    background: #334155;
-    border-bottom-color: #475569;
-  }
-  
-  .section-header h3 {
-    color: #f1f5f9;
-  }
-  
-  .teaching-guide-paragraph,
-  .bullet-content,
-  .numbered-content {
-    color: #cbd5e1;
-  }
-  
-  .teaching-guide-text {
-    background: #334155;
-    border-color: #475569;
-    color: #cbd5e1;
-  }
-  
-  .teaching-guide-footer {
-    background: #334155;
-    border-top-color: #475569;
-  }
-  
-  .teaching-tips h4 {
-    color: #f1f5f9;
-  }
-  
-  .teaching-tips li {
-    color: #cbd5e1;
-  }
+.dark-mode .teaching-guide-display {
+  background: #1e293b;
+  color: #f1f5f9;
+}
+
+.dark-mode .teaching-guide-intro {
+  background: #334155;
+  border-bottom-color: #475569;
+}
+
+.dark-mode .teaching-guide-intro p {
+  color: #cbd5e1;
+}
+
+.dark-mode .section-header {
+  background: #334155;
+  border-bottom-color: #475569;
+}
+
+.dark-mode .section-header h3 {
+  color: #f1f5f9;
+}
+
+.dark-mode .teaching-guide-paragraph,
+.dark-mode .bullet-content,
+.dark-mode .numbered-content {
+  color: #cbd5e1;
+}
+
+.dark-mode .teaching-guide-text {
+  background: #334155;
+  border-color: #475569;
+  color: #cbd5e1;
+}
+
+.dark-mode .teaching-guide-footer {
+  background: #334155;
+  border-top-color: #475569;
+}
+
+.dark-mode .teaching-tips h4 {
+  color: #f1f5f9;
+}
+
+.dark-mode .teaching-tips li {
+  color: #cbd5e1;
 }

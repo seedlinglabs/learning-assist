@@ -55,6 +55,14 @@ body {
   display: flex;
   align-items: center;
   gap: 1.5rem;
+  flex-shrink: 0;
+}
+
+.theme-toggle-container {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  z-index: 10;
 }
 
 .user-info {
@@ -1357,4 +1365,293 @@ body {
 
 .chapter-planner-btn:active {
   transform: translateY(0);
+}
+
+/* Dark Mode Styles */
+.dark-mode {
+  background-color: #0f172a;
+  color: #f1f5f9;
+}
+
+.dark-mode body {
+  background-color: #0f172a;
+  color: #f1f5f9;
+}
+
+.dark-mode .app-main {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+}
+
+.dark-mode .app-header {
+  background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #475569 100%);
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark-mode .header-title h1 {
+  background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.dark-mode .header-title p {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.dark-mode .breadcrumb {
+  background: rgba(71, 85, 105, 0.3);
+  border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark-mode .breadcrumb-item {
+  color: #e2e8f0;
+}
+
+.dark-mode .breadcrumb-item:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dark-mode .breadcrumb-item.active {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+.dark-mode .breadcrumb-separator {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.dark-mode .search-input {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #f1f5f9;
+}
+
+.dark-mode .search-input::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.dark-mode .search-input:focus {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+}
+
+.dark-mode .search-icon {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.dark-mode .user-info {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.dark-mode .nav-button {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #f1f5f9;
+}
+
+.dark-mode .nav-button:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.dark-mode .nav-button.active {
+  background: rgba(255, 255, 255, 0.9);
+  color: #1e293b;
+  border-color: rgba(255, 255, 255, 0.9);
+}
+
+.dark-mode .user-name {
+  color: #f1f5f9;
+}
+
+.dark-mode .logout-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #f1f5f9;
+}
+
+.dark-mode .logout-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* User type badges in dark mode */
+.dark-mode .user-type-badge {
+  background: rgba(255, 255, 255, 0.2);
+  color: #f1f5f9;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.dark-mode .user-type-admin {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.dark-mode .user-type-teacher {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.dark-mode .user-type-student {
+  background: rgba(34, 197, 94, 0.2);
+  color: #86efac;
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+/* Transitions for smooth theme switching */
+.app,
+.app-main,
+.app-header,
+.breadcrumb,
+.header-title h1,
+.header-title p,
+.search-input,
+.user-info,
+.nav-button,
+.logout-btn,
+.user-type-badge {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Professional Dark Mode for Main Content */
+.dark-mode .content-container {
+  background: transparent;
+}
+
+.dark-mode .content-header h1 {
+  color: #f8fafc;
+}
+
+.dark-mode .content-header p {
+  color: #cbd5e1;
+}
+
+.dark-mode .grid-container {
+  background: transparent;
+}
+
+.dark-mode .card {
+  background: #334155;
+  border-color: #475569;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+}
+
+.dark-mode .clickable-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+  border-color: #64748b;
+}
+
+.dark-mode .card-title {
+  color: #f8fafc;
+}
+
+.dark-mode .card-description {
+  color: #cbd5e1;
+}
+
+.dark-mode .card-stats {
+  color: #94a3b8;
+}
+
+.dark-mode .card-arrow {
+  color: #64748b;
+}
+
+.dark-mode .clickable-card:hover .card-arrow {
+  color: #3b82f6;
+  transform: translateX(2px);
+}
+
+/* Professional Dark Mode for Topic Cards */
+.dark-mode .topic-card {
+  background: #334155;
+  border-color: #475569;
+}
+
+.dark-mode .topic-card:hover {
+  border-color: #64748b;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+}
+
+.dark-mode .topic-main:hover {
+  background: #475569;
+}
+
+.dark-mode .topic-title {
+  color: #f8fafc;
+}
+
+.dark-mode .topic-description {
+  color: #cbd5e1;
+}
+
+.dark-mode .topic-date,
+.dark-mode .topic-link {
+  color: #94a3b8;
+}
+
+.dark-mode .topic-link {
+  color: #3b82f6;
+}
+
+.dark-mode .topic-actions {
+  background: #475569;
+  border-top-color: #64748b;
+}
+
+/* Professional Dark Mode for Empty State */
+.dark-mode .empty-state {
+  color: #cbd5e1;
+}
+
+.dark-mode .empty-state svg {
+  color: #64748b;
+}
+
+.dark-mode .empty-state h3 {
+  color: #f8fafc;
+}
+
+.dark-mode .empty-state p {
+  color: #cbd5e1;
+}
+
+/* Professional Dark Mode for Buttons */
+.dark-mode .btn-primary {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+}
+
+.dark-mode .btn-primary:hover {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  transform: translateY(-1px);
+}
+
+.dark-mode .chapter-planner-btn {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+}
+
+.dark-mode .chapter-planner-btn:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+/* Responsive adjustments for dark mode */
+@media (max-width: 768px) {
+  .dark-mode .header-actions {
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .dark-mode .header-actions {
+    gap: 0.75rem;
+  }
 }

@@ -699,3 +699,57 @@
     justify-content: center;
   }
 }
+
+/* Dark Mode Styles */
+.dark-mode .teacher-training {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+}
+
+.dark-mode .training-container {
+  background: #1e293b;
+}
+
+.dark-mode .training-sidebar {
+  background: #334155;
+}
+
+.dark-mode .training-content {
+  background: #1e293b;
+}
+
+.dark-mode .training-header h1 {
+  color: #f1f5f9;
+}
+
+.dark-mode .training-header p {
+  color: #cbd5e1;
+}
+
+.dark-mode .training-section {
+  background: #334155;
+  border-color: #475569;
+}
+
+.dark-mode .training-section h3 {
+  color: #f1f5f9;
+}
+
+.dark-mode .training-section p {
+  color: #cbd5e1;
+}
+
+.dark-mode .training-section ul li {
+  color: #cbd5e1;
+}
+
+.dark-mode .training-section ul li::marker {
+  color: #60a5fa;
+}
+
+.dark-mode .training-section a {
+  color: #60a5fa;
+}
+
+.dark-mode .training-section a:hover {
+  color: #93c5fd;
+}
