@@ -347,12 +347,6 @@ const AssessmentDisplay: React.FC<AssessmentDisplayProps> = ({
     return BookOpen;
   };
 
-  const getOptionIcon = (letter: string, correctAnswer: string) => {
-    if (letter === correctAnswer) {
-      return <CheckCircle size={16} className="correct-option" />;
-    }
-    return <Circle size={16} className="option-circle" />;
-  };
 
   const sections = parseAssessment(assessmentQuestions);
 
@@ -427,9 +421,9 @@ const AssessmentDisplay: React.FC<AssessmentDisplayProps> = ({
                       {question.options.length > 0 && (
                         <div className="options-container">
                           {question.options.map((option, optionIndex) => (
-                            <div key={optionIndex} className={`option-item ${option.letter === question.answer ? 'correct' : ''}`}>
+                            <div key={optionIndex} className="option-item">
                               <div className="option-indicator">
-                                {getOptionIcon(option.letter, question.answer)}
+                                <Circle size={16} className="option-circle" />
                                 <span className="option-letter">{option.letter}.</span>
                               </div>
                               <span className="option-text">{option.text}</span>
