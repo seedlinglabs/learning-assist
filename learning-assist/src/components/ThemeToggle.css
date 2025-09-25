@@ -4,7 +4,7 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.75rem;
+  padding: 0.75rem 1rem;
   background: rgba(255, 255, 255, 0.15);
   color: white;
   border: 1px solid rgba(255, 255, 255, 0.25);
@@ -16,11 +16,12 @@
   text-decoration: none;
   outline: none;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   backdrop-filter: blur(10px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  min-width: 44px;
+  min-width: auto;
   min-height: 44px;
+  white-space: nowrap;
 }
 
 .theme-toggle:hover {
@@ -69,9 +70,11 @@
 }
 
 .theme-toggle-text {
-  font-weight: 500;
+  font-weight: 600;
   transition: all 0.3s ease;
   user-select: none;
+  font-size: 0.875rem;
+  letter-spacing: 0.025em;
 }
 
 /* Animation for icon transitions */
@@ -122,8 +125,8 @@
 /* Responsive design */
 @media (max-width: 768px) {
   .theme-toggle {
-    padding: 0.5rem;
-    min-width: 40px;
+    padding: 0.5rem 0.75rem;
+    min-width: auto;
     min-height: 40px;
   }
   
@@ -142,6 +145,10 @@
     padding: 0.5rem;
     min-width: 36px;
     min-height: 36px;
+  }
+  
+  .theme-toggle-text {
+    display: none;
   }
   
   .theme-toggle-container {
