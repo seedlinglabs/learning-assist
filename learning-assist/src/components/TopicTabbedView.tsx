@@ -9,6 +9,7 @@ import LessonPlanDisplay from './LessonPlanDisplay';
 import TeachingGuideDisplay from './TeachingGuideDisplay';
 import AssessmentDisplay from './AssessmentDisplay';
 import GroupDiscussionDisplay from './GroupDiscussionDisplay';
+import WorksheetDisplay from './WorksheetDisplay';
 import { PDFUpload } from './PDFUpload';
 import '../styles/LessonPlanDisplay.css';
 
@@ -1283,11 +1284,12 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
                 />
               </div>
             ) : (
-              <div className="worksheets-content">
-                <pre className="worksheets-text">
-                  {topic.aiContent?.worksheets || worksheets || ''}
-                </pre>
-              </div>
+              <WorksheetDisplay
+                worksheets={topic.aiContent?.worksheets || worksheets || ''}
+                topicName={topic.name}
+                classLevel={currentPath.class?.name || 'Class 1'}
+                subject={currentPath.subject?.name}
+              />
             )}
           </div>
         )}

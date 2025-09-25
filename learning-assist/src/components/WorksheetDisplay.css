@@ -1,0 +1,447 @@
+/* Worksheet Display Styles */
+.worksheet-display {
+  max-width: 100%;
+  margin: 0 auto;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Header */
+.worksheet-header {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: white;
+  padding: 2rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.worksheet-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.worksheet-title h2 {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: white;
+}
+
+.worksheet-meta {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.class-level, .subject {
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  backdrop-filter: blur(10px);
+}
+
+.class-level {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.subject {
+  background: rgba(251, 191, 36, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+/* Intro */
+.worksheet-intro {
+  padding: 1.5rem;
+  background: #fef3c7;
+  border-bottom: 1px solid #f59e0b;
+}
+
+.worksheet-intro p {
+  margin: 0;
+  color: #92400e;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+/* Content */
+.worksheet-content {
+  padding: 1.5rem;
+}
+
+/* Sections */
+.worksheet-section {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+}
+
+.worksheet-section-header {
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #d1d5db;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.worksheet-section-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+/* Instructions */
+.worksheet-instructions {
+  padding: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.instructions-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  color: #166534;
+  font-size: 0.95rem;
+}
+
+.instructions-header strong {
+  font-weight: 600;
+}
+
+.instructions-text {
+  margin: 0;
+  color: #374151;
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+/* Activities */
+.activities-container {
+  padding: 1.5rem;
+}
+
+.activities-title {
+  margin: 0 0 1rem 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.activities-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.activity-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1.25rem;
+  background: #fafafa;
+}
+
+.activity-header {
+  margin-bottom: 0.75rem;
+}
+
+.activity-type-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.activity-type-badge.neutral {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.activity-type-badge.blue {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.activity-type-badge.amber {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.activity-type-badge.green {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.activity-content {
+  margin-top: 0.75rem;
+}
+
+.activity-question {
+  margin: 0 0 0.75rem 0;
+  color: #374151;
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+.activity-answer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  background: #f0fdf4;
+  border-radius: 6px;
+  border-left: 3px solid #22c55e;
+}
+
+.activity-answer strong {
+  color: #166534;
+  font-size: 0.875rem;
+}
+
+.answer-text {
+  color: #374151;
+  font-size: 0.9rem;
+}
+
+/* Additional Info */
+.worksheet-additional-info {
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+/* Answer Key */
+.answer-key-section {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.answer-key-header {
+  padding: 1rem 1.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #166534;
+  font-size: 0.95rem;
+  background: #f0fdf4;
+  border: none;
+  outline: none;
+  transition: background-color 0.2s ease;
+}
+
+.answer-key-header:hover {
+  background: #dcfce7;
+}
+
+.answer-key-header strong {
+  font-weight: 600;
+}
+
+.answer-key-content {
+  padding: 0 1.5rem 1rem 1.5rem;
+  background: #f0fdf4;
+}
+
+.answer-key-text {
+  margin: 0;
+  color: #374151;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Parent Tips */
+.parent-tips-section {
+  padding: 1.5rem;
+}
+
+.parent-tips-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  color: #f59e0b;
+  font-size: 0.95rem;
+}
+
+.parent-tips-header strong {
+  font-weight: 600;
+}
+
+.parent-tips-text {
+  margin: 0;
+  color: #374151;
+  line-height: 1.6;
+  font-size: 0.95rem;
+  white-space: pre-wrap;
+}
+
+/* Raw content fallback */
+.worksheet-raw {
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 1.5rem;
+  border: 1px solid #e5e7eb;
+}
+
+.worksheet-text {
+  margin: 0;
+  color: #374151;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Dark Mode */
+.dark-mode .worksheet-section {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+.dark-mode .worksheet-section-header {
+  background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
+  border-color: #4b5563;
+}
+
+.dark-mode .worksheet-section-header h3 {
+  color: #f9fafb;
+}
+
+.dark-mode .worksheet-instructions {
+  background: #374151;
+  border-color: #4b5563;
+}
+
+.dark-mode .instructions-header {
+  color: #86efac;
+}
+
+.dark-mode .instructions-text {
+  color: #d1d5db;
+}
+
+.dark-mode .activities-container {
+  background: #1f2937;
+}
+
+.dark-mode .activities-title {
+  color: #f9fafb;
+}
+
+.dark-mode .activity-item {
+  background: #374151;
+  border-color: #4b5563;
+}
+
+.dark-mode .activity-question {
+  color: #d1d5db;
+}
+
+.dark-mode .activity-answer {
+  background: #064e3b;
+  border-color: #059669;
+}
+
+.dark-mode .activity-answer strong {
+  color: #86efac;
+}
+
+.dark-mode .answer-text {
+  color: #d1d5db;
+}
+
+.dark-mode .worksheet-additional-info {
+  background: #374151;
+  border-color: #4b5563;
+}
+
+.dark-mode .answer-key-header {
+  background: #064e3b;
+  color: #86efac;
+}
+
+.dark-mode .answer-key-header:hover {
+  background: #065f46;
+}
+
+.dark-mode .answer-key-content {
+  background: #064e3b;
+}
+
+.dark-mode .answer-key-text {
+  color: #d1d5db;
+}
+
+.dark-mode .parent-tips-header {
+  color: #fbbf24;
+}
+
+.dark-mode .parent-tips-text {
+  color: #d1d5db;
+}
+
+.dark-mode .worksheet-raw {
+  background: #374151;
+  border-color: #4b5563;
+}
+
+.dark-mode .worksheet-text {
+  color: #d1d5db;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .worksheet-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .worksheet-title h2 {
+    font-size: 1.5rem;
+  }
+  
+  .worksheet-meta {
+    flex-wrap: wrap;
+  }
+  
+  .worksheet-content {
+    padding: 1rem;
+  }
+  
+  .worksheet-section {
+    margin-bottom: 1.5rem;
+  }
+  
+  .worksheet-section-header,
+  .worksheet-instructions,
+  .activities-container,
+  .parent-tips-section {
+    padding: 1rem;
+  }
+  
+  .activity-item {
+    padding: 1rem;
+  }
+}
