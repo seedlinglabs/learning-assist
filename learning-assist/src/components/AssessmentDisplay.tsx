@@ -310,10 +310,12 @@ const AssessmentDisplay: React.FC<AssessmentDisplayProps> = ({
           }
         }
       }
-      // Check for answer - handle **Answer:** and Answer: formats
-      else if (trimmedLine.startsWith('**Answer:**') || trimmedLine.startsWith('Answer:')) {
+      // Check for answer - handle **Answer:**, Answer:, **Sample Answer:**, and Sample Answer: formats
+      else if (trimmedLine.startsWith('**Answer:**') || trimmedLine.startsWith('Answer:') || 
+               trimmedLine.startsWith('**Sample Answer:**') || trimmedLine.startsWith('Sample Answer:')) {
         if (currentQuestion) {
-          currentQuestion.answer = trimmedLine.replace(/^\*\*Answer:\*\*\s*/, '').replace(/^Answer:\s*/, '').trim();
+          currentQuestion.answer = trimmedLine.replace(/^\*\*Answer:\*\*\s*/, '').replace(/^Answer:\s*/, '')
+                                               .replace(/^\*\*Sample Answer:\*\*\s*/, '').replace(/^Sample Answer:\s*/, '').trim();
         }
       }
       // Check for explanation or parent guidance
@@ -435,7 +437,11 @@ const AssessmentDisplay: React.FC<AssessmentDisplayProps> = ({
                           {question.answer && (
                             <div className="answer-header">
                               <CheckCircle size={16} />
-                              <strong>Correct Answer: {question.answer}</strong>
+                              <strong>
+                                {section.title.toLowerCase().includes('short answer') || section.title.toLowerCase().includes('long answer') 
+                                  ? 'Sample Answer:' 
+                                  : 'Correct Answer:'} {question.answer}
+                              </strong>
                             </div>
                           )}
                           {question.explanation && (
