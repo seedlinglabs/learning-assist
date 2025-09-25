@@ -294,7 +294,7 @@ const AssessmentDisplay: React.FC<AssessmentDisplayProps> = ({
           id: `q${currentSection?.questions.length || 0 + 1}`,
           question: questionText,
           options: [],
-          answer: 'Discussion question', // Default for CFU questions
+          answer: '', // No default answer needed
           explanation: ''
         };
       }
@@ -430,19 +430,25 @@ const AssessmentDisplay: React.FC<AssessmentDisplayProps> = ({
                         </div>
                       )}
                       
-                      <div className="answer-section">
-                        <div className="answer-header">
-                          <CheckCircle size={16} />
-                          <strong>Correct Answer: {question.answer}</strong>
+                      {(question.answer || question.explanation) && (
+                        <div className="answer-section">
+                          {question.answer && (
+                            <div className="answer-header">
+                              <CheckCircle size={16} />
+                              <strong>Correct Answer: {question.answer}</strong>
+                            </div>
+                          )}
+                          {question.explanation && (
+                            <div className="explanation">
+                              <div className="explanation-header">
+                                <Lightbulb size={16} />
+                                <strong>{section.title.toLowerCase().includes('check for understanding') ? 'Parent Guidance:' : 'Explanation:'}</strong>
+                              </div>
+                              <p className="explanation-text">{question.explanation}</p>
+                            </div>
+                          )}
                         </div>
-                        <div className="explanation">
-                          <div className="explanation-header">
-                            <Lightbulb size={16} />
-                            <strong>Explanation:</strong>
-                          </div>
-                          <p className="explanation-text">{question.explanation}</p>
-                        </div>
-                      </div>
+                      )}
                     </div>
                   ))}
                 </div>
