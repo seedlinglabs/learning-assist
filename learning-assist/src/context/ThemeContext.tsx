@@ -112,14 +112,14 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
       <div style={{ 
         width: '100vw', 
         height: '100vh', 
-        backgroundColor: '#f8fafc',
+        backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center'
       }}>
         <div style={{ 
           fontSize: '1.125rem',
-          color: '#64748b',
+          color: theme === 'dark' ? '#cbd5e1' : '#64748b',
           fontFamily: 'Inter, sans-serif'
         }}>
           Loading...

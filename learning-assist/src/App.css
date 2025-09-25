@@ -55,6 +55,7 @@ body {
   display: flex;
   align-items: center;
   gap: 1.5rem;
+  flex-shrink: 0;
 }
 
 .user-info {
@@ -1507,6 +1508,132 @@ body {
 .logout-btn,
 .user-type-badge {
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Dark mode styles for main content areas */
+.dark-mode .content-container {
+  background: transparent;
+}
+
+.dark-mode .content-header h1 {
+  color: #f1f5f9;
+}
+
+.dark-mode .content-header p {
+  color: #cbd5e1;
+}
+
+.dark-mode .grid-container {
+  background: transparent;
+}
+
+.dark-mode .card {
+  background: #334155;
+  border-color: #475569;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+}
+
+.dark-mode .clickable-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+  border-color: #64748b;
+}
+
+.dark-mode .card-title {
+  color: #f1f5f9;
+}
+
+.dark-mode .card-description {
+  color: #cbd5e1;
+}
+
+.dark-mode .card-stats {
+  color: #94a3b8;
+}
+
+.dark-mode .card-arrow {
+  color: #64748b;
+}
+
+.dark-mode .clickable-card:hover .card-arrow {
+  color: #93c5fd;
+  transform: translateX(2px);
+}
+
+/* Dark mode for topic cards */
+.dark-mode .topic-card {
+  background: #334155;
+  border-color: #475569;
+}
+
+.dark-mode .topic-card:hover {
+  border-color: #64748b;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+}
+
+.dark-mode .topic-main:hover {
+  background: #475569;
+}
+
+.dark-mode .topic-title {
+  color: #f1f5f9;
+}
+
+.dark-mode .topic-description {
+  color: #cbd5e1;
+}
+
+.dark-mode .topic-date,
+.dark-mode .topic-link {
+  color: #94a3b8;
+}
+
+.dark-mode .topic-link {
+  color: #93c5fd;
+}
+
+.dark-mode .topic-actions {
+  background: #475569;
+  border-top-color: #64748b;
+}
+
+/* Dark mode for empty state */
+.dark-mode .empty-state {
+  color: #cbd5e1;
+}
+
+.dark-mode .empty-state svg {
+  color: #64748b;
+}
+
+.dark-mode .empty-state h3 {
+  color: #f1f5f9;
+}
+
+.dark-mode .empty-state p {
+  color: #cbd5e1;
+}
+
+/* Dark mode for buttons */
+.dark-mode .btn-primary {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: white;
+}
+
+.dark-mode .btn-primary:hover {
+  background: linear-gradient(135deg, #4338ca, #6d28d9);
+  transform: translateY(-1px);
+}
+
+.dark-mode .chapter-planner-btn {
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+  color: white;
+}
+
+.dark-mode .chapter-planner-btn:hover {
+  background: linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
 }
 
 /* Responsive adjustments for dark mode */
