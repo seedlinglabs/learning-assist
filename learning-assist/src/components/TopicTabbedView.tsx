@@ -847,8 +847,34 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     return html.join('\n');
   };
 
+  // Inline print helpers (more reliable across browsers)
+  const [printHtml, setPrintHtml] = useState<string | null>(null);
+  const [printTitle, setPrintTitle] = useState<string>('');
+
+  useEffect(() => {
+    const handleAfterPrint = () => {
+      setPrintHtml(null);
+      setPrintTitle('');
+    };
+    window.addEventListener('afterprint', handleAfterPrint);
+    return () => window.removeEventListener('afterprint', handleAfterPrint);
+  }, []);
+
+  const handlePrintContent = (title: string, rawText: string) => {
+    const html = formatSimpleMarkdown(rawText || '');
+    setPrintTitle(title);
+    setPrintHtml(`<h1>${title}</h1>${html}`);
+    // Give React a tick to render hidden print container
+    setTimeout(() => {
+      try { window.print(); } catch {}
+    }, 50);
+  };
+
   return (
     <div className="topic-tabbed-view">
+      {printHtml && (
+        <div className="print-only" aria-hidden="true" dangerouslySetInnerHTML={{ __html: printHtml }} />
+      )}
       <div className="topic-detail-header">
         <div className="topic-name-row">
           <FileText size={24} />
@@ -1056,7 +1082,10 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
                   <button onClick={handleCancelEditingLessonPlan} className="btn btn-secondary btn-sm">Cancel</button>
                 </>
               ) : (
-                <button onClick={handleStartEditingLessonPlan} className="btn btn-secondary btn-sm">Edit</button>
+                <>
+                  <button onClick={handleStartEditingLessonPlan} className="btn btn-secondary btn-sm">Edit</button>
+                  <button onClick={() => handlePrintContent(`Lesson Plan — ${formData.name}`, topic.aiContent?.lessonPlan || '')} className="btn btn-ghost btn-sm">Print</button>
+                </>
               )}
             </div>
             {isEditingLessonPlan ? (
@@ -1094,7 +1123,10 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
                   <button onClick={handleCancelEditingTeachingGuide} className="btn btn-secondary btn-sm">Cancel</button>
                 </>
               ) : (
-                <button onClick={handleStartEditingTeachingGuide} className="btn btn-secondary btn-sm">Edit</button>
+                <>
+                  <button onClick={handleStartEditingTeachingGuide} className="btn btn-secondary btn-sm">Edit</button>
+                  <button onClick={() => handlePrintContent(`Teaching Guide — ${formData.name}`, topic.aiContent?.teachingGuide || teachingGuide || '')} className="btn btn-ghost btn-sm">Print</button>
+                </>
               )}
             </div>
             {isEditingTeachingGuide ? (
@@ -1129,7 +1161,10 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
                   <button onClick={handleCancelEditingGroupDiscussion} className="btn btn-secondary btn-sm">Cancel</button>
                 </>
               ) : (
-                <button onClick={handleStartEditingGroupDiscussion} className="btn btn-secondary btn-sm">Edit</button>
+                <>
+                  <button onClick={handleStartEditingGroupDiscussion} className="btn btn-secondary btn-sm">Edit</button>
+                  <button onClick={() => handlePrintContent(`Group Discussion — ${formData.name}`, topic.aiContent?.groupDiscussion || groupDiscussion || '')} className="btn btn-ghost btn-sm">Print</button>
+                </>
               )}
             </div>
             {isEditingGroupDiscussion ? (
@@ -1164,7 +1199,10 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
                   <button onClick={handleCancelEditingAssessmentQuestions} className="btn btn-secondary btn-sm">Cancel</button>
                 </>
               ) : (
-                <button onClick={handleStartEditingAssessmentQuestions} className="btn btn-secondary btn-sm">Edit</button>
+                <>
+                  <button onClick={handleStartEditingAssessmentQuestions} className="btn btn-secondary btn-sm">Edit</button>
+                  <button onClick={() => handlePrintContent(`Assessment — ${formData.name}`, topic.aiContent?.assessmentQuestions || assessmentQuestions || '')} className="btn btn-ghost btn-sm">Print</button>
+                </>
               )}
             </div>
             {isEditingAssessmentQuestions ? (
@@ -1202,7 +1240,10 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
                   <button onClick={handleCancelEditingWorksheets} className="btn btn-secondary btn-sm">Cancel</button>
                 </>
               ) : (
-                <button onClick={handleStartEditingWorksheets} className="btn btn-secondary btn-sm">Edit</button>
+                <>
+                  <button onClick={handleStartEditingWorksheets} className="btn btn-secondary btn-sm">Edit</button>
+                  <button onClick={() => handlePrintContent(`Worksheets — ${formData.name}`, topic.aiContent?.worksheets || worksheets || '')} className="btn btn-ghost btn-sm">Print</button>
+                </>
               )}
             </div>
             {isEditingWorksheets ? (

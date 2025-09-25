@@ -1831,3 +1831,13 @@ body {
   background: rgba(16,185,129,0.15);
   border-color: rgba(16,185,129,0.35);
 }
+
+/* Print support */
+@media print {
+  .app-header, .topic-tabs, .topic-detail-header, .ai-tab-actions, .breadcrumb-container, .nav-button, .btn { display: none !important; }
+  .topic-tab-content, .tab-panel { box-shadow: none !important; background: #ffffff !important; }
+  .print-only { display: block !important; }
+  body { background: #ffffff !important; }
+}
+
+.print-only { display: none; }
