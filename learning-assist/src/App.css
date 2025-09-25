@@ -947,11 +947,7 @@ body {
   margin: 0;
 }
 
-.lesson-plan-panel {
-  padding: 0 !important;
-  margin: 0 !important;
-  background: none !important;
-}
+
 
 /* Responsive design */
 @media (max-width: 768px) {
