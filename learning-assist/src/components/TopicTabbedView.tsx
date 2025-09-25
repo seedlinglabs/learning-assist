@@ -7,6 +7,7 @@ import { youtubeService } from '../services/youtubeService';
 import DocumentDiscoveryModal from './DocumentDiscoveryModal';
 import LessonPlanDisplay from './LessonPlanDisplay';
 import TeachingGuideDisplay from './TeachingGuideDisplay';
+import AssessmentDisplay from './AssessmentDisplay';
 import GroupDiscussionDisplay from './GroupDiscussionDisplay';
 import { PDFUpload } from './PDFUpload';
 import '../styles/LessonPlanDisplay.css';
@@ -1209,11 +1210,12 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
                 />
               </div>
             ) : (
-              <div className="assessment-content">
-                <pre className="assessment-text">
-                  {topic.aiContent?.assessmentQuestions || assessmentQuestions || ''}
-                </pre>
-              </div>
+              <AssessmentDisplay
+                assessmentQuestions={topic.aiContent?.assessmentQuestions || assessmentQuestions || ''}
+                topicName={topic.name}
+                classLevel={currentPath.class?.name || 'Class 1'}
+                subject={currentPath.subject?.name}
+              />
             )}
           </div>
         )}
