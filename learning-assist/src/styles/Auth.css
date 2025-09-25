@@ -305,3 +305,142 @@
   font-size: 0.875rem;
   color: #1e293b;
 }
+
+/* Dark Mode Styles */
+.dark-mode .auth-container {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+}
+
+.dark-mode .auth-form {
+  background: #334155;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+}
+
+.dark-mode .auth-header h2 {
+  color: #f1f5f9;
+}
+
+.dark-mode .auth-header p {
+  color: #cbd5e1;
+}
+
+.dark-mode .form-group label {
+  color: #f1f5f9;
+}
+
+.dark-mode .form-group input,
+.dark-mode .form-group select {
+  background: #475569;
+  border-color: #64748b;
+  color: #f1f5f9;
+}
+
+.dark-mode .form-group input::placeholder {
+  color: #94a3b8;
+}
+
+.dark-mode .form-group input:focus,
+.dark-mode .form-group select:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+}
+
+.dark-mode .input-icon {
+  color: #94a3b8;
+}
+
+.dark-mode .password-toggle {
+  color: #94a3b8;
+}
+
+.dark-mode .password-toggle:hover {
+  color: #cbd5e1;
+}
+
+.dark-mode .form-help {
+  color: #94a3b8;
+}
+
+.dark-mode .auth-submit-btn {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+}
+
+.dark-mode .auth-submit-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #4338ca, #6d28d9);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+}
+
+.dark-mode .auth-footer {
+  border-top-color: #475569;
+}
+
+.dark-mode .auth-footer p {
+  color: #cbd5e1;
+}
+
+.dark-mode .auth-toggle-btn {
+  color: #60a5fa;
+}
+
+.dark-mode .auth-toggle-btn:hover {
+  color: #93c5fd;
+}
+
+.dark-mode .error-message {
+  background: #7f1d1d;
+  color: #fca5a5;
+  border-color: #dc2626;
+}
+
+.dark-mode .error-message button {
+  color: #fca5a5;
+}
+
+/* Dark mode user type badges */
+.dark-mode .user-type-teacher {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+}
+
+.dark-mode .user-type-parent {
+  background: rgba(34, 197, 94, 0.2);
+  color: #86efac;
+}
+
+.dark-mode .user-type-student {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
+
+/* Dark mode loading state */
+.dark-mode .auth-loading {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+}
+
+.dark-mode .auth-loading-spinner {
+  border-color: rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+}
+
+/* Dark mode access denied */
+.dark-mode .access-denied {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+}
+
+.dark-mode .access-denied-content {
+  background: #334155;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+}
+
+.dark-mode .access-denied-content h2 {
+  color: #fca5a5;
+}
+
+.dark-mode .access-denied-content p {
+  color: #cbd5e1;
+}
+
+.dark-mode .access-denied-content code {
+  background: #475569;
+  color: #f1f5f9;
+}
