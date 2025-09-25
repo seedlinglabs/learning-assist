@@ -128,7 +128,7 @@ const AssessmentDisplay: React.FC<AssessmentDisplayProps> = ({
   const playAssessment = () => {
     if (!speechSupported) return;
 
-    const sections = parseAssessment(getAssessmentContent());
+    const sections = parseAssessment(assessmentQuestions);
     if (sections.length === 0) return;
 
     setIsPlaying(true);
@@ -282,15 +282,15 @@ const AssessmentDisplay: React.FC<AssessmentDisplayProps> = ({
         };
         currentQuestion = null;
       }
-      // Check for question headers (Q1:, Q2:, etc.)
-      else if (/^Q\d+:/.test(trimmedLine)) {
+      // Check for question headers (Q1:, Q2:, etc.) - handle both **Q1:** and Q1: formats
+      else if (/\*\*Q\d+:\*\*/.test(trimmedLine) || /^Q\d+:/.test(trimmedLine)) {
         // Save previous question
         if (currentQuestion && currentSection) {
           currentSection.questions.push(currentQuestion);
         }
         
-        // Start new question
-        const questionText = trimmedLine.replace(/^Q\d+:\s*/, '').trim();
+        // Start new question - handle both **Q1:** and Q1: formats
+        const questionText = trimmedLine.replace(/^\*\*Q\d+:\*\*\s*/, '').replace(/^Q\d+:\s*/, '').trim();
         currentQuestion = {
           id: `q${currentSection?.questions.length || 0 + 1}`,
           question: questionText,
@@ -299,10 +299,10 @@ const AssessmentDisplay: React.FC<AssessmentDisplayProps> = ({
           explanation: ''
         };
       }
-      // Check for options (A., B., C., D.)
-      else if (/^[A-D]\.\s/.test(trimmedLine)) {
+      // Check for options (A., B., C., D.) - handle with or without space after dot
+      else if (/^[A-D]\./.test(trimmedLine)) {
         if (currentQuestion) {
-          const match = trimmedLine.match(/^([A-D])\.\s(.+)/);
+          const match = trimmedLine.match(/^([A-D])\.\s*(.+)/);
           if (match) {
             currentQuestion.options.push({
               letter: match[1],
@@ -311,7 +311,7 @@ const AssessmentDisplay: React.FC<AssessmentDisplayProps> = ({
           }
         }
       }
-      // Check for answer
+      // Check for answer - handle **Answer:** and Answer: formats
       else if (trimmedLine.startsWith('**Answer:**') || trimmedLine.startsWith('Answer:')) {
         if (currentQuestion) {
           currentQuestion.answer = trimmedLine.replace(/^\*\*Answer:\*\*\s*/, '').replace(/^Answer:\s*/, '').trim();
@@ -354,60 +354,7 @@ const AssessmentDisplay: React.FC<AssessmentDisplayProps> = ({
     return <Circle size={16} className="option-circle" />;
   };
 
-  // Use sample data if no assessment content is provided (for testing)
-  const getAssessmentContent = () => {
-    if (assessmentQuestions && assessmentQuestions.trim() !== '') {
-      return assessmentQuestions;
-    }
-    
-    // Return sample assessment data for testing
-    return JSON.stringify({
-      mcqs: [
-        {
-          question: "What is the primary goal of science?",
-          options: [
-            "To memorize facts",
-            "To understand the natural world through observation and experimentation",
-            "To prove theories",
-            "To create new technologies"
-          ],
-          correct: "B",
-          explanation: "Science aims to understand the natural world through systematic observation, experimentation, and evidence-based reasoning."
-        },
-        {
-          question: "Which of the following is NOT a step in the scientific method?",
-          options: [
-            "Observation",
-            "Hypothesis",
-            "Conclusion",
-            "Opinion"
-          ],
-          correct: "D",
-          explanation: "Opinion is not part of the scientific method. The scientific method involves observation, hypothesis formation, experimentation, data collection, and conclusion."
-        }
-      ],
-      shortAnswers: [
-        {
-          question: "Define the term 'hypothesis' in science.",
-          sampleAnswer: "A hypothesis is a proposed explanation for a phenomenon that can be tested through observation or experimentation."
-        }
-      ],
-      longAnswers: [
-        {
-          question: "Explain why the scientific method is important for understanding the world around us.",
-          sampleAnswer: "The scientific method is important because it provides a systematic, objective approach to understanding phenomena. It ensures that conclusions are based on evidence rather than assumptions, allows for replication of results, and helps eliminate bias. This process leads to reliable, testable knowledge that can be used to make predictions and solve problems."
-        }
-      ],
-      cfuQuestions: [
-        {
-          question: "Can you think of a time when you used observation to learn something new?",
-          parentGuidance: "Ask your child to describe a specific example of when they observed something and learned from it. This helps them connect the concept of observation to their own experiences."
-        }
-      ]
-    });
-  };
-
-  const sections = parseAssessment(getAssessmentContent());
+  const sections = parseAssessment(assessmentQuestions);
 
   return (
     <div className="assessment-display">
