@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import Breadcrumb from './components/Breadcrumb';
 import SearchBar from './components/SearchBar';
+import ThemeToggle from './components/ThemeToggle';
 import SchoolList from './components/SchoolList';
 import ClassList from './components/ClassList';
 import SubjectList from './components/SubjectList';
@@ -43,6 +45,7 @@ const AppContent: React.FC = () => {
           </div>
           <div className="header-actions">
             <SearchBar />
+            <ThemeToggle />
             {user && (
               <div className="user-info">
                 <button 
@@ -76,13 +79,15 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <ProtectedRoute>
-        <AppProvider>
-          <AppContent />
-        </AppProvider>
-      </ProtectedRoute>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <ProtectedRoute>
+          <AppProvider>
+            <AppContent />
+          </AppProvider>
+        </ProtectedRoute>
+      </AuthProvider>
+    </ThemeProvider>
   );
 };
 
