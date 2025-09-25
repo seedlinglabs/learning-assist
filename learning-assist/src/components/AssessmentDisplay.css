@@ -46,44 +46,6 @@
   backdrop-filter: blur(10px);
 }
 
-.audio-controls {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-.audio-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  backdrop-filter: blur(10px);
-}
-
-.audio-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: translateY(-1px);
-}
-
-.audio-btn.play {
-  background: rgba(34, 197, 94, 0.8);
-}
-
-.audio-btn.stop {
-  background: rgba(239, 68, 68, 0.8);
-}
-
-.audio-btn.pause {
-  background: rgba(245, 158, 11, 0.8);
-}
 
 .assessment-intro {
   padding: 1.5rem;

@@ -1,10 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React from 'react';
 import { 
   ClipboardList, 
-  Volume2, 
-  VolumeX, 
-  Play, 
-  Pause, 
   CheckCircle,
   HelpCircle,
   Target,
@@ -61,105 +57,7 @@ const AssessmentDisplay: React.FC<AssessmentDisplayProps> = ({
   classLevel,
   subject
 }) => {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
-  const [currentSection, setCurrentSection] = useState(0);
-  const [speechSupported, setSpeechSupported] = useState(false);
-  const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
 
-  // Check if speech synthesis is supported
-  useEffect(() => {
-    setSpeechSupported('speechSynthesis' in window);
-  }, []);
-
-  // Clean up speech synthesis on unmount
-  useEffect(() => {
-    return () => {
-      if (speechSynthesisRef.current) {
-        window.speechSynthesis.cancel();
-      }
-    };
-  }, []);
-
-  // Speech synthesis functions
-  const speakText = (text: string, onEnd?: () => void) => {
-    if (!speechSupported) return;
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.8; // Slightly slower for better comprehension
-    utterance.pitch = 1;
-    utterance.volume = 1;
-
-    utterance.onend = () => {
-      if (onEnd) onEnd();
-    };
-
-    utterance.onerror = () => {
-      setIsPlaying(false);
-      setIsPaused(false);
-    };
-
-    speechSynthesisRef.current = utterance;
-    window.speechSynthesis.speak(utterance);
-  };
-
-  const stopSpeaking = () => {
-    if (speechSupported) {
-      window.speechSynthesis.cancel();
-      setIsPlaying(false);
-      setIsPaused(false);
-      setCurrentSection(0);
-    }
-  };
-
-  const pauseSpeaking = () => {
-    if (speechSupported) {
-      if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
-        window.speechSynthesis.pause();
-        setIsPaused(true);
-      } else if (window.speechSynthesis.paused) {
-        window.speechSynthesis.resume();
-        setIsPaused(false);
-      }
-    }
-  };
-
-  const playAssessment = () => {
-    if (!speechSupported) return;
-
-    const sections = parseAssessment(assessmentQuestions);
-    if (sections.length === 0) return;
-
-    setIsPlaying(true);
-    setIsPaused(false);
-    setCurrentSection(0);
-
-    const speakSection = (index: number) => {
-      if (index >= sections.length) {
-        setIsPlaying(false);
-        setCurrentSection(0);
-        return;
-      }
-
-      setCurrentSection(index);
-      const section = sections[index];
-      let textToSpeak = `${section.title}. `;
-      
-      section.questions.forEach((question, qIndex) => {
-        textToSpeak += `Question ${qIndex + 1}: ${question.question}. `;
-        question.options.forEach(option => {
-          textToSpeak += `${option.letter}: ${option.text}. `;
-        });
-        textToSpeak += `Answer: ${question.answer}. Explanation: ${question.explanation}. `;
-      });
-      
-      speakText(textToSpeak, () => {
-        speakSection(index + 1);
-      });
-    };
-
-    speakSection(0);
-  };
 
   // Parse the assessment content to extract questions
   const parseAssessment = (content: string): AssessmentSection[] => {
@@ -364,28 +262,6 @@ const AssessmentDisplay: React.FC<AssessmentDisplayProps> = ({
           <span className="class-level">{classLevel}</span>
           {subject && <span className="subject">{subject}</span>}
         </div>
-        {speechSupported && (
-          <div className="audio-controls">
-            <button
-              onClick={isPlaying ? stopSpeaking : playAssessment}
-              className={`audio-btn ${isPlaying ? 'stop' : 'play'}`}
-              title={isPlaying ? 'Stop listening' : 'Listen to assessment'}
-            >
-              {isPlaying ? <VolumeX size={16} /> : <Volume2 size={16} />}
-              {isPlaying ? 'Stop' : 'Listen'}
-            </button>
-            {isPlaying && (
-              <button
-                onClick={pauseSpeaking}
-                className={`audio-btn pause ${isPaused ? 'paused' : ''}`}
-                title={isPaused ? 'Resume' : 'Pause'}
-              >
-                {isPaused ? <Play size={16} /> : <Pause size={16} />}
-                {isPaused ? 'Resume' : 'Pause'}
-              </button>
-            )}
-          </div>
-        )}
       </div>
 
       <div className="assessment-intro">
@@ -399,18 +275,11 @@ const AssessmentDisplay: React.FC<AssessmentDisplayProps> = ({
         {sections.length > 0 ? (
           sections.map((section, sectionIndex) => {
             const Icon = section.icon;
-            const isCurrentSection = isPlaying && currentSection === sectionIndex;
             return (
-              <div key={sectionIndex} className={`assessment-section ${isCurrentSection ? 'currently-playing' : ''}`}>
+              <div key={sectionIndex} className="assessment-section">
                 <div className="section-header">
                   <Icon size={20} />
                   <h3>{section.title}</h3>
-                  {isCurrentSection && (
-                    <div className="playing-indicator">
-                      <Volume2 size={16} />
-                      <span>Playing...</span>
-                    </div>
-                  )}
                 </div>
                 
                 <div className="questions-container">
