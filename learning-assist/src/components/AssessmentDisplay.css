@@ -263,6 +263,14 @@
   font-weight: 600;
 }
 
+.answer-content {
+  margin-top: 0.5rem;
+  color: #374151;
+  line-height: 1.6;
+  font-size: 0.9rem;
+  font-weight: 400;
+}
+
 .explanation {
   margin-top: 0.75rem;
 }
@@ -438,6 +446,10 @@
   
   .answer-header {
     color: #86efac;
+  }
+  
+  .answer-content {
+    color: #cbd5e1;
   }
   
   .explanation-header {

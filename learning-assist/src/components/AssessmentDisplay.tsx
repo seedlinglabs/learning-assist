@@ -435,13 +435,18 @@ const AssessmentDisplay: React.FC<AssessmentDisplayProps> = ({
                       {(question.answer || question.explanation) && (
                         <div className="answer-section">
                           {question.answer && (
-                            <div className="answer-header">
-                              <CheckCircle size={16} />
-                              <strong>
-                                {section.title.toLowerCase().includes('short answer') || section.title.toLowerCase().includes('long answer') 
-                                  ? 'Sample Answer:' 
-                                  : 'Correct Answer:'} {question.answer}
-                              </strong>
+                            <div>
+                              <div className="answer-header">
+                                <CheckCircle size={16} />
+                                <strong>
+                                  {section.title.toLowerCase().includes('short answer') || section.title.toLowerCase().includes('long answer') 
+                                    ? 'Sample Answer:' 
+                                    : 'Correct Answer:'}
+                                </strong>
+                              </div>
+                              <div className="answer-content">
+                                {question.answer}
+                              </div>
                             </div>
                           )}
                           {question.explanation && (
