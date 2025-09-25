@@ -6,7 +6,6 @@ import {
   Play, 
   Pause, 
   CheckCircle,
-  Circle,
   HelpCircle,
   Target,
   BookOpen,
@@ -422,10 +421,7 @@ const AssessmentDisplay: React.FC<AssessmentDisplayProps> = ({
                         <div className="options-container">
                           {question.options.map((option, optionIndex) => (
                             <div key={optionIndex} className="option-item">
-                              <div className="option-indicator">
-                                <Circle size={16} className="option-circle" />
-                                <span className="option-letter">{option.letter}.</span>
-                              </div>
+                              <span className="option-letter">{option.letter}.</span>
                               <span className="option-text">{option.text}</span>
                             </div>
                           ))}

@@ -230,36 +230,15 @@
   border-color: #cbd5e1;
 }
 
-.option-item.correct {
-  background: #f0fdf4;
-  border-color: #22c55e;
-  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.1);
-}
-
-.option-item.correct .option-text {
-  color: #166534;
-  font-weight: 500;
-}
-
-.option-indicator {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-shrink: 0;
-}
-
 .option-letter {
-  font-weight: 600;
-  color: #6b7280;
+  font-weight: bold;
+  color: white;
   font-size: 0.875rem;
-}
-
-.correct-option {
-  color: #22c55e;
-}
-
-.option-circle {
-  color: #9ca3af;
+  background: #374151;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  min-width: 1.5rem;
+  text-align: center;
 }
 
 .option-text {
@@ -450,13 +429,9 @@
     background: #475569;
   }
   
-  .option-item.correct {
-    background: #064e3b;
-    border-color: #22c55e;
-  }
-  
-  .option-item.correct .option-text {
-    color: #86efac;
+  .option-letter {
+    color: white;
+    background: #6b7280;
   }
   
   .option-text {
