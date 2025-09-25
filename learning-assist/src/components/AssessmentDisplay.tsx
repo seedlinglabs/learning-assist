@@ -35,6 +35,27 @@ interface AssessmentSection {
   icon: React.ComponentType<{ size?: number }>;
 }
 
+interface JSONAssessmentData {
+  mcqs?: Array<{
+    question: string;
+    options: string[];
+    correct: string;
+    explanation: string;
+  }>;
+  shortAnswers?: Array<{
+    question: string;
+    sampleAnswer: string;
+  }>;
+  longAnswers?: Array<{
+    question: string;
+    sampleAnswer: string;
+  }>;
+  cfuQuestions?: Array<{
+    question: string;
+    parentGuidance: string;
+  }>;
+}
+
 const AssessmentDisplay: React.FC<AssessmentDisplayProps> = ({
   assessmentQuestions,
   topicName,
@@ -143,6 +164,100 @@ const AssessmentDisplay: React.FC<AssessmentDisplayProps> = ({
 
   // Parse the assessment content to extract questions
   const parseAssessment = (content: string): AssessmentSection[] => {
+    if (!content || content.trim() === '') {
+      return [];
+    }
+
+    // First, try to parse as JSON
+    try {
+      const jsonData: JSONAssessmentData = JSON.parse(content);
+      return parseJSONAssessment(jsonData);
+    } catch (error) {
+      // If JSON parsing fails, try text parsing
+      return parseTextAssessment(content);
+    }
+  };
+
+  // Parse JSON format assessment
+  const parseJSONAssessment = (data: JSONAssessmentData): AssessmentSection[] => {
+    const sections: AssessmentSection[] = [];
+
+    // Parse Multiple Choice Questions
+    if (data.mcqs && data.mcqs.length > 0) {
+      const questions: Question[] = data.mcqs.map((mcq, index) => ({
+        id: `mcq-${index}`,
+        question: mcq.question,
+        options: mcq.options.map((option, optIndex) => ({
+          letter: String.fromCharCode(65 + optIndex), // A, B, C, D
+          text: option
+        })),
+        answer: mcq.correct,
+        explanation: mcq.explanation
+      }));
+
+      sections.push({
+        title: 'Multiple Choice Questions',
+        questions,
+        icon: Target
+      });
+    }
+
+    // Parse Short Answer Questions
+    if (data.shortAnswers && data.shortAnswers.length > 0) {
+      const questions: Question[] = data.shortAnswers.map((sa, index) => ({
+        id: `short-${index}`,
+        question: sa.question,
+        options: [],
+        answer: 'See sample answer below',
+        explanation: sa.sampleAnswer
+      }));
+
+      sections.push({
+        title: 'Short Answer Questions',
+        questions,
+        icon: BookOpen
+      });
+    }
+
+    // Parse Long Answer Questions
+    if (data.longAnswers && data.longAnswers.length > 0) {
+      const questions: Question[] = data.longAnswers.map((la, index) => ({
+        id: `long-${index}`,
+        question: la.question,
+        options: [],
+        answer: 'See sample answer below',
+        explanation: la.sampleAnswer
+      }));
+
+      sections.push({
+        title: 'Long Answer Questions',
+        questions,
+        icon: HelpCircle
+      });
+    }
+
+    // Parse Check for Understanding Questions
+    if (data.cfuQuestions && data.cfuQuestions.length > 0) {
+      const questions: Question[] = data.cfuQuestions.map((cfu, index) => ({
+        id: `cfu-${index}`,
+        question: cfu.question,
+        options: [],
+        answer: 'Discussion question',
+        explanation: cfu.parentGuidance
+      }));
+
+      sections.push({
+        title: 'Check for Understanding Questions',
+        questions,
+        icon: Lightbulb
+      });
+    }
+
+    return sections;
+  };
+
+  // Parse text format assessment (original logic)
+  const parseTextAssessment = (content: string): AssessmentSection[] => {
     const sections: AssessmentSection[] = [];
     const lines = content.split('\n');
     let currentSection: AssessmentSection | null = null;
@@ -226,6 +341,9 @@ const AssessmentDisplay: React.FC<AssessmentDisplayProps> = ({
     if (lowerTitle.includes('multiple choice')) return Target;
     if (lowerTitle.includes('assessment')) return ClipboardList;
     if (lowerTitle.includes('questions')) return HelpCircle;
+    if (lowerTitle.includes('short answer')) return BookOpen;
+    if (lowerTitle.includes('long answer')) return HelpCircle;
+    if (lowerTitle.includes('check for understanding')) return Lightbulb;
     return BookOpen;
   };
 
@@ -306,17 +424,19 @@ const AssessmentDisplay: React.FC<AssessmentDisplayProps> = ({
                         <h4 className="question-text">{question.question}</h4>
                       </div>
                       
-                      <div className="options-container">
-                        {question.options.map((option, optionIndex) => (
-                          <div key={optionIndex} className={`option-item ${option.letter === question.answer ? 'correct' : ''}`}>
-                            <div className="option-indicator">
-                              {getOptionIcon(option.letter, question.answer)}
-                              <span className="option-letter">{option.letter}.</span>
+                      {question.options.length > 0 && (
+                        <div className="options-container">
+                          {question.options.map((option, optionIndex) => (
+                            <div key={optionIndex} className={`option-item ${option.letter === question.answer ? 'correct' : ''}`}>
+                              <div className="option-indicator">
+                                {getOptionIcon(option.letter, question.answer)}
+                                <span className="option-letter">{option.letter}.</span>
+                              </div>
+                              <span className="option-text">{option.text}</span>
                             </div>
-                            <span className="option-text">{option.text}</span>
-                          </div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                      )}
                       
                       <div className="answer-section">
                         <div className="answer-header">
