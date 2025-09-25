@@ -45,7 +45,6 @@ const AppContent: React.FC = () => {
           </div>
           <div className="header-actions">
             <SearchBar />
-            <ThemeToggle />
             {user && (
               <div className="user-info">
                 <button 
@@ -65,6 +64,9 @@ const AppContent: React.FC = () => {
                 </button>
               </div>
             )}
+          </div>
+          <div className="theme-toggle-container">
+            <ThemeToggle />
           </div>
         </div>
         <Breadcrumb />

@@ -2,30 +2,36 @@
 .theme-toggle {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background: rgba(255, 255, 255, 0.2);
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.15);
   color: white;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 0.75rem;
   cursor: pointer;
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
   transition: all 0.3s ease;
   text-decoration: none;
   outline: none;
   position: relative;
   overflow: hidden;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .theme-toggle:hover {
-  background: rgba(255, 255, 255, 0.3);
-  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.4);
   transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .theme-toggle:focus {
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
 }
 
 .theme-toggle:active {
@@ -50,6 +56,8 @@
 .sun-icon,
 .moon-icon {
   transition: all 0.3s ease;
+  width: 18px;
+  height: 18px;
 }
 
 .sun-icon {
@@ -57,7 +65,7 @@
 }
 
 .moon-icon {
-  color: #cbd5e1;
+  color: #e2e8f0;
 }
 
 .theme-toggle-text {
@@ -114,8 +122,9 @@
 /* Responsive design */
 @media (max-width: 768px) {
   .theme-toggle {
-    padding: 0.5rem 0.75rem;
-    font-size: 0.8125rem;
+    padding: 0.5rem;
+    min-width: 40px;
+    min-height: 40px;
   }
   
   .theme-toggle-text {
@@ -123,19 +132,21 @@
   }
   
   .theme-toggle-container {
-    gap: 0.25rem;
+    top: 1rem;
+    right: 1rem;
   }
 }
 
 @media (max-width: 480px) {
   .theme-toggle {
     padding: 0.5rem;
-    min-width: 40px;
-    justify-content: center;
+    min-width: 36px;
+    min-height: 36px;
   }
   
   .theme-toggle-container {
-    gap: 0;
+    top: 0.75rem;
+    right: 0.75rem;
   }
 }
 
