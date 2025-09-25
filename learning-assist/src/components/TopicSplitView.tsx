@@ -7,7 +7,7 @@ import NewTopicPanel from './NewTopicPanel';
 import '../styles/TopicSplitView.css';
 
 const TopicSplitView: React.FC = () => {
-  const { currentPath, refreshTopics } = useApp();
+  const { currentPath, refreshTopics, loading } = useApp();
   const { school, class: cls, subject } = currentPath;
   const [selectedTopic, setSelectedTopic] = useState<Topic | undefined>();
   const [isCreatingNewTopic, setIsCreatingNewTopic] = useState(false);
@@ -88,6 +88,7 @@ const TopicSplitView: React.FC = () => {
           class={cls}
           school={school}
           onTopicsCreated={handleTopicsCreated}
+          loading={loading}
         />
       </div>
       <div className="split-main">

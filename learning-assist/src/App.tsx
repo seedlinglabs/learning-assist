@@ -40,7 +40,7 @@ const AppContent: React.FC = () => {
       <header className="app-header">
         <div className="header-content">
           <div className="header-title">
-            <h1>AISchool</h1>
+            <h1>Sprout AI</h1>
             <p>AI-Powered Learning Assistant for Personalized Education</p>
           </div>
           <div className="header-actions">

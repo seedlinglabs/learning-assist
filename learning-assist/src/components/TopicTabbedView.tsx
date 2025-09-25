@@ -5,13 +5,8 @@ import { useApp } from '../context/AppContext';
 import { secureGeminiService } from '../services/secureGeminiService';
 import { youtubeService } from '../services/youtubeService';
 import DocumentDiscoveryModal from './DocumentDiscoveryModal';
-import LessonPlanDisplay from './LessonPlanDisplay';
-import TeachingGuideDisplay from './TeachingGuideDisplay';
-import AssessmentDisplay from './AssessmentDisplay';
-import GroupDiscussionDisplay from './GroupDiscussionDisplay';
-import WorksheetDisplay from './WorksheetDisplay';
 import { PDFUpload } from './PDFUpload';
-import '../styles/LessonPlanDisplay.css';
+ 
 
 interface TopicTabbedViewProps {
   topic: Topic;
@@ -736,6 +731,122 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     { id: 'videos', label: 'Videos', icon: Youtube, disabled: !topic.aiContent?.videos || topic.aiContent.videos.length === 0 },
   ];
 
+  // Simple, safe view-only formatting for headings, bold, and bullets
+  const formatSimpleMarkdown = (text: string): string => {
+    const escapeHtml = (s: string) =>
+      (s || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+    const lines = escapeHtml(text).split('\n');
+    const html: string[] = [];
+    let inList = false;
+
+    const isTableSeparator = (s: string) => /^(\s*\|)?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+(\|\s*)?$/.test(s);
+    const splitCells = (s: string) => {
+      const parts = s.split('|').map(c => c.trim());
+      if (parts.length && parts[0] === '') parts.shift();
+      if (parts.length && parts[parts.length - 1] === '') parts.pop();
+      return parts;
+    };
+
+    const flushList = () => {
+      if (inList) {
+        html.push('</ul>');
+        inList = false;
+      }
+    };
+
+    for (let idx = 0; idx < lines.length; idx++) {
+      const rawLine = lines[idx];
+      const line = rawLine.trimEnd();
+
+      if (line.trim() === '') {
+        flushList();
+        html.push('<br/>');
+        continue;
+      }
+
+      // Markdown table detection: header | header, followed by --- | --- line
+      if (line.includes('|') && idx + 1 < lines.length && isTableSeparator(lines[idx + 1].trim())) {
+        flushList();
+        const headerCells = splitCells(line).map(c => c.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'));
+        let j = idx + 2;
+        const rows: string[][] = [];
+        while (j < lines.length) {
+          const rowLine = lines[j].trimEnd();
+          if (!rowLine || !rowLine.includes('|')) break;
+          rows.push(splitCells(rowLine).map(c => c.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')));
+          j++;
+        }
+        // Build table HTML
+        const thead = `<thead><tr>${headerCells.map(c => `<th>${c}</th>`).join('')}</tr></thead>`;
+        const tbody = rows.length
+          ? `<tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody>`
+          : '';
+        html.push(`<table class="ai-table">${thead}${tbody}</table>`);
+        idx = j - 1; // advance outer loop
+        continue;
+      }
+
+      // Segment headings with time: e.g., "Segment 1 (5–15 min): What is Science?" or "Introduction (0–5 min):"
+      const seg = line.match(/^(.*?)(?:\s*\((\d+\s*[–-]\s*\d+\s*min)\)):\s*(.*)$/i);
+      if (seg) {
+        flushList();
+        const segTitle = (seg[1] || '').trim();
+        const time = (seg[2] || '').trim();
+        const trailing = (seg[3] || '').trim();
+        const titleHtml = trailing ? `${segTitle}: <small>${trailing}</small>` : segTitle;
+        html.push(`<h3>${titleHtml} <span class="time-badge">${time}</span></h3>`);
+        continue;
+      }
+
+      // Simple section headings ending with ':' (not bullets)
+      if (/^[^|].*:\s*$/.test(line) && !/^[-*]\s+/.test(line)) {
+        flushList();
+        const label = line.replace(/:\s*$/, '').trim();
+        if (/^(learning objectives|materials needed|40[-\u2013-]?minute lesson plan|homework\/extension|educational resources)$/i.test(label)) {
+          html.push(`<h2>${label}</h2>`);
+        } else {
+          html.push(`<h3>${label}</h3>`);
+        }
+        continue;
+      }
+
+      const m3 = line.match(/^###\s+(.*)$/);
+      const m2 = m3 ? null : line.match(/^##\s+(.*)$/);
+      const m1 = (m3 || m2) ? null : line.match(/^#\s+(.*)$/);
+      if (m3 || m2 || m1) {
+        flushList();
+        const content = (m3?.[1] || m2?.[1] || m1?.[1] || '').trim();
+        if (m3) html.push(`<h3>${content}</h3>`);
+        else if (m2) html.push(`<h2>${content}</h2>`);
+        else html.push(`<h1>${content}</h1>`);
+        continue;
+      }
+
+      const bullet = line.match(/^[-*]\s+(.*)$/);
+      if (bullet) {
+        if (!inList) {
+          html.push('<ul>');
+          inList = true;
+        }
+        let item = bullet[1];
+        item = item.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        html.push(`<li>${item}</li>`);
+        continue;
+      }
+
+      flushList();
+      const paragraph = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      html.push(`<p>${paragraph}</p>`);
+    }
+
+    flushList();
+    return html.join('\n');
+  };
+
   return (
     <div className="topic-tabbed-view">
       <div className="topic-detail-header">
@@ -936,53 +1047,18 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
 
         {activeTab === 'lesson-plan' && topic.aiContent?.lessonPlan && (
           <div className="tab-panel lesson-plan-panel">
-            <div className="ai-content-header">
-              {topic.aiContent.generatedAt && (
-                <div className="ai-content-info">
-                  <span className="generated-timestamp">
-                    Generated on {new Date(topic.aiContent.generatedAt).toLocaleDateString()} at {new Date(topic.aiContent.generatedAt).toLocaleTimeString()}
-                  </span>
-                </div>
-              )}
-              <div className="ai-content-actions">
-                {!isEditingLessonPlan ? (
-                  <button 
-                    onClick={handleStartEditingLessonPlan}
-                    className="btn btn-secondary btn-sm"
-                  >
-                    <FileText size={16} />
-                    Edit Content
+            <div className="ai-tab-actions">
+              {isEditingLessonPlan ? (
+                <>
+                  <button onClick={handleSaveLessonPlan} className="btn btn-primary btn-sm" disabled={savingContent === 'lesson-plan'}>
+                    {savingContent === 'lesson-plan' ? 'Saving...' : 'Save'}
                   </button>
-                ) : (
-                  <div className="editing-actions">
-                    <button 
-                      onClick={handleSaveLessonPlan}
-                      className="btn btn-primary btn-sm"
-                      disabled={savingContent === 'lesson-plan'}
-                    >
-                      {savingContent === 'lesson-plan' ? (
-                        <>
-                          <div className="spinner" />
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                          <Save size={16} />
-                          Save Changes
-                        </>
-                      )}
-                    </button>
-                    <button 
-                      onClick={handleCancelEditingLessonPlan}
-                      className="btn btn-secondary btn-sm"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                )}
-              </div>
+                  <button onClick={handleCancelEditingLessonPlan} className="btn btn-secondary btn-sm">Cancel</button>
+                </>
+              ) : (
+                <button onClick={handleStartEditingLessonPlan} className="btn btn-secondary btn-sm">Edit</button>
+              )}
             </div>
-            
             {isEditingLessonPlan ? (
               <div className="editable-content">
                 <div className="editing-help">
@@ -997,67 +1073,30 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
                 />
               </div>
             ) : (
-              <LessonPlanDisplay
-                lessonPlan={topic.aiContent.lessonPlan}
-                classLevel={topic.aiContent.classLevel || 'Class 1'}
-                topicName={topic.name}
-                subject={currentPath.subject?.name}
-                onSectionUpdate={handleSectionUpdate}
-                onLessonPlanUpdate={handleLessonPlanUpdate}
-              />
+              <div className="raw-ai-content">
+                <div
+                  className="ai-rendered"
+                  dangerouslySetInnerHTML={{ __html: formatSimpleMarkdown(topic.aiContent.lessonPlan) }}
+                />
+              </div>
             )}
           </div>
         )}
 
         {activeTab === 'teaching-guide' && (topic.aiContent?.teachingGuide || teachingGuide) && (
           <div className="tab-panel teaching-guide-panel">
-            <div className="ai-content-header">
-              {topic.aiContent?.generatedAt && (
-                <div className="ai-content-info">
-                  <span className="generated-timestamp">
-                    Generated on {new Date(topic.aiContent.generatedAt).toLocaleDateString()} at {new Date(topic.aiContent.generatedAt).toLocaleTimeString()}
-                  </span>
-                </div>
-              )}
-              <div className="ai-content-actions">
-                {!isEditingTeachingGuide ? (
-                  <button 
-                    onClick={handleStartEditingTeachingGuide}
-                    className="btn btn-secondary btn-sm"
-                  >
-                    <User size={16} />
-                    Edit Content
+            <div className="ai-tab-actions">
+              {isEditingTeachingGuide ? (
+                <>
+                  <button onClick={handleSaveTeachingGuide} className="btn btn-primary btn-sm" disabled={savingContent === 'teaching-guide'}>
+                    {savingContent === 'teaching-guide' ? 'Saving...' : 'Save'}
                   </button>
-                ) : (
-                  <div className="editing-actions">
-                    <button 
-                      onClick={handleSaveTeachingGuide}
-                      className="btn btn-primary btn-sm"
-                      disabled={savingContent === 'teaching-guide'}
-                    >
-                      {savingContent === 'teaching-guide' ? (
-                        <>
-                          <div className="spinner" />
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                          <Save size={16} />
-                          Save Changes
-                        </>
-                      )}
-                    </button>
-                    <button 
-                      onClick={handleCancelEditingTeachingGuide}
-                      className="btn btn-secondary btn-sm"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                )}
-              </div>
+                  <button onClick={handleCancelEditingTeachingGuide} className="btn btn-secondary btn-sm">Cancel</button>
+                </>
+              ) : (
+                <button onClick={handleStartEditingTeachingGuide} className="btn btn-secondary btn-sm">Edit</button>
+              )}
             </div>
-            
             {isEditingTeachingGuide ? (
               <div className="editable-content">
                 <textarea
@@ -1069,65 +1108,30 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
                 />
               </div>
             ) : (
-              <TeachingGuideDisplay
-                teachingGuide={topic.aiContent?.teachingGuide || teachingGuide || ''}
-                topicName={topic.name}
-                classLevel={currentPath.class?.name || 'Class 1'}
-                subject={currentPath.subject?.name}
-              />
+              <div className="raw-ai-content">
+                <div
+                  className="ai-rendered"
+                  dangerouslySetInnerHTML={{ __html: formatSimpleMarkdown(topic.aiContent?.teachingGuide || teachingGuide || '') }}
+                />
+              </div>
             )}
           </div>
         )}
 
         {activeTab === 'group-discussion' && (topic.aiContent?.groupDiscussion || groupDiscussion) && (
           <div className="tab-panel group-discussion-panel">
-            <div className="ai-content-header">
-              {topic.aiContent?.generatedAt && (
-                <div className="ai-content-info">
-                  <span className="generated-timestamp">
-                    Generated on {new Date(topic.aiContent.generatedAt).toLocaleDateString()} at {new Date(topic.aiContent.generatedAt).toLocaleTimeString()}
-                  </span>
-                </div>
-              )}
-              <div className="ai-content-actions">
-                {!isEditingGroupDiscussion ? (
-                  <button 
-                    onClick={handleStartEditingGroupDiscussion}
-                    className="btn btn-secondary btn-sm"
-                  >
-                    <Users size={16} />
-                    Edit Content
+            <div className="ai-tab-actions">
+              {isEditingGroupDiscussion ? (
+                <>
+                  <button onClick={handleSaveGroupDiscussion} className="btn btn-primary btn-sm" disabled={savingContent === 'group-discussion'}>
+                    {savingContent === 'group-discussion' ? 'Saving...' : 'Save'}
                   </button>
-                ) : (
-                  <div className="editing-actions">
-                    <button 
-                      onClick={handleSaveGroupDiscussion}
-                      className="btn btn-primary btn-sm"
-                      disabled={savingContent === 'group-discussion'}
-                    >
-                      {savingContent === 'group-discussion' ? (
-                        <>
-                          <div className="spinner" />
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                          <Save size={16} />
-                          Save Changes
-                        </>
-                      )}
-                    </button>
-                    <button 
-                      onClick={handleCancelEditingGroupDiscussion}
-                      className="btn btn-secondary btn-sm"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                )}
-              </div>
+                  <button onClick={handleCancelEditingGroupDiscussion} className="btn btn-secondary btn-sm">Cancel</button>
+                </>
+              ) : (
+                <button onClick={handleStartEditingGroupDiscussion} className="btn btn-secondary btn-sm">Edit</button>
+              )}
             </div>
-            
             {isEditingGroupDiscussion ? (
               <div className="editable-content">
                 <textarea
@@ -1139,64 +1143,30 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
                 />
               </div>
             ) : (
-              <GroupDiscussionDisplay
-                groupDiscussion={topic.aiContent?.groupDiscussion || groupDiscussion || ''}
-                topicName={topic.name}
-                classLevel={currentPath.class?.name || 'Class 1'}
-              />
+              <div className="raw-ai-content">
+                <div
+                  className="ai-rendered"
+                  dangerouslySetInnerHTML={{ __html: formatSimpleMarkdown(topic.aiContent?.groupDiscussion || groupDiscussion || '') }}
+                />
+              </div>
             )}
           </div>
         )}
 
         {activeTab === 'assessment' && (topic.aiContent?.assessmentQuestions || assessmentQuestions) && (
           <div className="tab-panel assessment-panel">
-            <div className="ai-content-header">
-              {topic.aiContent?.generatedAt && (
-                <div className="ai-content-info">
-                  <span className="generated-timestamp">
-                    Generated on {new Date(topic.aiContent.generatedAt).toLocaleDateString()} at {new Date(topic.aiContent.generatedAt).toLocaleTimeString()}
-                  </span>
-                </div>
-              )}
-              <div className="ai-content-actions">
-                {!isEditingAssessmentQuestions ? (
-                  <button 
-                    onClick={handleStartEditingAssessmentQuestions}
-                    className="btn btn-secondary btn-sm"
-                  >
-                    <ClipboardList size={16} />
-                    Edit Content
+            <div className="ai-tab-actions">
+              {isEditingAssessmentQuestions ? (
+                <>
+                  <button onClick={handleSaveAssessmentQuestions} className="btn btn-primary btn-sm" disabled={savingContent === 'assessment-questions'}>
+                    {savingContent === 'assessment-questions' ? 'Saving...' : 'Save'}
                   </button>
-                ) : (
-                  <div className="editing-actions">
-                    <button 
-                      onClick={handleSaveAssessmentQuestions}
-                      className="btn btn-primary btn-sm"
-                      disabled={savingContent === 'assessment-questions'}
-                    >
-                      {savingContent === 'assessment-questions' ? (
-                        <>
-                          <div className="spinner" />
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                          <Save size={16} />
-                          Save Changes
-                        </>
-                      )}
-                    </button>
-                    <button 
-                      onClick={handleCancelEditingAssessmentQuestions}
-                      className="btn btn-secondary btn-sm"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                )}
-              </div>
+                  <button onClick={handleCancelEditingAssessmentQuestions} className="btn btn-secondary btn-sm">Cancel</button>
+                </>
+              ) : (
+                <button onClick={handleStartEditingAssessmentQuestions} className="btn btn-secondary btn-sm">Edit</button>
+              )}
             </div>
-            
             {isEditingAssessmentQuestions ? (
               <div className="editable-content">
                 <div className="editing-help">
@@ -1211,65 +1181,30 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
                 />
               </div>
             ) : (
-              <AssessmentDisplay
-                assessmentQuestions={topic.aiContent?.assessmentQuestions || assessmentQuestions || ''}
-                topicName={topic.name}
-                classLevel={currentPath.class?.name || 'Class 1'}
-                subject={currentPath.subject?.name}
-              />
+              <div className="raw-ai-content">
+                <div
+                  className="ai-rendered"
+                  dangerouslySetInnerHTML={{ __html: formatSimpleMarkdown(topic.aiContent?.assessmentQuestions || assessmentQuestions || '') }}
+                />
+              </div>
             )}
           </div>
         )}
 
         {activeTab === 'worksheets' && (topic.aiContent?.worksheets || worksheets) && (
           <div className="tab-panel worksheets-panel">
-            <div className="ai-content-header">
-              {topic.aiContent?.generatedAt && (
-                <div className="ai-content-info">
-                  <span className="generated-timestamp">
-                    Generated on {new Date(topic.aiContent.generatedAt).toLocaleDateString()} at {new Date(topic.aiContent.generatedAt).toLocaleTimeString()}
-                  </span>
-                </div>
-              )}
-              <div className="ai-content-actions">
-                {!isEditingWorksheets ? (
-                  <button 
-                    onClick={handleStartEditingWorksheets}
-                    className="btn btn-secondary btn-sm"
-                  >
-                    <BookOpen size={16} />
-                    Edit Content
+            <div className="ai-tab-actions">
+              {isEditingWorksheets ? (
+                <>
+                  <button onClick={handleSaveWorksheets} className="btn btn-primary btn-sm" disabled={savingContent === 'worksheets'}>
+                    {savingContent === 'worksheets' ? 'Saving...' : 'Save'}
                   </button>
-                ) : (
-                  <div className="editing-actions">
-                    <button 
-                      onClick={handleSaveWorksheets}
-                      className="btn btn-primary btn-sm"
-                      disabled={savingContent === 'worksheets'}
-                    >
-                      {savingContent === 'worksheets' ? (
-                        <>
-                          <div className="spinner" />
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                          <Save size={16} />
-                          Save Changes
-                        </>
-                      )}
-                    </button>
-                    <button 
-                      onClick={handleCancelEditingWorksheets}
-                      className="btn btn-secondary btn-sm"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                )}
-              </div>
+                  <button onClick={handleCancelEditingWorksheets} className="btn btn-secondary btn-sm">Cancel</button>
+                </>
+              ) : (
+                <button onClick={handleStartEditingWorksheets} className="btn btn-secondary btn-sm">Edit</button>
+              )}
             </div>
-            
             {isEditingWorksheets ? (
               <div className="editable-content">
                 <div className="editing-help">
@@ -1284,12 +1219,12 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
                 />
               </div>
             ) : (
-              <WorksheetDisplay
-                worksheets={topic.aiContent?.worksheets || worksheets || ''}
-                topicName={topic.name}
-                classLevel={currentPath.class?.name || 'Class 1'}
-                subject={currentPath.subject?.name}
-              />
+              <div className="raw-ai-content">
+                <div
+                  className="ai-rendered"
+                  dangerouslySetInnerHTML={{ __html: formatSimpleMarkdown(topic.aiContent?.worksheets || worksheets || '') }}
+                />
+              </div>
             )}
           </div>
         )}

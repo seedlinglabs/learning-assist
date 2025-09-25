@@ -15,6 +15,7 @@ interface TopicSidebarProps {
   class: any;
   school: any;
   onTopicsCreated: (topics: Topic[]) => void;
+  loading?: boolean;
 }
 
 const TopicSidebar: React.FC<TopicSidebarProps> = ({ 
@@ -28,7 +29,8 @@ const TopicSidebar: React.FC<TopicSidebarProps> = ({
   subject,
   class: cls,
   school,
-  onTopicsCreated
+  onTopicsCreated,
+  loading = false
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showChapterPlanner, setShowChapterPlanner] = useState(false);
@@ -84,7 +86,12 @@ const TopicSidebar: React.FC<TopicSidebarProps> = ({
       </div>
 
       <div className="sidebar-content">
-        {filteredTopics.length === 0 ? (
+        {loading ? (
+          <div className="empty-sidebar">
+            <div className="spinner" />
+            <p>Loading topics...</p>
+          </div>
+        ) : filteredTopics.length === 0 ? (
           <div className="empty-sidebar">
             {searchQuery ? (
               <div className="no-results">

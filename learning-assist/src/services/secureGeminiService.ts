@@ -435,39 +435,36 @@ IMPORTANT: Base your entire lesson plan on the specific content provided above. 
     return `${basePrompt}
 ${descriptionSection}
 
-Please generate a detailed 40-minute lesson plan in this exact JSON format:
-{
-  "lessonPlan": {
-    "objectives": ["Learning objective 1", "Learning objective 2"],
-    "materials": ["List of materials needed"],
-    "introduction": "How to introduce the topic (5 minutes)",
-    "mainContent": [
-      {
-        "section": "Section title",
-        "content": "Detailed content for this section",
-        "activities": ["Related activities"],
-        "timeEstimate": "Duration"
-      }
-    ],
-    "wrapUp": "How to wrap up the lesson (2 minutes)",
-    "assessment": "How to assess student understanding",
-    "homework": "Optional homework suggestions",
-    "resources": ["Additional resources with specific URLs"]
-  }
-}
+CLASS STRUCTURE FORMAT (PLAIN TEXT, NO JSON, NO CODE BLOCKS):
 
-Requirements:
+Start with:
+- Learning Objectives (3–5 clear bullets)
+- Materials Needed (bulleted list)
+
+Then provide a minute-by-minute (or segment-by-segment) 40-minute outline:
+- Introduction (e.g., 0–5 min): goals, prior knowledge activation
+- Segment 1 (e.g., 5–15 min): topic focus, teacher activity, student activity
+- Segment 2 (e.g., 15–25 min): topic focus, teacher activity, student activity
+- Segment 3 (e.g., 25–35 min): practice/application, quick checks for understanding
+- Wrap-up (e.g., 35–40 min): recap and exit ticket
+
+Within each segment include:
+- Main concept(s) covered
+- Brief activity description (what students do)
+- Assessment/check-for-understanding (1–2 quick prompts)
+
+Optionally end with:
+- Homework/Extension (1–2 items)
+- Educational Resources (with explicit URLs if relevant)
+
+REQUIREMENTS:
 - Age-appropriate for ${classLevel} students
-- Clear instructions for teachers
-- Include timing for each lesson segment
-- Include specific educational resource URLs where applicable
+- Clear headings and concise bullets
+- Include time estimates for segments
 - Align with ${subject} curriculum standards${isPDFContent ? `
-- Use specific content, examples, and data from the provided textbook material
-- Reference specific sections or pages when applicable
-- Base all activities and explanations on the textbook content
-- Show students exactly where to find information in their textbook` : ''}
+- Use specific content/examples from the provided textbook material when applicable` : ''}
 
-Make all content immediately usable in the classroom.`;
+Return only plain text (no JSON / code blocks).`;
   }
 
   private buildTeachingGuidePrompt(topicName: string, description: string, documentUrls: string[], classLevel: string, subject: string): string {
@@ -498,32 +495,29 @@ Imagine you are the actual teacher in the classroom right now. The students are 
 4. **USE CLASSROOM MANAGEMENT** - Handle questions, maintain attention, manage time
 5. **ADAPT IN REAL-TIME** - Respond to student reactions and adjust your teaching
 
-TEACHING GUIDE STRUCTURE:
+TEACHING GUIDE STRUCTURE (PRESCRIPTIVE PLAN, PLAIN TEXT – NO JSON/CODE BLOCKS):
 
 **CLASSROOM SETUP (2 minutes)**
-- Opening questions to grab students' attention
+- Opening hook to grab attention (1–2 options)
+- Quick prior knowledge probe
 
 **LESSON DELIVERY (35 minutes)**
-- Your exact words and explanations
-- When you pause for questions
-- How you use the textbook/whiteboard
-- Specific examples you give
-- Questions you ask students
-- How you handle student responses
-- When you check for understanding
-- How you manage time and transitions
+- Main topics to cover (3–5 bullets)
+- Suggested videos (2–4 high-quality links with brief rationale)
+- Group discussion prompts (2–3, with expected student angles)
+- Engagement strategies (think-pair-share, cold/warm calls, mini-whiteboards, etc.)
+- Teacher script cues (brief, for transitions and emphasis)
+- When to check for understanding and what to ask
+- How to use textbook/board/materials
 
 **STUDENT INTERACTION (Throughout)**
-- How you encourage participation
-- How you handle different learning styles
-- How you manage disruptive behavior
-- How you keep everyone engaged
+- How to encourage participation and manage different learning styles
+- Redirecting attention and handling disruptions (concise tips)
 
 **CLOSING (3 minutes)**
-- How you summarize key points
-- How you assign homework
-- How you preview the next lesson
-- Your closing statement
+- Summary of key points
+- Optional homework/extension
+- Preview of next lesson
 
 TEACHING STYLE REQUIREMENTS:
 - Use "I" statements (e.g., "I'm going to show you...", "Let me explain...")
@@ -761,33 +755,9 @@ Return only the enhanced content with specific, working links.`;
   }
 
   private parseGeneratedContent(generatedText: string, classLevel: string): AIContent {
-    try {
-      // Try to extract JSON from the response
-      const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsedContent = JSON.parse(jsonMatch[0]);
-        return {
-          lessonPlan: JSON.stringify(parsedContent.lessonPlan || {}),
-          generatedAt: new Date(),
-          classLevel
-        };
-      }
-    } catch (error) {
-      console.warn('Failed to parse JSON from generated content:', error);
-    }
-
-    // Fallback: create basic structure from raw text
+    // Store raw plain text lesson plan as-is (no JSON transformation)
     return {
-      lessonPlan: JSON.stringify({
-        objectives: [],
-        materials: [],
-        introduction: generatedText,
-        mainContent: [],
-        wrapUp: '',
-        assessment: '',
-        homework: '',
-        resources: []
-      }),
+      lessonPlan: generatedText,
       generatedAt: new Date(),
       classLevel
     };
