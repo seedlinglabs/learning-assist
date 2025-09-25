@@ -149,6 +149,18 @@ def check_rate_limit(user_id):
         logger.warning(f"Rate limit check failed: {str(e)}")
         return True, 0  # Allow on error
 
+def sanitize_payload(payload: dict):
+    """Remove Vertex-style model field; GL API encodes model in the URL."""
+    try:
+        if isinstance(payload, dict) and 'model' in payload:
+            removed_model = payload.get('model')
+            payload = {k: v for k, v in payload.items() if k != 'model'}
+            logger.info(f"Sanitized incoming payload by removing model field: {removed_model}")
+        return payload
+    except Exception as e:
+        logger.warning(f"Failed to sanitize payload: {e}")
+        return payload
+
 def handle_generate_content(body, user_id, headers):
     """Handle content generation requests"""
     
@@ -165,11 +177,12 @@ def handle_generate_content(body, user_id, headers):
         }
     
     try:
-        # Forward request to Gemini API
+        # Forward request to Gemini API (sanitize any Vertex-style model field)
+        safe_body = sanitize_payload(body or {})
         gemini_response = requests.post(
             f"{GEMINI_API_URL}?key={GEMINI_API_KEY}",
             headers={'Content-Type': 'application/json'},
-            json=body,
+            json=safe_body,
             timeout=30
         )
         
@@ -208,10 +221,11 @@ def handle_discover_documents(body, user_id, headers):
         }
     
     try:
+        safe_body = sanitize_payload(body or {})
         gemini_response = requests.post(
             f"{GEMINI_API_URL}?key={GEMINI_API_KEY}",
             headers={'Content-Type': 'application/json'},
-            json=body,
+            json=safe_body,
             timeout=30
         )
         
@@ -243,10 +257,11 @@ def handle_enhance_section(body, user_id, headers):
         }
     
     try:
+        safe_body = sanitize_payload(body or {})
         gemini_response = requests.post(
             f"{GEMINI_API_URL}?key={GEMINI_API_KEY}",
             headers={'Content-Type': 'application/json'},
-            json=body,
+            json=safe_body,
             timeout=30
         )
         
