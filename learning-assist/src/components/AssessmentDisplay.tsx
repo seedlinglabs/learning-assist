@@ -294,7 +294,7 @@ const AssessmentDisplay: React.FC<AssessmentDisplayProps> = ({
           id: `q${currentSection?.questions.length || 0 + 1}`,
           question: questionText,
           options: [],
-          answer: '',
+          answer: 'Discussion question', // Default for CFU questions
           explanation: ''
         };
       }
@@ -316,10 +316,12 @@ const AssessmentDisplay: React.FC<AssessmentDisplayProps> = ({
           currentQuestion.answer = trimmedLine.replace(/^\*\*Answer:\*\*\s*/, '').replace(/^Answer:\s*/, '').trim();
         }
       }
-      // Check for explanation
-      else if (trimmedLine.startsWith('**Explanation:**') || trimmedLine.startsWith('Explanation:')) {
+      // Check for explanation or parent guidance
+      else if (trimmedLine.startsWith('**Explanation:**') || trimmedLine.startsWith('Explanation:') || 
+               trimmedLine.startsWith('**Parent Guidance:**') || trimmedLine.startsWith('Parent Guidance:')) {
         if (currentQuestion) {
-          currentQuestion.explanation = trimmedLine.replace(/^\*\*Explanation:\*\*\s*/, '').replace(/^Explanation:\s*/, '').trim();
+          currentQuestion.explanation = trimmedLine.replace(/^\*\*Explanation:\*\*\s*/, '').replace(/^Explanation:\s*/, '')
+                                                      .replace(/^\*\*Parent Guidance:\*\*\s*/, '').replace(/^Parent Guidance:\s*/, '').trim();
         }
       }
     }
