@@ -18,18 +18,14 @@ const ThemeToggle: React.FC<ThemeToggleProps> = ({ className = '' }) => {
       title={`Switch to ${isDark ? 'light' : 'dark'} mode`}
       type="button"
     >
-      <div className="theme-toggle-container">
-        <div className={`theme-icon ${isDark ? 'dark' : 'light'}`}>
-          {isDark ? (
-            <Moon size={18} className="moon-icon" />
-          ) : (
-            <Sun size={18} className="sun-icon" />
-          )}
-        </div>
-        <span className="theme-toggle-text">
-          {isDark ? 'Dark' : 'Light'}
-        </span>
-      </div>
+      {isDark ? (
+        <Moon size={16} className="moon-icon" />
+      ) : (
+        <Sun size={16} className="sun-icon" />
+      )}
+      <span className="theme-toggle-text">
+        {isDark ? 'Dark' : 'Light'}
+      </span>
     </button>
   );
 };
