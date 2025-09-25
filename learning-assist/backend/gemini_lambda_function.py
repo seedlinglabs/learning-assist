@@ -31,8 +31,11 @@ def lambda_handler(event, context):
     }
     
     try:
+        logger.info(f"Lambda invoked with method: {event.get('httpMethod', 'UNKNOWN')}")
+        
         # Handle preflight requests
         if event['httpMethod'] == 'OPTIONS':
+            logger.info("Handling OPTIONS request")
             return {
                 'statusCode': 200,
                 'headers': headers,
@@ -41,6 +44,7 @@ def lambda_handler(event, context):
         
         # Validate API key configuration
         if not GEMINI_API_KEY:
+            logger.error("Gemini API key not configured")
             return {
                 'statusCode': 500,
                 'headers': headers,
@@ -50,13 +54,23 @@ def lambda_handler(event, context):
             }
         
         # Parse request body
-        body = json.loads(event['body']) if event['body'] else {}
+        try:
+            body = json.loads(event['body']) if event['body'] else {}
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON in request body: {str(e)}")
+            return {
+                'statusCode': 400,
+                'headers': headers,
+                'body': json.dumps({'error': 'Invalid JSON in request body'})
+            }
         
         # Extract user info for usage tracking (from JWT token)
         user_id = extract_user_from_token(event.get('headers', {}))
+        logger.info(f"Request from user: {user_id}")
         
         # Route to appropriate handler
         path = event['pathParameters']['proxy'] if event.get('pathParameters') else ''
+        logger.info(f"Routing to path: {path}")
         
         if path == 'generate-content':
             return handle_generate_content(body, user_id, headers)
@@ -64,7 +78,10 @@ def lambda_handler(event, context):
             return handle_discover_documents(body, user_id, headers)
         elif path == 'enhance-section':
             return handle_enhance_section(body, user_id, headers)
+        elif path == 'analyze-chapter':
+            return handle_analyze_chapter(body, user_id, headers)
         else:
+            logger.warning(f"Unknown endpoint: {path}")
             return {
                 'statusCode': 404,
                 'headers': headers,
@@ -72,7 +89,7 @@ def lambda_handler(event, context):
             }
             
     except Exception as e:
-        logger.error(f"Error in gemini proxy: {str(e)}")
+        logger.error(f"Error in gemini proxy: {str(e)}", exc_info=True)
         return {
             'statusCode': 500,
             'headers': headers,
@@ -105,8 +122,10 @@ def track_usage(user_id, endpoint, tokens_used=0):
             'timestamp': datetime.utcnow().isoformat(),
             'date': datetime.utcnow().strftime('%Y-%m-%d')
         })
+        logger.info(f"Usage tracked: {user_id} - {endpoint}")
     except Exception as e:
         logger.warning(f"Failed to track usage: {str(e)}")
+        # Don't fail the request if usage tracking fails
 
 def check_rate_limit(user_id):
     """Check if user has exceeded rate limits"""
@@ -123,6 +142,7 @@ def check_rate_limit(user_id):
         daily_requests = len(response['Items'])
         MAX_DAILY_REQUESTS = 1000  # Configurable limit
         
+        logger.info(f"Rate limit check: {user_id} - {daily_requests}/{MAX_DAILY_REQUESTS}")
         return daily_requests < MAX_DAILY_REQUESTS, daily_requests
         
     except Exception as e:
@@ -244,4 +264,69 @@ def handle_enhance_section(body, user_id, headers):
             'statusCode': 500,
             'headers': headers,
             'body': json.dumps({'error': 'Failed to enhance section'})
+        }
+
+def handle_analyze_chapter(body, user_id, headers):
+    """
+    Handle chapter analysis requests for topic splitting
+    """
+    try:
+        logger.info(f"Chapter analysis request received. User: {user_id}, Body keys: {list(body.keys())}")
+        
+        # Validate required fields
+        required_fields = ['contents']
+        for field in required_fields:
+            if field not in body:
+                logger.error(f"Missing required field: {field}")
+                return {
+                    'statusCode': 400,
+                    'headers': headers,
+                    'body': json.dumps({'error': f'Missing required field: {field}'})
+                }
+        
+        # Prepare Gemini API request
+        gemini_payload = {
+            'contents': body['contents'],
+            'generationConfig': body.get('generationConfig', {
+                'temperature': 0.7,
+                'topK': 40,
+                'topP': 0.95,
+                'maxOutputTokens': 4096
+            })
+        }
+        
+        # Make request to Gemini API
+        gemini_url = f"{GEMINI_API_URL}?key={GEMINI_API_KEY}"
+        logger.info(f"Making request to Gemini API. Payload size: {len(json.dumps(gemini_payload))} characters")
+        
+        gemini_response = requests.post(gemini_url, json=gemini_payload, timeout=60)
+        
+        logger.info(f"Gemini API response status: {gemini_response.status_code}")
+        
+        if gemini_response.status_code != 200:
+            logger.error(f"Gemini API error: {gemini_response.status_code} - {gemini_response.text}")
+            return {
+                'statusCode': 500,
+                'headers': headers,
+                'body': json.dumps({'error': 'Gemini API request failed'})
+            }
+        
+        # Track usage (don't fail if this fails)
+        try:
+            track_usage(user_id, 'analyze-chapter')
+        except Exception as track_error:
+            logger.warning(f"Usage tracking failed: {track_error}")
+        
+        return {
+            'statusCode': 200,
+            'headers': headers,
+            'body': gemini_response.text
+        }
+        
+    except Exception as e:
+        logger.error(f"Chapter analysis error: {str(e)}", exc_info=True)
+        return {
+            'statusCode': 500,
+            'headers': headers,
+            'body': json.dumps({'error': 'Failed to analyze chapter'})
         }

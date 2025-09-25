@@ -7,6 +7,8 @@ export interface AIContent {
   lessonPlan?: string;
   teachingGuide?: string;
   groupDiscussion?: string;
+  assessmentQuestions?: string;
+  worksheets?: string;
   images?: EducationalImage[];
   videos?: YouTubeVideo[];
   generatedAt?: Date;

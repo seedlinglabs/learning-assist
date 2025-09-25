@@ -7,30 +7,35 @@ import NewTopicPanel from './NewTopicPanel';
 import '../styles/TopicSplitView.css';
 
 const TopicSplitView: React.FC = () => {
-  const { currentPath } = useApp();
+  const { currentPath, refreshTopics } = useApp();
   const { school, class: cls, subject } = currentPath;
   const [selectedTopic, setSelectedTopic] = useState<Topic | undefined>();
   const [isCreatingNewTopic, setIsCreatingNewTopic] = useState(false);
+
+  // Sort topics alphabetically by name
+  const sortedTopics = [...(subject?.topics || [])].sort((a, b) => 
+    a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+  );
 
   // Auto-select first topic when topics change
   useEffect(() => {
     if (isCreatingNewTopic) return; // Don't auto-select when creating new topic
 
-    if (subject?.topics && subject.topics.length > 0 && !selectedTopic) {
-      setSelectedTopic(subject.topics[0]);
-    } else if (subject?.topics && subject.topics.length === 0) {
+    if (sortedTopics.length > 0 && !selectedTopic) {
+      setSelectedTopic(sortedTopics[0]);
+    } else if (sortedTopics.length === 0) {
       setSelectedTopic(undefined);
-    } else if (selectedTopic && subject?.topics) {
+    } else if (selectedTopic && sortedTopics.length > 0) {
       // Update selected topic with latest data
-      const updatedTopic = subject.topics.find(t => t.id === selectedTopic.id);
+      const updatedTopic = sortedTopics.find(t => t.id === selectedTopic.id);
       if (updatedTopic) {
         setSelectedTopic(updatedTopic);
       } else {
         // Topic was deleted, select first available or none
-        setSelectedTopic(subject.topics.length > 0 ? subject.topics[0] : undefined);
+        setSelectedTopic(sortedTopics.length > 0 ? sortedTopics[0] : undefined);
       }
     }
-  }, [subject?.topics, selectedTopic, isCreatingNewTopic]);
+  }, [sortedTopics, selectedTopic, isCreatingNewTopic]);
 
   if (!school || !cls || !subject) {
     return null;
@@ -48,8 +53,8 @@ const TopicSplitView: React.FC = () => {
   const handleNewTopicCancel = () => {
     setIsCreatingNewTopic(false);
     // Auto-select first topic if available
-    if (subject?.topics && subject.topics.length > 0) {
-      setSelectedTopic(subject.topics[0]);
+    if (sortedTopics.length > 0) {
+      setSelectedTopic(sortedTopics[0]);
     }
   };
 
@@ -63,17 +68,26 @@ const TopicSplitView: React.FC = () => {
     setSelectedTopic(topic);
   };
 
+  const handleTopicsCreated = async (topics: Topic[]) => {
+    // Refresh topics to show the newly created ones
+    await refreshTopics();
+  };
+
   return (
     <div className="topic-split-view">
       <div className="split-sidebar">
         <TopicSidebar
-          topics={subject.topics}
+          topics={sortedTopics}
           selectedTopic={isCreatingNewTopic ? undefined : selectedTopic}
           onTopicSelect={handleTopicSelect}
           onNewTopicClick={handleNewTopicClick}
           subjectId={subject.id}
           subjectName={subject.name}
           isCreatingNewTopic={isCreatingNewTopic}
+          subject={subject}
+          class={cls}
+          school={school}
+          onTopicsCreated={handleTopicsCreated}
         />
       </div>
       <div className="split-main">
