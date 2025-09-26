@@ -410,7 +410,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
       );
       
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Teaching guide generation timeout after 30 seconds')), 30000)
+        setTimeout(() => reject(new Error('Teaching guide generation timeout after 60 seconds')), 60000)
       );
       
       const teachingGuideResult = await Promise.race([teachingGuidePromise, timeoutPromise]) as any;
@@ -451,7 +451,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
       );
       
       const groupDiscussionTimeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Group discussion generation timeout after 30 seconds')), 30000)
+        setTimeout(() => reject(new Error('Group discussion generation timeout after 60 seconds')), 60000)
       );
       
       const groupDiscussionResult = await Promise.race([groupDiscussionPromise, groupDiscussionTimeoutPromise]) as any;
@@ -490,7 +490,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
       );
       
       const assessmentTimeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Assessment generation timeout after 30 seconds')), 30000)
+        setTimeout(() => reject(new Error('Assessment generation timeout after 60 seconds')), 60000)
       );
       
       const assessmentResult = await Promise.race([assessmentPromise, assessmentTimeoutPromise]) as any;
@@ -528,7 +528,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
       );
       
       const worksheetsTimeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Worksheets generation timeout after 30 seconds')), 30000)
+        setTimeout(() => reject(new Error('Worksheets generation timeout after 60 seconds')), 60000)
       );
       
       const worksheetsResult = await Promise.race([worksheetsPromise, worksheetsTimeoutPromise]) as any;
