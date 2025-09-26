@@ -40,7 +40,7 @@ class ChapterPlannerService {
   ): Promise<TopicSuggestion[]> {
     try {
       // Truncate content if it's too large (limit to ~30,000 characters to leave room for prompt)
-      const maxContentLength = 30000;
+      const maxContentLength = 100000;
       const truncatedContent = content.length > maxContentLength 
         ? content.substring(0, maxContentLength) + '\n\n[Content truncated for processing...]'
         : content;
@@ -59,7 +59,7 @@ class ChapterPlannerService {
           temperature: 0.7,
           topK: 40,
           topP: 0.95,
-          maxOutputTokens: 4096,
+          maxOutputTokens: 30000,
         }
       };
 

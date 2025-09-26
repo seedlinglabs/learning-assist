@@ -5,10 +5,18 @@ import requests
 from datetime import datetime
 import uuid
 import logging
+import sys  # Added for StreamHandler to enable CloudWatch logging
 
 # Configure logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+
+# Add a StreamHandler to output to stdout (captured by Lambda/CloudWatch)
+handler = logging.StreamHandler(sys.stdout)
+handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 # Initialize DynamoDB
 dynamodb = boto3.resource('dynamodb')
@@ -16,7 +24,7 @@ usage_table = dynamodb.Table('learning_assist_gemini_usage')
 
 # Gemini API configuration
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
-GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent'
+GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
 
 def lambda_handler(event, context):
     """
@@ -149,18 +157,6 @@ def check_rate_limit(user_id):
         logger.warning(f"Rate limit check failed: {str(e)}")
         return True, 0  # Allow on error
 
-def sanitize_payload(payload: dict):
-    """Remove Vertex-style model field; GL API encodes model in the URL."""
-    try:
-        if isinstance(payload, dict) and 'model' in payload:
-            removed_model = payload.get('model')
-            payload = {k: v for k, v in payload.items() if k != 'model'}
-            logger.info(f"Sanitized incoming payload by removing model field: {removed_model}")
-        return payload
-    except Exception as e:
-        logger.warning(f"Failed to sanitize payload: {e}")
-        return payload
-
 def handle_generate_content(body, user_id, headers):
     """Handle content generation requests"""
     
@@ -177,18 +173,23 @@ def handle_generate_content(body, user_id, headers):
         }
     
     try:
-        # Forward request to Gemini API (sanitize any Vertex-style model field)
-        safe_body = sanitize_payload(body or {})
+        # Forward request to Gemini API
         gemini_response = requests.post(
             f"{GEMINI_API_URL}?key={GEMINI_API_KEY}",
             headers={'Content-Type': 'application/json'},
-            json=safe_body,
-            timeout=30
+            json=body,
+            timeout=90
         )
+        
+        # Log Gemini response for monitoring
+        logger.info(f"Gemini response status: {gemini_response.status_code}")
+        logger.info(f"Gemini response body!!!!!!!!!!!!: {gemini_response.text}")
         
         # Track usage
         track_usage(user_id, 'generate-content')
         
+        
+
         return {
             'statusCode': gemini_response.status_code,
             'headers': headers,
@@ -221,13 +222,16 @@ def handle_discover_documents(body, user_id, headers):
         }
     
     try:
-        safe_body = sanitize_payload(body or {})
         gemini_response = requests.post(
             f"{GEMINI_API_URL}?key={GEMINI_API_KEY}",
             headers={'Content-Type': 'application/json'},
-            json=safe_body,
-            timeout=30
+            json=body,
+            timeout=90
         )
+        
+        # Log Gemini response for monitoring
+        logger.info(f"Gemini response status: {gemini_response.status_code}")
+        logger.info(f"Gemini response body&&&&&&&&&&&&: {gemini_response.text}")
         
         track_usage(user_id, 'discover-documents')
         
@@ -257,13 +261,16 @@ def handle_enhance_section(body, user_id, headers):
         }
     
     try:
-        safe_body = sanitize_payload(body or {})
         gemini_response = requests.post(
             f"{GEMINI_API_URL}?key={GEMINI_API_KEY}",
             headers={'Content-Type': 'application/json'},
-            json=safe_body,
-            timeout=30
+            json=body,
+            timeout=90
         )
+        
+        # Log Gemini response for monitoring
+        logger.info(f"Gemini response status***********: {gemini_response.status_code}")
+        logger.info(f"Gemini response body ***********: {gemini_response.text}")
         
         track_usage(user_id, 'enhance-section')
         
@@ -288,6 +295,11 @@ def handle_analyze_chapter(body, user_id, headers):
     try:
         logger.info(f"Chapter analysis request received. User: {user_id}, Body keys: {list(body.keys())}")
         
+        # Log content size for debugging
+        if 'contents' in body and body['contents']:
+            content_size = len(json.dumps(body['contents']))
+            logger.info(f"Content size: {content_size} characters")
+        
         # Validate required fields
         required_fields = ['contents']
         for field in required_fields:
@@ -306,7 +318,7 @@ def handle_analyze_chapter(body, user_id, headers):
                 'temperature': 0.7,
                 'topK': 40,
                 'topP': 0.95,
-                'maxOutputTokens': 4096
+                'maxOutputTokens': 8192
             })
         }
         
@@ -314,7 +326,7 @@ def handle_analyze_chapter(body, user_id, headers):
         gemini_url = f"{GEMINI_API_URL}?key={GEMINI_API_KEY}"
         logger.info(f"Making request to Gemini API. Payload size: {len(json.dumps(gemini_payload))} characters")
         
-        gemini_response = requests.post(gemini_url, json=gemini_payload, timeout=60)
+        gemini_response = requests.post(gemini_url, json=gemini_payload, timeout=120)  # 25s to stay under API Gateway limit
         
         logger.info(f"Gemini API response status: {gemini_response.status_code}")
         
@@ -326,7 +338,11 @@ def handle_analyze_chapter(body, user_id, headers):
                 'body': json.dumps({'error': 'Gemini API request failed'})
             }
         
-        # Track usage (don't fail if this fails)
+        # Log Gemini response for monitoring
+        logger.info(f"Gemini response status: {gemini_response.status_code}")
+        logger.info(f"Gemini response body##############: {gemini_response.text}")
+        
+        # Track usage
         try:
             track_usage(user_id, 'analyze-chapter')
         except Exception as track_error:
@@ -338,6 +354,20 @@ def handle_analyze_chapter(body, user_id, headers):
             'body': gemini_response.text
         }
         
+    except requests.exceptions.Timeout:
+        logger.error("Request timeout - content may be too large or Gemini API is slow")
+        return {
+            'statusCode': 504,
+            'headers': headers,
+            'body': json.dumps({'error': 'Request timeout - try with smaller content or try again later'})
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Request error: {str(e)}")
+        return {
+            'statusCode': 502,
+            'headers': headers,
+            'body': json.dumps({'error': 'Failed to connect to Gemini API'})
+        }
     except Exception as e:
         logger.error(f"Chapter analysis error: {str(e)}", exc_info=True)
         return {
