@@ -182,7 +182,7 @@ Reason: [Educational value and age-appropriateness]
             temperature: 0.8,
             topK: 40,
             topP: 0.95,
-            maxOutputTokens: 1024,
+            maxOutputTokens: 4096,
             candidateCount: 1,
           },
           safetySettings: [
@@ -589,7 +589,7 @@ Return only the enhanced content with specific, working links.`;
             temperature: 0.8,
             topK: 40,
             topP: 0.95,
-            maxOutputTokens: 2048,
+            maxOutputTokens: 4096,
             candidateCount: 1,
           },
           safetySettings: [

@@ -128,7 +128,7 @@ class SecureGeminiService {
         temperature: 0.7,
         topK: 40,
         topP: 0.95,
-        maxOutputTokens: 2048,
+        maxOutputTokens: 4096,
       }
     };
 
@@ -221,7 +221,7 @@ class SecureGeminiService {
         temperature: 0.7,
         topK: 40,
         topP: 0.9,
-        maxOutputTokens: 2048,
+        maxOutputTokens: 4096,
       }
     };
 
@@ -287,7 +287,7 @@ class SecureGeminiService {
         temperature: 0.3,
         topK: 20,
         topP: 0.8,
-        maxOutputTokens: 1024,
+        maxOutputTokens: 4096,
       }
     };
 
@@ -386,7 +386,7 @@ class SecureGeminiService {
           temperature: 0.6,
           topK: 30,
           topP: 0.9,
-          maxOutputTokens: 1536,
+          maxOutputTokens: 4096,
         }
       };
 
@@ -842,7 +842,7 @@ Return only valid JSON in this format:
           temperature: 0.7,
           topK: 40,
           topP: 0.95,
-          maxOutputTokens: 2048,
+          maxOutputTokens: 4096,
         }
       };
 
@@ -963,7 +963,7 @@ Return only valid JSON in this format:
           temperature: 0.7,
           topK: 40,
           topP: 0.95,
-          maxOutputTokens: 2048,
+          maxOutputTokens: 4096,
         }
       };
 
