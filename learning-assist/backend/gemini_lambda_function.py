@@ -178,11 +178,7 @@ def handle_generate_content(body, user_id, headers):
             f"{GEMINI_API_URL}?key={GEMINI_API_KEY}",
             headers={'Content-Type': 'application/json'},
             json=body,
-<<<<<<< HEAD
             timeout=90
-=======
-            timeout=30
->>>>>>> 0df31e9 (Config: set all maxOutputTokens to 4096 across services)
         )
         
         # Log Gemini response for monitoring
@@ -230,11 +226,7 @@ def handle_discover_documents(body, user_id, headers):
             f"{GEMINI_API_URL}?key={GEMINI_API_KEY}",
             headers={'Content-Type': 'application/json'},
             json=body,
-<<<<<<< HEAD
             timeout=90
-=======
-            timeout=30
->>>>>>> 0df31e9 (Config: set all maxOutputTokens to 4096 across services)
         )
         
         # Log Gemini response for monitoring
@@ -273,11 +265,7 @@ def handle_enhance_section(body, user_id, headers):
             f"{GEMINI_API_URL}?key={GEMINI_API_KEY}",
             headers={'Content-Type': 'application/json'},
             json=body,
-<<<<<<< HEAD
             timeout=90
-=======
-            timeout=30
->>>>>>> 0df31e9 (Config: set all maxOutputTokens to 4096 across services)
         )
         
         # Log Gemini response for monitoring
