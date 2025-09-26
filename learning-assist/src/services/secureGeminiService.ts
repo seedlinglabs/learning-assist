@@ -417,54 +417,42 @@ class SecureGeminiService {
 
   // Private helper methods (same as original service)
   private buildTopicPrompt(topicName: string, description: string, documentUrls: string[], classLevel: string, subject: string): string {
-    // Check if description contains PDF content (longer than typical descriptions)
-    const isPDFContent = description && description.length > 500;
-    
-    const basePrompt = `Create a comprehensive lesson plan for a ${classLevel} ${subject} topic.
+    return `You are an expert curriculum designer tasked with creating a comprehensive lesson plan for a ${classLevel} ${subject} topic.
 
-Topic: ${topicName}
-Referenced Documents: ${documentUrls.length > 0 ? documentUrls.join(', ') : 'None provided'}`;
-
-    const descriptionSection = isPDFContent 
-      ? `TEXTBOOK CONTENT (Use this as your primary reference):
+**Topic**: ${topicName}
+**Referenced Documents**: ${documentUrls.length > 0 ? documentUrls.join(', ') : 'None provided'}
+**Textbook Content**:
 ${description}
 
-IMPORTANT: Base your entire lesson plan on the specific content provided above. Reference specific sections, examples, and information from this textbook content. Use the actual content, data, and examples from the textbook in your lesson plan.`
-      : `Description: ${description || 'No description provided'}`;
+**IMPORTANT**: Base your entire lesson plan on the provided textbook content. You must reference and use specific sections, examples, and data from this textbook to ground your response.
 
-    return `${basePrompt}
-${descriptionSection}
+---
 
-CLASS STRUCTURE FORMAT (PLAIN TEXT, NO JSON, NO CODE BLOCKS):
+**Lesson Plan Structure:**
 
-Start with:
-- Learning Objectives (3–5 clear bullets)
-- Materials Needed (bulleted list)
+Begin with the following sections in a clear, bulleted format:
+- Learning Objectives (3-5 clear, measurable outcomes)
+- Materials Needed (a bulleted list of all resources)
 
-Then provide a minute-by-minute (or segment-by-segment) 40-minute outline:
-- Introduction (e.g., 0–5 min): goals, prior knowledge activation
-- Segment 1 (e.g., 5–15 min): topic focus, teacher activity, student activity
-- Segment 2 (e.g., 15–25 min): topic focus, teacher activity, student activity
-- Segment 3 (e.g., 25–35 min): practice/application, quick checks for understanding
-- Wrap-up (e.g., 35–40 min): recap and exit ticket
+Next, provide a detailed, minute-by-minute 40-minute outline for the class period. The segments must adhere to the following timing:
+- Introduction (0–5 min): Explain the lesson goals and activate prior knowledge.
+- Segment 1 (5–15 min): Introduce the main topic and provide teacher and student activities.
+- Segment 2 (15–25 min): Deepen the topic with a new activity.
+- Segment 3 (25–35 min): Allow for practice and quick checks for understanding.
+- Wrap-up (35–40 min): Summarize key points and provide an exit ticket.
 
-Within each segment include:
+**For each segment, include the following details:**
 - Main concept(s) covered
-- Brief activity description (what students do)
-- Assessment/check-for-understanding (1–2 quick prompts)
+- A brief description of the activity (what students will do)
+- A quick check-for-understanding (1-2 prompts)
 
-Optionally end with:
-- Homework/Extension (1–2 items)
-- Educational Resources (with explicit URLs if relevant)
+**Final Requirements:**
+- The entire plan must be age-appropriate for ${classLevel} students.
+- Use clear headings and concise bullets throughout.
+- Align all content with ${subject} curriculum standards.
+- Use specific examples from the provided textbook material.
 
-REQUIREMENTS:
-- Age-appropriate for ${classLevel} students
-- Clear headings and concise bullets
-- Include time estimates for segments
-- Align with ${subject} curriculum standards${isPDFContent ? `
-- Use specific content/examples from the provided textbook material when applicable` : ''}
-
-Return only plain text (no JSON / code blocks).`;
+**CRITICAL**: Return only plain text. Do NOT use JSON, code blocks, or any other formatting.`;
   }
 
   private buildTeachingGuidePrompt(topicName: string, description: string, documentUrls: string[], classLevel: string, subject: string): string {
