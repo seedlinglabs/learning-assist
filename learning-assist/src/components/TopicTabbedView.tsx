@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Calendar, ExternalLink, Trash2, Save, Sparkles, GraduationCap, Search, Youtube, User, Users, ClipboardList, BookOpen } from 'lucide-react';
+import { FileText, Calendar, ExternalLink, Trash2, Save, Sparkles, GraduationCap, Search, Youtube, User, Users, ClipboardList, BookOpen, Plus, Edit3, X } from 'lucide-react';
 import { Topic, DocumentLink } from '../types';
 import { useApp } from '../context/AppContext';
 import { secureGeminiService } from '../services/secureGeminiService';
@@ -43,6 +43,15 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
   const [editingAssessmentQuestions, setEditingAssessmentQuestions] = useState<string>('');
   const [editingWorksheets, setEditingWorksheets] = useState<string>('');
   const [savingContent, setSavingContent] = useState<string | null>(null);
+  
+  // Video link management states
+  const [isAddingVideo, setIsAddingVideo] = useState(false);
+  const [editingVideoId, setEditingVideoId] = useState<string | null>(null);
+  const [newVideo, setNewVideo] = useState({
+    title: '',
+    url: '',
+    description: ''
+  });
   const [formData, setFormData] = useState({
     name: topic.name,
     description: topic.description || '',
@@ -717,6 +726,150 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     }));
   };
 
+  // Video link management functions
+  const validateUrl = (url: string): boolean => {
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const handleAddVideo = async () => {
+    if (!newVideo.title.trim() || !newVideo.url.trim()) {
+      alert('Please fill in both title and URL');
+      return;
+    }
+
+    if (!validateUrl(newVideo.url)) {
+      alert('Please enter a valid URL');
+      return;
+    }
+
+    const videoLink: DocumentLink = {
+      name: newVideo.title.trim(),
+      url: newVideo.url.trim()
+    };
+
+    const updatedDocumentLinks = [...(topic.documentLinks || []), videoLink];
+    
+    try {
+      await updateTopic(topic.id, {
+        name: topic.name,
+        description: topic.description,
+        documentLinks: updatedDocumentLinks,
+        aiContent: topic.aiContent,
+      });
+      
+      setNewVideo({ title: '', url: '', description: '' });
+      setIsAddingVideo(false);
+    } catch (error) {
+      console.error('Failed to add video:', error);
+    }
+  };
+
+  const handleEditVideo = (videoUrl: string) => {
+    const video = topic.documentLinks?.find(link => link.url === videoUrl);
+    if (video) {
+      setNewVideo({
+        title: video.name,
+        url: video.url,
+        description: ''
+      });
+      setEditingVideoId(videoUrl);
+      setIsAddingVideo(true);
+    }
+  };
+
+  const handleUpdateVideo = async () => {
+    if (!newVideo.title.trim() || !newVideo.url.trim()) {
+      alert('Please fill in both title and URL');
+      return;
+    }
+
+    if (!validateUrl(newVideo.url)) {
+      alert('Please enter a valid URL');
+      return;
+    }
+
+    const updatedDocumentLinks = topic.documentLinks?.map(link => 
+      link.url === editingVideoId 
+        ? { name: newVideo.title.trim(), url: newVideo.url.trim() }
+        : link
+    ) || [];
+
+    try {
+      await updateTopic(topic.id, {
+        name: topic.name,
+        description: topic.description,
+        documentLinks: updatedDocumentLinks,
+        aiContent: topic.aiContent,
+      });
+      
+      setNewVideo({ title: '', url: '', description: '' });
+      setIsAddingVideo(false);
+      setEditingVideoId(null);
+    } catch (error) {
+      console.error('Failed to update video:', error);
+    }
+  };
+
+  const handleDeleteVideo = async (videoUrl: string) => {
+    if (window.confirm('Are you sure you want to delete this video?')) {
+      const updatedDocumentLinks = topic.documentLinks?.filter(link => link.url !== videoUrl) || [];
+      
+      try {
+        await updateTopic(topic.id, {
+          name: topic.name,
+          description: topic.description,
+          documentLinks: updatedDocumentLinks,
+          aiContent: topic.aiContent,
+        });
+      } catch (error) {
+        console.error('Failed to delete video:', error);
+      }
+    }
+  };
+
+  const handleDeleteAIVideo = async (videoId: string) => {
+    if (window.confirm('Are you sure you want to delete this AI-recommended video?')) {
+      const updatedAIVideos = topic.aiContent?.videos?.filter(video => video.id !== videoId) || [];
+      const updatedAIContent = {
+        ...topic.aiContent,
+        videos: updatedAIVideos
+      };
+      
+      try {
+        await updateTopic(topic.id, {
+          name: topic.name,
+          description: topic.description,
+          documentLinks: topic.documentLinks,
+          aiContent: updatedAIContent,
+        });
+      } catch (error) {
+        console.error('Failed to delete AI video:', error);
+      }
+    }
+  };
+
+  const handleCancelVideo = () => {
+    setNewVideo({ title: '', url: '', description: '' });
+    setIsAddingVideo(false);
+    setEditingVideoId(null);
+  };
+
+  const getVideoThumbnail = (url: string): string => {
+    // For YouTube videos, try to extract thumbnail
+    if (url.includes('youtube.com') || url.includes('youtu.be')) {
+      const videoId = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/)?.[1];
+      if (videoId) {
+        return `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+      }
+    }
+    return '';
+  };
+
   // Debug logging for AI content
   React.useEffect(() => {
   }, [topic]);
@@ -1229,41 +1382,188 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
           </div>
         )}
 
-        {activeTab === 'videos' && topic.aiContent?.videos && topic.aiContent.videos.length > 0 && (
+        {activeTab === 'videos' && (
           <div className="tab-panel videos-panel">
-            <div className="videos-section">
-              <div className="videos-grid">
-                {topic.aiContent.videos.map((video, index) => (
-                  <div key={video.id} className="video-card">
-                    <a
-                      href={video.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="video-link"
-                    >
-                      <div className="video-thumbnail">
-                        <img 
-                          src={video.thumbnail} 
-                          alt={video.title}
-                          className="thumbnail-image"
-                        />
-                        <div className="play-overlay">
-                          <Youtube size={24} />
-                        </div>
-                      </div>
-                      <div className="video-info">
-                        <h4 className="video-title">{video.title}</h4>
-                        <p className="video-channel">{video.channelTitle}</p>
-                        <p className="video-duration">{video.duration}</p>
-                        <p className="video-description">
-                          {video.description.substring(0, 100)}...
-                        </p>
-                      </div>
-                    </a>
-                  </div>
-                ))}
+            {/* Video Management Header */}
+            <div className="video-management-header">
+              <div className="video-header-content">
+                <h4>Video Resources</h4>
+                <p>Teacher videos and AI-recommended content</p>
+              </div>
+              <div className="video-header-actions">
+                <button
+                  onClick={() => setIsAddingVideo(true)}
+                  className="btn btn-primary"
+                >
+                  <Plus size={16} />
+                  Add Video Link
+                </button>
               </div>
             </div>
+
+            {/* Add Video Form */}
+            {isAddingVideo && (
+              <div className="add-video-form">
+                <h5>{editingVideoId ? 'Edit Video' : 'Add New Video'}</h5>
+                
+                <div className="form-group">
+                  <label htmlFor="video-title">Video Title *</label>
+                  <input
+                    id="video-title"
+                    type="text"
+                    value={newVideo.title}
+                    onChange={(e) => setNewVideo(prev => ({ ...prev, title: e.target.value }))}
+                    placeholder="Enter video title"
+                    className="form-input"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="video-url">Video URL *</label>
+                  <input
+                    id="video-url"
+                    type="url"
+                    value={newVideo.url}
+                    onChange={(e) => setNewVideo(prev => ({ ...prev, url: e.target.value }))}
+                    placeholder="https://youtube.com/watch?v=..."
+                    className="form-input"
+                  />
+                </div>
+
+                <div className="form-actions">
+                  <button
+                    onClick={editingVideoId ? handleUpdateVideo : handleAddVideo}
+                    className="btn btn-primary"
+                  >
+                    <Save size={16} />
+                    {editingVideoId ? 'Update Video' : 'Add Video'}
+                  </button>
+                  <button
+                    onClick={handleCancelVideo}
+                    className="btn btn-secondary"
+                  >
+                    <X size={16} />
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Combined Videos Grid */}
+            {((topic.documentLinks && topic.documentLinks.length > 0) || 
+              (topic.aiContent?.videos && topic.aiContent.videos.length > 0)) && (
+              <div className="videos-section">
+                <div className="videos-grid">
+                  {/* Teacher Custom Videos */}
+                  {topic.documentLinks && topic.documentLinks.map((video, index) => (
+                    <div key={`custom-${index}`} className="video-card custom-video-card">
+                      <a
+                        href={video.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="video-link"
+                      >
+                        <div className="video-thumbnail">
+                          {getVideoThumbnail(video.url) ? (
+                            <img 
+                              src={getVideoThumbnail(video.url)} 
+                              alt={video.name}
+                              className="thumbnail-image"
+                            />
+                          ) : (
+                            <div className="video-icon">
+                              <Youtube size={24} />
+                            </div>
+                          )}
+                          <div className="play-overlay">
+                            <Youtube size={24} />
+                          </div>
+                        </div>
+                        <div className="video-info">
+                          <h4 className="video-title">{video.name}</h4>
+                          <p className="video-channel">Teacher Added</p>
+                          <div className="video-actions">
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                handleEditVideo(video.url);
+                              }}
+                              className="btn btn-sm btn-outline"
+                              title="Edit video"
+                            >
+                              <Edit3 size={16} />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                handleDeleteVideo(video.url);
+                              }}
+                              className="btn btn-sm btn-danger"
+                              title="Delete video"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      </a>
+                    </div>
+                  ))}
+
+                  {/* AI-Generated Videos */}
+                  {topic.aiContent?.videos && topic.aiContent.videos.map((video, index) => (
+                    <div key={video.id} className="video-card ai-video-card">
+                      <a
+                        href={video.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="video-link"
+                      >
+                        <div className="video-thumbnail">
+                          <img 
+                            src={video.thumbnail} 
+                            alt={video.title}
+                            className="thumbnail-image"
+                          />
+                          <div className="play-overlay">
+                            <Youtube size={24} />
+                          </div>
+                        </div>
+                        <div className="video-info">
+                          <h4 className="video-title">{video.title}</h4>
+                          <p className="video-channel">{video.channelTitle}</p>
+                          <p className="video-duration">{video.duration}</p>
+                          <p className="video-description">
+                            {video.description.substring(0, 100)}...
+                          </p>
+                        </div>
+                      </a>
+                      <div className="video-actions">
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleDeleteAIVideo(video.id);
+                          }}
+                          className="btn btn-sm btn-danger"
+                          title="Delete AI video"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* No videos message */}
+            {(!topic.aiContent?.videos || topic.aiContent.videos.length === 0) && 
+             (!topic.documentLinks || topic.documentLinks.length === 0) && !isAddingVideo && (
+              <div className="no-videos-message">
+                <Youtube size={48} />
+                <h4>No videos available</h4>
+                <p>Add your own video resources or generate AI-recommended videos</p>
+              </div>
+            )}
           </div>
         )}
       </div>
