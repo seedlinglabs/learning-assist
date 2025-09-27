@@ -45,7 +45,7 @@ export interface GeminiResponse {
 }
 
 class SecureGeminiService {
-  private selectedModel: string = 'gemini-2.5-flash';
+  private selectedModel: string = 'gemini-2.5-pro';
 
   setModel(model: string) {
     this.selectedModel = model;
@@ -57,7 +57,7 @@ class SecureGeminiService {
 
   getAvailableModels(): { id: string; name: string; provider: string }[] {
     return [
-      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'Google' },
+      { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'Google' },
       { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', provider: 'Anthropic' }
     ];
   }

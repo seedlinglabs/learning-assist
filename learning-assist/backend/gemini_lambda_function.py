@@ -35,7 +35,7 @@ REQUEST_TIMEOUT = 80 # Changed from 80 to 28 seconds
 
 # Supported models
 SUPPORTED_MODELS = {
-    'gemini-2.5-flash': 'gemini',
+    'gemini-2.5-pro': 'gemini',
     'claude-3-5-sonnet-20241022': 'claude'
 }
 
