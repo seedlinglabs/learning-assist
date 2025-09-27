@@ -40,6 +40,7 @@ const ChapterPlannerModal: React.FC<ChapterPlannerModalProps> = ({
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pdfError, setPdfError] = useState<string | null>(null);
+  const [showLecturePopup, setShowLecturePopup] = useState(false);
 
   const handlePDFTextExtracted = (extractedText: string, fileName: string) => {
     setTextbookContent(extractedText);
@@ -61,6 +62,16 @@ const ChapterPlannerModal: React.FC<ChapterPlannerModalProps> = ({
       return;
     }
 
+    // Check if user hasn't specified number of lectures
+    if (!splitInputValue.trim()) {
+      setShowLecturePopup(true);
+      return;
+    }
+
+    await performAnalysis();
+  };
+
+  const performAnalysis = async () => {
     setIsAnalyzing(true);
     setError(null);
 
@@ -95,6 +106,22 @@ const ChapterPlannerModal: React.FC<ChapterPlannerModalProps> = ({
       setError(`Analysis failed: ${errorMessage}. Please try again or contact support if the issue persists.`);
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  const handleContinueWithAI = () => {
+    setShowLecturePopup(false);
+    // Let AI decide the optimal number of lectures
+    setNumberOfSplits(0); // Special value to indicate AI should decide
+    performAnalysis();
+  };
+
+  const handleChangeLectures = () => {
+    setShowLecturePopup(false);
+    // Focus on the input field
+    const input = document.getElementById('numberOfSplits');
+    if (input) {
+      input.focus();
     }
   };
 
@@ -363,6 +390,34 @@ const ChapterPlannerModal: React.FC<ChapterPlannerModalProps> = ({
           {step === 'review' && renderReviewStep()}
         </div>
       </div>
+
+      {/* Lecture Number Popup */}
+      {showLecturePopup && (
+        <div className="lecture-popup-overlay">
+          <div className="lecture-popup">
+            <div className="lecture-popup-header">
+              <h3>Number of Lectures Not Specified</h3>
+            </div>
+            <div className="lecture-popup-content">
+              <p>You haven't specified the number of lectures. AI will automatically choose the optimal number of lectures based on the content.</p>
+            </div>
+            <div className="lecture-popup-actions">
+              <button 
+                onClick={handleChangeLectures}
+                className="btn btn-secondary"
+              >
+                Change Number of Lectures
+              </button>
+              <button 
+                onClick={handleContinueWithAI}
+                className="btn btn-primary"
+              >
+                Continue with AI Selection
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
