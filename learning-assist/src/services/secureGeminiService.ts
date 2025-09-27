@@ -184,12 +184,20 @@ class SecureGeminiService {
         if (guidanceResult.success && guidanceResult.guidance) {
           conceptGuidances.push(guidanceResult.guidance);
         } else {
-          console.warn(`Failed to generate guidance for concept: ${concept}`);
+          // If ANY concept fails, fail the entire process
+          return { 
+            success: false, 
+            error: `Failed to generate guidance for concept "${concept}": ${guidanceResult.error || 'Unknown error'}` 
+          };
         }
       }
 
-      if (conceptGuidances.length === 0) {
-        return { success: false, error: 'No concept guidance generated' };
+      // Ensure we have guidance for ALL concepts
+      if (conceptGuidances.length !== conceptsResult.concepts.length) {
+        return { 
+          success: false, 
+          error: `Incomplete guidance: expected ${conceptsResult.concepts.length} concepts, got ${conceptGuidances.length}` 
+        };
       }
 
       // Step 3: Combine into complete teaching guide
