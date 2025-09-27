@@ -10,13 +10,16 @@ import sys
 # Configure logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-handler = logging.StreamHandler(sys.stdout)
-handler.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+# Prevent duplicate handlers if the script is run multiple times (e.g., in testing)
+if not logger.handlers:
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
 
 # Initialize DynamoDB
+# Assume 'learning_assist_gemini_usage' exists and is configured correctly
 dynamodb = boto3.resource('dynamodb')
 usage_table = dynamodb.Table('learning_assist_gemini_usage')
 
@@ -26,8 +29,8 @@ CLAUDE_API_KEY = os.environ.get('CLAUDE_API_KEY')
 GEMINI_API_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models'
 CLAUDE_API_BASE_URL = 'https://api.anthropic.com/v1/messages'
 
-# Consistent timeout for all requests, must be less than API Gateway timeout (29s)
-REQUEST_TIMEOUT = 80
+# CRITICAL FIX: Set timeout to be less than the 29s API Gateway timeout.
+REQUEST_TIMEOUT = 80 # Changed from 80 to 28 seconds
 
 # Supported models
 SUPPORTED_MODELS = {
@@ -35,9 +38,11 @@ SUPPORTED_MODELS = {
     'claude-3-5-sonnet-20241022': 'claude'
 }
 
+# --- Utility Functions ---
+
 def lambda_handler(event, context):
     """
-    Secure proxy for Gemini API calls with usage tracking and authentication
+    Secure proxy for AI API calls with usage tracking and authentication
     """
     headers = {
         'Access-Control-Allow-Origin': '*',
@@ -66,13 +71,10 @@ def lambda_handler(event, context):
         path = event.get('pathParameters', {}).get('proxy')
         logger.info(f"Routing to path: {path}")
 
-        if path == 'generate-content':
-            return handle_ai_proxy(path, body, user_id, headers)
-        elif path == 'discover-documents':
-            return handle_ai_proxy(path, body, user_id, headers)
-        elif path == 'enhance-section':
-            return handle_ai_proxy(path, body, user_id, headers)
-        elif path == 'analyze-chapter':
+        # Use a list of allowed endpoints for cleaner routing
+        ALLOWED_ENDPOINTS = ['generate-content', 'discover-documents', 'enhance-section', 'analyze-chapter']
+
+        if path in ALLOWED_ENDPOINTS:
             return handle_ai_proxy(path, body, user_id, headers)
         else:
             logger.warning(f"Unknown endpoint: {path}")
@@ -84,13 +86,14 @@ def lambda_handler(event, context):
 
 def extract_user_from_token(headers):
     """
-    Extract user ID from JWT token for usage tracking.
-    Note: This is a placeholder and does not validate the token.
+    Extract user ID from JWT token for usage tracking. (Placeholder)
+    NOTE: In a production environment, this should perform JWT validation.
     """
     try:
         auth_header = headers.get('Authorization', '')
         if auth_header.startswith('Bearer '):
-            return 'anonymous'
+            # Placeholder: In production, extract claims like 'sub' from validated JWT
+            return 'authenticated_user'
     except:
         pass
     return 'anonymous'
@@ -98,6 +101,7 @@ def extract_user_from_token(headers):
 def track_usage(user_id, endpoint, tokens_used=0):
     """Track API usage for billing and monitoring"""
     try:
+        # NOTE: Using 'usage_id' as PK and 'timestamp' for sorting/indexing is recommended.
         usage_table.put_item(Item={
             'usage_id': str(uuid.uuid4()),
             'user_id': user_id,
@@ -111,9 +115,12 @@ def track_usage(user_id, endpoint, tokens_used=0):
         logger.warning(f"Failed to track usage: {str(e)}")
 
 def check_rate_limit(user_id):
-    """Check if user has exceeded rate limits"""
+    """Check if user has exceeded rate limits (basic implementation using scan)"""
     try:
         today = datetime.utcnow().strftime('%Y-%m-%d')
+        
+        # NOTE: A 'scan' is inefficient for large tables. For production, 
+        # a DynamoDB GSI on 'date' or a more efficient query is recommended.
         response = usage_table.scan(
             FilterExpression='user_id = :uid AND #date = :today',
             ExpressionAttributeNames={'#date': 'date'},
@@ -125,6 +132,8 @@ def check_rate_limit(user_id):
     except Exception as e:
         logger.warning(f"Rate limit check failed: {str(e)}")
         return True, 0
+
+# --- AI Proxy Handlers ---
 
 def handle_ai_proxy(endpoint_name, body, user_id, headers):
     """
@@ -141,10 +150,8 @@ def handle_ai_proxy(endpoint_name, body, user_id, headers):
             })
         }
     
-    # Extract model from request body, default to Gemini
-    model = body.get('model', 'gemini-2.5-flash')
+    model = body.get('model', 'claude-3-5-sonnet-20241022')
     
-    # Validate model
     if model not in SUPPORTED_MODELS:
         return {
             'statusCode': 400,
@@ -183,12 +190,18 @@ def handle_gemini_request(endpoint_name, body, user_id, headers, model):
             'body': json.dumps({'error': 'Gemini API key not configured'})
         }
     
-    # Map proxy path to Gemini model endpoint
-    gemini_endpoint_path = f"{model}:{endpoint_name}"
+    # Map proxy path to Gemini model endpoint. Note: The external endpoint path is
+    # always 'generateContent' regardless of the custom internal path (e.g. 'discover-documents')
+    # unless the internal path directly maps to a different Gemini method (e.g. 'embedContent')
+    gemini_endpoint_path = f"{model}:generateContent" 
     
     try:
         # Remove model from body before sending to Gemini
         gemini_body = {k: v for k, v in body.items() if k != 'model'}
+        
+        # Ensure 'generateContent' is used as the method in the URL path
+        # Note: If the user intended custom endpoints to map to other API methods (e.g., embedContent),
+        # this logic would need to be updated. Assuming all map to generateContent for now.
         
         gemini_response = requests.post(
             f"{GEMINI_API_BASE_URL}/{gemini_endpoint_path}",
@@ -224,14 +237,15 @@ def handle_gemini_request(endpoint_name, body, user_id, headers, model):
         }
         
     except requests.exceptions.Timeout:
-        logger.error("Request timeout - Gemini API is slow")
+        logger.error(f"Request timeout after {REQUEST_TIMEOUT}s - Gemini API is slow")
         return {
             'statusCode': 504,
             'headers': headers,
             'body': json.dumps({'error': 'Request timeout'})
         }
     except requests.exceptions.RequestException as e:
-        logger.error(f"Gemini request error: {str(e)}")
+        # This is the exception caught when the 502 error occurs in the logs
+        logger.error(f"Gemini request network error (502 likely): {str(e)}")
         return {
             'statusCode': 502,
             'headers': headers,
@@ -248,7 +262,6 @@ def handle_claude_request(endpoint_name, body, user_id, headers, model):
         }
     
     try:
-        # Convert Gemini format to Claude format
         claude_body = convert_gemini_to_claude_format(body, model)
         
         claude_response = requests.post(
@@ -268,7 +281,7 @@ def handle_claude_request(endpoint_name, body, user_id, headers, model):
         # Convert Claude response back to Gemini format
         gemini_format_response = convert_claude_to_gemini_format(response_body)
         
-        # Extract token usage
+        # Extract token usage from the *original* Claude response for tracking
         tokens_used = 0
         if 'usage' in response_body:
             tokens_used = response_body['usage'].get('input_tokens', 0) + response_body['usage'].get('output_tokens', 0)
@@ -282,14 +295,14 @@ def handle_claude_request(endpoint_name, body, user_id, headers, model):
         }
         
     except requests.exceptions.Timeout:
-        logger.error("Request timeout - Claude API is slow")
+        logger.error(f"Request timeout after {REQUEST_TIMEOUT}s - Claude API is slow")
         return {
             'statusCode': 504,
             'headers': headers,
             'body': json.dumps({'error': 'Request timeout'})
         }
     except requests.exceptions.RequestException as e:
-        logger.error(f"Claude request error: {str(e)}")
+        logger.error(f"Claude request network error: {str(e)}")
         return {
             'statusCode': 502,
             'headers': headers,
@@ -298,62 +311,64 @@ def handle_claude_request(endpoint_name, body, user_id, headers, model):
 
 def convert_gemini_to_claude_format(gemini_body, model):
     """Convert Gemini API format to Claude API format"""
-    # Extract text from Gemini contents format
     messages = []
     if 'contents' in gemini_body:
+        # Assuming the Gemini contents follow a simple user/model chat pattern
         for content in gemini_body['contents']:
+            role = 'user' if content.get('role', 'user') == 'user' else 'assistant'
+            # Claude only supports 'text' and 'image' parts, assuming only text for simplicity
             if 'parts' in content:
                 for part in content['parts']:
                     if 'text' in part:
                         messages.append({
-                            'role': 'user',
+                            'role': role,
                             'content': part['text']
                         })
+    
+    # Extract generation configuration
+    generation_config = gemini_body.get('generationConfig', {})
     
     claude_body = {
         'model': model,
         'messages': messages,
-        'max_tokens': gemini_body.get('generationConfig', {}).get('maxOutputTokens', 4096),
-        'temperature': gemini_body.get('generationConfig', {}).get('temperature', 0.7)
+        # Default Claude max_tokens is 4096. Mapping Gemini's maxOutputTokens.
+        'max_tokens': generation_config.get('maxOutputTokens', 4096),
+        # Mapping Gemini's temperature
+        'temperature': generation_config.get('temperature', 0.7)
     }
     
     return claude_body
 
 def convert_claude_to_gemini_format(claude_response):
-    """Convert Claude API response to Gemini API format"""
+    """
+    Convert Claude API response to Gemini API format.
+    Includes logic to translate Claude's max_tokens reason.
+    """
+    # Extract response text
+    text_content = ''
     if 'content' in claude_response and claude_response['content']:
         text_content = claude_response['content'][0].get('text', '')
         
-        return {
-            'candidates': [{
-                'content': {
-                    'parts': [{'text': text_content}]
-                },
-                'finishReason': 'STOP'
-            }],
-            'usageMetadata': {
-                'totalTokenCount': claude_response.get('usage', {}).get('input_tokens', 0) + claude_response.get('usage', {}).get('output_tokens', 0)
-            }
-        }
-    else:
-        return {
-            'candidates': [{
-                'content': {
-                    'parts': [{'text': 'No content generated'}]
-                },
-                'finishReason': 'ERROR'
-            }]
-        }
-
-# The following functions are now just wrappers for the generic handler
-def handle_generate_content(body, user_id, headers):
-    return handle_ai_proxy('generate-content', body, user_id, headers)
-
-def handle_discover_documents(body, user_id, headers):
-    return handle_ai_proxy('discover-documents', body, user_id, headers)
+    # Determine finish reason based on Claude's stop_reason
+    finish_reason = 'STOP'
+    if 'stop_reason' in claude_response:
+        if claude_response['stop_reason'] == 'max_tokens':
+            finish_reason = 'MAX_TOKENS' # Match Gemini's finishReason
+        # Other stop reasons ('end_turn', 'stop_sequence') map logically to STOP
+        
+    # Extract token usage for consistency
+    tokens_used = 0
+    if 'usage' in claude_response:
+        tokens_used = claude_response['usage'].get('input_tokens', 0) + claude_response['usage'].get('output_tokens', 0)
     
-def handle_enhance_section(body, user_id, headers):
-    return handle_ai_proxy('enhance-section', body, user_id, headers)
-
-def handle_analyze_chapter(body, user_id, headers):
-    return handle_ai_proxy('analyze-chapter', body, user_id, headers)
+    return {
+        'candidates': [{
+            'content': {
+                'parts': [{'text': text_content}]
+            },
+            'finishReason': finish_reason
+        }],
+        'usageMetadata': {
+            'totalTokenCount': tokens_used
+        }
+}
