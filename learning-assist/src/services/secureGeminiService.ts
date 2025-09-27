@@ -226,19 +226,16 @@ class SecureGeminiService {
     subject: string
   ): Promise<{ success: boolean; concepts?: string[]; error?: string }> {
     
-    const prompt = `Analyze this ${classLevel} ${subject} topic and break it down into 3-5 main concepts that need to be taught.
+    const prompt = `Break down "${topicName}" into 3-5 main concepts for ${classLevel} ${subject}.
 
-Topic: ${topicName}
 Content: ${description}
 
-Return ONLY a simple numbered list of the main concepts/sub-topics, like:
-1. [First main concept]
-2. [Second main concept]  
-3. [Third main concept]
-4. [Fourth main concept]
-5. [Fifth main concept]
-
-Focus on the core concepts that students need to understand. Keep each concept concise (1-2 words or short phrase).`;
+Return numbered list only:
+1. [concept]
+2. [concept]
+3. [concept]
+4. [concept]
+5. [concept]`;
 
     const payload = {
       contents: [{
