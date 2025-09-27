@@ -139,11 +139,6 @@ const ChapterPlannerModal: React.FC<ChapterPlannerModalProps> = ({
         <Upload size={24} />
         <h3>Upload Textbook Content</h3>
         <p>Upload a PDF containing the chapter content you want to split into topics</p>
-        <div className="split-indicator">
-          <span className="split-badge">
-            {splitInputValue ? `Will create ${numberOfSplits} topic${numberOfSplits !== 1 ? 's' : ''}` : 'Enter number of splits above'}
-          </span>
-        </div>
       </div>
 
       <div className="form-row">
