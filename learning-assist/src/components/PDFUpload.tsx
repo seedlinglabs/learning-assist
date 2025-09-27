@@ -51,6 +51,11 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
       result: null
     }));
 
+    // Ensure file input loses focus to close any open dialogs
+    if (fileInputRef.current) {
+      fileInputRef.current.blur();
+    }
+
     try {
       const result = await PDFExtractorService.extractTextFromPDF(file);
       
@@ -88,8 +93,16 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
     setState(prev => ({ ...prev, isDragging: false }));
   }, []);
 
+  const handleDragAreaFocus = useCallback(() => {
+    // Remove focus from the drag area to prevent file dialog from staying open
+    if (fileInputRef.current) {
+      fileInputRef.current.blur();
+    }
+  }, []);
+
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setState(prev => ({ ...prev, isDragging: false }));
 
     if (disabled) return;
@@ -99,26 +112,28 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
     
     if (pdfFile) {
       handleFileSelect(pdfFile);
+      // Blur the file input to close any open dialogs
+      if (fileInputRef.current) {
+        fileInputRef.current.blur();
+      }
     } else {
       onError('Please drop a PDF file');
     }
   }, [disabled, handleFileSelect, onError]);
 
   const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     const file = e.target.files?.[0];
     if (file) {
       handleFileSelect(file);
       // Reset the input value to allow selecting the same file again
       e.target.value = '';
+      // Blur the input to close any open dialogs
+      e.target.blur();
     }
   }, [handleFileSelect]);
-
-  const handleClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!disabled && fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  }, [disabled]);
 
   const handleClear = useCallback(() => {
     setState({
@@ -165,7 +180,8 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        onClick={handleClick}
+        onFocus={handleDragAreaFocus}
+        tabIndex={-1}
       >
         <input
           ref={fileInputRef}

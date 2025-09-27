@@ -32,6 +32,19 @@
   background-color: #f3f4f6;
 }
 
+.pdf-upload-area.processing {
+  cursor: not-allowed;
+  background-color: #eff6ff;
+  border-color: #3b82f6;
+}
+
+.pdf-upload-area.file-selected {
+  cursor: default;
+  background-color: #f0fdf4;
+  border-color: #10b981;
+  border-style: solid;
+}
+
 .pdf-upload-input {
   position: absolute;
   top: 0;
