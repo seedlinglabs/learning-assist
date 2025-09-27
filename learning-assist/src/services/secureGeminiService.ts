@@ -163,9 +163,75 @@ class SecureGeminiService {
     subject: string
   ): Promise<{ success: boolean; teachingGuide?: string; error?: string }> {
     
+    try {
+      // Step 1: Break down topic into main concepts
+      const conceptsResult = await this.extractMainConcepts(topicName, description, classLevel, subject);
+      if (!conceptsResult.success || !conceptsResult.concepts) {
+        return { success: false, error: conceptsResult.error || 'Failed to extract main concepts' };
+      }
+
+      // Step 2: Generate teaching guidance for each concept
+      const conceptGuidances: string[] = [];
+      for (const concept of conceptsResult.concepts) {
+        const guidanceResult = await this.generateConceptGuidance(
+          concept, 
+          topicName, 
+          description, 
+          classLevel, 
+          subject
+        );
+        
+        if (guidanceResult.success && guidanceResult.guidance) {
+          conceptGuidances.push(guidanceResult.guidance);
+        } else {
+          console.warn(`Failed to generate guidance for concept: ${concept}`);
+        }
+      }
+
+      if (conceptGuidances.length === 0) {
+        return { success: false, error: 'No concept guidance generated' };
+      }
+
+      // Step 3: Combine into complete teaching guide
+      const completeGuide = this.combineConceptGuidances(
+        topicName, 
+        conceptsResult.concepts, 
+        conceptGuidances, 
+        classLevel, 
+        subject
+      );
+
+      return { success: true, teachingGuide: completeGuide };
+      
+    } catch (error) {
+      return { 
+        success: false, 
+        error: 'Failed to generate teaching guide: ' + (error instanceof Error ? error.message : 'Unknown error')
+      };
+    }
+  }
+
+  private async extractMainConcepts(
+    topicName: string,
+    description: string,
+    classLevel: string,
+    subject: string
+  ): Promise<{ success: boolean; concepts?: string[]; error?: string }> {
     
-    const prompt = this.buildTeachingGuidePrompt(topicName, description, documentUrls, classLevel, subject);
-    
+    const prompt = `Analyze this ${classLevel} ${subject} topic and break it down into 3-5 main concepts that need to be taught.
+
+Topic: ${topicName}
+Content: ${description}
+
+Return ONLY a simple numbered list of the main concepts/sub-topics, like:
+1. [First main concept]
+2. [Second main concept]  
+3. [Third main concept]
+4. [Fourth main concept]
+5. [Fifth main concept]
+
+Focus on the core concepts that students need to understand. Keep each concept concise (1-2 words or short phrase).`;
+
     const payload = {
       contents: [{
         parts: [{
@@ -173,10 +239,10 @@ class SecureGeminiService {
         }]
       }],
       generationConfig: {
-        temperature: 0.8,
-        topK: 40,
-        topP: 0.95,
-        maxOutputTokens: 4096,
+        temperature: 0.3,
+        topK: 20,
+        topP: 0.8,
+        maxOutputTokens: 1024,
       }
     };
 
@@ -189,16 +255,143 @@ class SecureGeminiService {
     try {
       const generatedText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!generatedText) {
-        return { success: false, error: 'No teaching guide generated' };
+        return { success: false, error: 'No concepts extracted' };
       }
-      return { success: true, teachingGuide: generatedText };
+
+      // Parse the numbered list to extract concepts
+      const concepts = generatedText
+        .split('\n')
+        .filter((line: string) => line.trim().match(/^\d+\./))
+        .map((line: string) => line.replace(/^\d+\.\s*/, '').trim())
+        .filter((concept: string) => concept.length > 0);
+
+      if (concepts.length === 0) {
+        return { success: false, error: 'No valid concepts found in response' };
+      }
+
+      return { success: true, concepts };
       
     } catch (error) {
       return { 
         success: false, 
-        error: 'Failed to parse generated teaching guide' 
+        error: 'Failed to parse concepts' 
       };
     }
+  }
+
+  private async generateConceptGuidance(
+    concept: string,
+    topicName: string,
+    description: string,
+    classLevel: string,
+    subject: string
+  ): Promise<{ success: boolean; guidance?: string; error?: string }> {
+    
+    const prompt = `You are an expert ${subject} teacher. Provide focused teaching guidance for this specific concept within the topic "${topicName}" for ${classLevel} students.
+
+CONCEPT TO TEACH: ${concept}
+
+CONTEXT: ${description}
+
+Provide a concise teaching guide for this concept only. Include:
+
+**Key Points to Explain:**
+- [2-3 essential points about this concept]
+
+**Teaching Approach:**
+- [How to introduce this concept]
+- [Simple explanation method]
+- [Real-world connection or example]
+
+**Student Activity:**
+- [One specific activity for this concept]
+
+**Check Understanding:**
+- [1-2 quick questions to ask students]
+
+**Common Mistakes:**
+- [What students often get wrong about this concept]
+
+Keep it focused and practical. This is just for the "${concept}" part of the lesson.`;
+
+    const payload = {
+      contents: [{
+        parts: [{
+          text: prompt
+        }]
+      }],
+      generationConfig: {
+        temperature: 0.7,
+        topK: 40,
+        topP: 0.9,
+        maxOutputTokens: 2048,
+      }
+    };
+
+    const response = await this.makeSecureRequest('generate-content', payload);
+    
+    if (!response.success) {
+      return { success: false, error: response.error };
+    }
+
+    try {
+      const generatedText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!generatedText) {
+        return { success: false, error: 'No guidance generated for concept' };
+      }
+      return { success: true, guidance: generatedText };
+      
+    } catch (error) {
+      return { 
+        success: false, 
+        error: 'Failed to parse concept guidance' 
+      };
+    }
+  }
+
+  private combineConceptGuidances(
+    topicName: string,
+    concepts: string[],
+    guidances: string[],
+    classLevel: string,
+    subject: string
+  ): string {
+    
+    const header = `# Teaching Guide: ${topicName}
+**Class Level:** ${classLevel} ${subject}
+**Main Concepts:** ${concepts.join(', ')}
+
+---
+
+## Overview
+This teaching guide breaks down "${topicName}" into ${concepts.length} main concepts. Each concept includes focused teaching strategies, activities, and assessment methods.
+
+---
+`;
+
+    const conceptSections = concepts.map((concept, index) => {
+      const guidance = guidances[index] || 'Guidance not available for this concept.';
+      return `## Concept ${index + 1}: ${concept}
+
+${guidance}
+
+---
+`;
+    }).join('\n');
+
+    const footer = `
+## Lesson Flow Summary
+1. **Introduction (5 min):** Brief overview of all ${concepts.length} concepts
+2. **Main Teaching (30 min):** Work through each concept using the guidance above
+3. **Wrap-up (5 min):** Connect all concepts and assess understanding
+
+## Additional Tips
+- Adjust timing based on student understanding
+- Use the "Check Understanding" questions throughout
+- Be aware of the common mistakes listed for each concept
+- Connect concepts to real-world applications when possible`;
+
+    return header + conceptSections + footer;
   }
 
   async generateGroupDiscussion(
