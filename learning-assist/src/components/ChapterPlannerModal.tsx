@@ -33,6 +33,8 @@ const ChapterPlannerModal: React.FC<ChapterPlannerModalProps> = ({
   const [step, setStep] = useState<Step>('upload');
   const [textbookContent, setTextbookContent] = useState<string>('');
   const [chapterName, setChapterName] = useState<string>('');
+  const [numberOfSplits, setNumberOfSplits] = useState<number>(4);
+  const [splitInputValue, setSplitInputValue] = useState<string>('');
   const [topicSuggestions, setTopicSuggestions] = useState<TopicSuggestion[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -74,7 +76,8 @@ const ChapterPlannerModal: React.FC<ChapterPlannerModalProps> = ({
         textbookContent,
         subject.name,
         cls.name,
-        chapterName
+        chapterName,
+        numberOfSplits
       );
 
       console.log('Analysis completed, suggestions:', suggestions);
@@ -136,19 +139,53 @@ const ChapterPlannerModal: React.FC<ChapterPlannerModalProps> = ({
         <Upload size={24} />
         <h3>Upload Textbook Content</h3>
         <p>Upload a PDF containing the chapter content you want to split into topics</p>
+        <div className="split-indicator">
+          <span className="split-badge">
+            {splitInputValue ? `Will create ${numberOfSplits} topic${numberOfSplits !== 1 ? 's' : ''}` : 'Enter number of splits above'}
+          </span>
+        </div>
       </div>
 
-      <div className="form-group">
-        <label htmlFor="chapterName">Chapter Name (Optional)</label>
-        <input
-          id="chapterName"
-          type="text"
-          value={chapterName}
-          onChange={(e) => setChapterName(e.target.value)}
-          placeholder="e.g., Photosynthesis, Linear Equations, World War II"
-          className="form-input"
-        />
-        <small className="form-help">This will help AI generate better topic names</small>
+      <div className="form-row">
+        <div className="form-group">
+          <label htmlFor="chapterName">Chapter Name (Optional)</label>
+          <input
+            id="chapterName"
+            type="text"
+            value={chapterName}
+            onChange={(e) => setChapterName(e.target.value)}
+            placeholder="e.g., Photosynthesis, Linear Equations, World War II"
+            className="form-input"
+          />
+          <small className="form-help">This will help AI generate better topic names</small>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="numberOfSplits">Number of Splits</label>
+          <div className="split-number-container">
+            <input
+              id="numberOfSplits"
+              type="text"
+              value={splitInputValue}
+              onChange={(e) => {
+                const inputValue = e.target.value;
+                setSplitInputValue(inputValue);
+                
+                // Update numberOfSplits with any positive number
+                const numValue = parseInt(inputValue);
+                if (!isNaN(numValue) && numValue > 0) {
+                  setNumberOfSplits(numValue);
+                } else if (inputValue === '') {
+                  // If empty, use default
+                  setNumberOfSplits(4);
+                }
+              }}
+              placeholder="Enter number of splits"
+              className="form-input split-number-input"
+            />
+          </div>
+          <small className="form-help">How many parts should the chapter be split into</small>
+        </div>
       </div>
 
       <div className="pdf-upload-section">

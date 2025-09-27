@@ -759,21 +759,11 @@ Create engaging group discussion activities that help students:
 
 DISCUSSION ACTIVITY STRUCTURE:
 
-**SMALL GROUP DISCUSSIONS (15-20 minutes)**
+**QUICK GROUP DISCUSSIONS (8-10 minutes total)**
 - 3-4 students per group
-- Specific discussion questions or scenarios
-- Clear roles and responsibilities
-- Time limits for each part
-
-**WHOLE CLASS SHARING (10-15 minutes)**
-- Groups present key insights
-- Class-wide discussion of different perspectives
-- Teacher facilitation and synthesis
-
-**REFLECTION AND APPLICATION (5-10 minutes)**
-- Individual reflection questions
-- Connection to real-world examples
-- Preview of next lesson connections
+- Focused, time-limited discussion questions
+- Rapid sharing and synthesis
+- Quick reflection and application
 
 DISCUSSION ACTIVITY TYPES TO INCLUDE:
 
@@ -826,20 +816,21 @@ TEXTBOOK INTEGRATION:
 - Encourage students to cite textbook information in discussions` : ''}
 
 AGE-APPROPRIATE CONSIDERATIONS FOR ${classLevel}:
-- Discussion time limits appropriate for attention spans
+- Quick, focused activities (8-10 minutes max)
 - Clear, simple language and instructions
 - Visual aids and concrete examples
-- Structured formats to support participation
+- Structured formats to support rapid participation
 - Positive reinforcement and encouragement
+- Fast-paced to maintain engagement
 
-Create 3-4 specific group discussion activities with:
-- Clear objectives for each activity
-- Step-by-step instructions
-- Discussion questions or prompts
-- Expected outcomes
-- Assessment criteria
+Create 2-3 quick group discussion activities (8-10 minutes each) with:
+- Clear, focused objectives
+- Simple, time-efficient instructions
+- 2-3 key discussion questions maximum
+- Quick sharing and synthesis
+- Brief reflection or application
 
-Make these activities engaging, educational, and suitable for ${classLevel} students learning about "${topicName}".`;
+Make these activities fast-paced, engaging, and suitable for ${classLevel} students learning about "${topicName}". Focus on quick thinking and rapid knowledge sharing.`;
   }
 
   // Image discovery prompt removed - now using imageSearchService
