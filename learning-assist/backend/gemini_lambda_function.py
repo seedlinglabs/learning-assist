@@ -1,4 +1,5 @@
 import json
+from math import log
 import os
 import boto3
 import requests
@@ -150,6 +151,7 @@ def handle_ai_proxy(endpoint_name, body, user_id, headers):
             })
         }
     
+    logger.info(f"OriginalBody: {body}")
     model = body.get('model', 'claude-3-5-sonnet-20241022')
     
     if model not in SUPPORTED_MODELS:
@@ -158,9 +160,11 @@ def handle_ai_proxy(endpoint_name, body, user_id, headers):
             'headers': headers,
             'body': json.dumps({'error': f'Unsupported model: {model}. Supported models: {list(SUPPORTED_MODELS.keys())}'})
         }
-    
+
+    logger.info(f"Model: {model}")
     model_provider = SUPPORTED_MODELS[model]
     
+    logger.info(f"Model provider: {model_provider}")
     try:
         if model_provider == 'gemini':
             return handle_gemini_request(endpoint_name, body, user_id, headers, model)
@@ -273,7 +277,7 @@ def handle_claude_request(endpoint_name, body, user_id, headers, model):
             headers={
                 'Content-Type': 'application/json',
                 'x-api-key': CLAUDE_API_KEY,
-                'anthropic-version': '2024-06-20'
+                'anthropic-version': '2023-06-01'
             },
             json=claude_body,
             timeout=REQUEST_TIMEOUT
