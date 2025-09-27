@@ -173,18 +173,9 @@
   position: relative;
 }
 
-.split-number-container::before {
-  content: "📚";
-  position: absolute;
-  left: 0.75rem;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 1rem;
-  z-index: 1;
-}
 
 .split-number-container input {
-  padding-left: 2.5rem;
+  padding-left: 0.75rem;
 }
 
 .form-group label {
