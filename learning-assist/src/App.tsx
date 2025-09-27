@@ -16,7 +16,7 @@ import './App.css';
 import './styles/Auth.css';
 
 const AppContent: React.FC = () => {
-  const { currentPath } = useApp();
+  const { currentPath, loading, classLoading } = useApp();
   const { user, logout } = useAuth();
   const { school, class: cls, subject } = currentPath;
   const [showTraining, setShowTraining] = useState(false);
@@ -33,6 +33,20 @@ const AppContent: React.FC = () => {
     } else {
       return <TopicList />;
     }
+  };
+
+  const renderLoadingContent = () => {
+    return (
+      <div className="content-loading">
+        <div className="loading-animation">
+          <div className="loading-spinner"></div>
+          <div className="loading-text">
+            <h3>Loading Content</h3>
+            <p>Please wait while we prepare your learning materials...</p>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -73,7 +87,7 @@ const AppContent: React.FC = () => {
       </header>
 
       <main className="app-main">
-        {renderContent()}
+        {(loading || classLoading) ? renderLoadingContent() : renderContent()}
       </main>
     </div>
   );

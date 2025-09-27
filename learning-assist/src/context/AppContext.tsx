@@ -20,6 +20,7 @@ interface AppContextType {
   refreshTopics: () => Promise<void>;
   discoverDocuments: (request: DocumentDiscoveryRequest) => Promise<{ success: boolean; documents?: any[]; error?: string }>;
   loading: boolean;
+  classLoading: boolean;
   error: string | null;
   clearError: () => void;
 }
@@ -45,6 +46,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [classLoading, setClassLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   // Filter schools and classes based on user access
@@ -273,6 +275,20 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   const clearError = () => setError(null);
 
+  // Enhanced setCurrentPath with loading state management
+  const handleSetCurrentPath = (path: NavigationPath) => {
+    // If navigating to a class, show loading animation
+    if (path.class && !currentPath.class) {
+      setClassLoading(true);
+      // Simulate loading time for class content
+      setTimeout(() => {
+        setClassLoading(false);
+      }, 2000);
+    }
+    
+    setCurrentPath(path);
+  };
+
   const discoverDocuments = async (request: DocumentDiscoveryRequest) => {
     try {
       setLoading(true);
@@ -349,7 +365,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const contextValue: AppContextType = {
     schools: getFilteredSchools(),
     currentPath,
-    setCurrentPath,
+    setCurrentPath: handleSetCurrentPath,
     searchQuery,
     setSearchQuery,
     searchResults,
@@ -361,6 +377,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     refreshTopics,
     discoverDocuments,
     loading,
+    classLoading,
     error,
     clearError,
   };
