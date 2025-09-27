@@ -36,7 +36,8 @@ class ChapterPlannerService {
     content: string,
     subject: string,
     classLevel: string,
-    chapterName?: string
+    chapterName?: string,
+    numberOfSplits: number = 4
   ): Promise<TopicSuggestion[]> {
     try {
       // Truncate content if it's too large (limit to ~30,000 characters to leave room for prompt)
@@ -47,7 +48,7 @@ class ChapterPlannerService {
       
       console.log(`Content length: ${content.length}, Using: ${truncatedContent.length}`);
       
-      const prompt = this.buildChapterAnalysisPrompt(truncatedContent, subject, classLevel, chapterName);
+      const prompt = this.buildChapterAnalysisPrompt(truncatedContent, subject, classLevel, chapterName, numberOfSplits);
       
       const payload = {
         contents: [{
@@ -128,11 +129,12 @@ class ChapterPlannerService {
     content: string,
     subject: string,
     classLevel: string,
-    chapterName?: string
+    chapterName?: string,
+    numberOfSplits: number = 4
   ): string {
     const chapterContext = chapterName ? `Chapter: ${chapterName}` : 'Chapter content';
     
-    return `You are an expert curriculum designer and educational content specialist. Analyze the following textbook content and split it into logical, teachable topics that can be delivered in 30-45 minutes each.
+    return `You are an expert curriculum designer and educational content specialist. Analyze the following textbook content and split it into exactly ${numberOfSplits} logical, teachable topics that can be delivered in 30-45 minutes each.
 
 ${chapterContext}
 Subject: ${subject}
@@ -142,13 +144,16 @@ TEXTBOOK CONTENT:
 ${content}
 
 ANALYSIS REQUIREMENTS:
-1. Each topic should be deliverable in 30-45 minutes
-2. Maintain logical flow and learning progression
-3. Include clear, measurable learning objectives
-4. Name topics descriptively with part numbers
-5. Estimate realistic time requirements
-6. Ensure content flows naturally from one topic to the next
-7. Consider age-appropriate attention spans and complexity
+1. Split the content into EXACTLY ${numberOfSplits} topics
+2. Each topic should be deliverable in 30-45 minutes
+3. Maintain logical flow and learning progression
+4. Include clear, measurable learning objectives
+5. Name topics descriptively with part numbers
+6. Estimate realistic time requirements
+7. Ensure content flows naturally from one topic to the next
+8. Consider age-appropriate attention spans and complexity
+9. Distribute content evenly across all ${numberOfSplits} topics
+10. Adapt topic duration based on the number of splits (more splits = shorter individual topics)
 
 TOPIC SPLITTING GUIDELINES:
 - Split at natural conceptual boundaries
@@ -159,7 +164,7 @@ TOPIC SPLITTING GUIDELINES:
 - Balance theory with practical application
 
 RESPONSE FORMAT:
-Return ONLY a valid JSON array with no additional text, markdown, or explanations. The JSON must be properly formatted with correct syntax:
+Return ONLY a valid JSON array with exactly ${numberOfSplits} objects, no additional text, markdown, or explanations. The JSON must be properly formatted with correct syntax:
 
 [
   {
@@ -176,7 +181,7 @@ Return ONLY a valid JSON array with no additional text, markdown, or explanation
 ]
 
 CRITICAL JSON REQUIREMENTS:
-- Return ONLY the JSON array, no markdown code blocks, no explanations
+- Return ONLY the JSON array with exactly ${numberOfSplits} objects, no markdown code blocks, no explanations
 - Use double quotes for all strings and property names
 - Escape any quotes within string values with backslashes
 - No trailing commas after the last item in arrays or objects
@@ -185,12 +190,14 @@ CRITICAL JSON REQUIREMENTS:
 - Property names must be exactly: "name", "content", "estimatedMinutes", "learningObjectives", "partNumber"
 
 CONTENT REQUIREMENTS:
+- Generate exactly ${numberOfSplits} topics, no more, no less
 - Each topic's content should be substantial but focused (200-500 words)
 - Learning objectives should be specific and measurable
 - Time estimates should be realistic for the class level (30-45 minutes)
-- Part numbers should be sequential starting from 1
+- Part numbers should be sequential starting from 1 to ${numberOfSplits}
 - Content should be extracted directly from the provided textbook material
-- Topic names should be descriptive and indicate the chapter and part number`;
+- Topic names should be descriptive and indicate the chapter and part number
+- Distribute the textbook content evenly across all ${numberOfSplits} topics`;
   }
 
   /**
