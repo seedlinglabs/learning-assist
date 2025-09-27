@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Upload, Sparkles, CheckCircle, Clock, Target, BookOpen } from 'lucide-react';
+import { X, Upload, Sparkles, CheckCircle, Clock, Target } from 'lucide-react';
 import { PDFUpload } from './PDFUpload';
 import { ChapterPlannerService } from '../services/chapterPlannerService';
 import { Topic, Subject, Class, School } from '../types';
@@ -156,7 +156,7 @@ const ChapterPlannerModal: React.FC<ChapterPlannerModalProps> = ({
         </div>
 
         <div className="form-group">
-          <label htmlFor="numberOfSplits">Number of Splits</label>
+          <label htmlFor="numberOfSplits">Number of Lectures</label>
           <div className="split-number-container">
             <input
               id="numberOfSplits"
@@ -175,7 +175,7 @@ const ChapterPlannerModal: React.FC<ChapterPlannerModalProps> = ({
                   setNumberOfSplits(4);
                 }
               }}
-              placeholder="Enter number of splits"
+              placeholder="Enter number of lectures"
               className="form-input split-number-input"
             />
           </div>
@@ -328,7 +328,6 @@ const ChapterPlannerModal: React.FC<ChapterPlannerModalProps> = ({
             </>
           ) : (
             <>
-              <BookOpen size={16} />
               Create {topicSuggestions.length} Topics
             </>
           )}
@@ -342,7 +341,6 @@ const ChapterPlannerModal: React.FC<ChapterPlannerModalProps> = ({
       <div className="chapter-planner-modal">
         <div className="modal-header">
           <div className="modal-title">
-            <BookOpen size={24} />
             <div>
               <h2>Chapter Planner</h2>
               <p>{subject.name} - {cls.name}</p>
