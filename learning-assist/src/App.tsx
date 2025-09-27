@@ -5,6 +5,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import Breadcrumb from './components/Breadcrumb';
 import SearchBar from './components/SearchBar';
 import ThemeToggle from './components/ThemeToggle';
+import ModelSelector from './components/ModelSelector';
 import SchoolList from './components/SchoolList';
 import ClassList from './components/ClassList';
 import SubjectList from './components/SubjectList';
@@ -59,6 +60,7 @@ const AppContent: React.FC = () => {
           </div>
           <div className="header-actions">
             <SearchBar />
+            <ModelSelector />
             {user && (
               <div className="user-info">
                 <button 

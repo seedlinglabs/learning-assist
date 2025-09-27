@@ -45,6 +45,23 @@ export interface GeminiResponse {
 }
 
 class SecureGeminiService {
+  private selectedModel: string = 'gemini-2.5-flash';
+
+  setModel(model: string) {
+    this.selectedModel = model;
+  }
+
+  getModel(): string {
+    return this.selectedModel;
+  }
+
+  getAvailableModels(): { id: string; name: string; provider: string }[] {
+    return [
+      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'Google' },
+      { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', provider: 'Anthropic' }
+    ];
+  }
+
   private async makeSecureRequest(endpoint: string, payload: any): Promise<GeminiResponse> {
     try {
       
@@ -59,10 +76,16 @@ class SecureGeminiService {
         headers['Authorization'] = `Bearer ${authToken}`;
       }
 
+      // Add model to payload
+      const payloadWithModel = {
+        ...payload,
+        model: this.selectedModel
+      };
+
       const response = await fetch(`${GEMINI_PROXY_URL}/${endpoint}`, {
         method: 'POST',
         headers,
-        body: JSON.stringify(payload),
+        body: JSON.stringify(payloadWithModel),
       });
       
 

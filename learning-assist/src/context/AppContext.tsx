@@ -23,6 +23,9 @@ interface AppContextType {
   classLoading: boolean;
   error: string | null;
   clearError: () => void;
+  selectedModel: string;
+  setSelectedModel: (model: string) => void;
+  availableModels: { id: string; name: string; provider: string }[];
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -48,6 +51,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState<boolean>(false);
   const [classLoading, setClassLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedModel, setSelectedModelState] = useState<string>('gemini-2.5-flash');
 
   // Filter schools and classes based on user access
   const getFilteredSchools = (): School[] => {
@@ -289,6 +293,15 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     setCurrentPath(path);
   };
 
+  const setSelectedModel = (model: string) => {
+    setSelectedModelState(model);
+    secureGeminiService.setModel(model);
+  };
+
+  // Initialize model on mount
+  useEffect(() => {
+    secureGeminiService.setModel(selectedModel);
+  }, [selectedModel]);
   const discoverDocuments = async (request: DocumentDiscoveryRequest) => {
     try {
       setLoading(true);
@@ -380,6 +393,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     classLoading,
     error,
     clearError,
+    selectedModel,
+    setSelectedModel,
+    availableModels: secureGeminiService.getAvailableModels(),
   };
 
   return (
