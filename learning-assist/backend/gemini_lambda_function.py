@@ -263,19 +263,28 @@ def handle_claude_request(endpoint_name, body, user_id, headers, model):
     
     try:
         claude_body = convert_gemini_to_claude_format(body, model)
+
+        print(f"Claude body: {claude_body}")
+        print(f"Claude API base URL: {CLAUDE_API_BASE_URL}")
+        print(f"Claude API timeout: {REQUEST_TIMEOUT}")
         
         claude_response = requests.post(
             CLAUDE_API_BASE_URL,
             headers={
                 'Content-Type': 'application/json',
                 'x-api-key': CLAUDE_API_KEY,
-                'anthropic-version': '2023-06-01'
+                'anthropic-version': '2024-06-20'
             },
             json=claude_body,
             timeout=REQUEST_TIMEOUT
         )
         
         logger.info(f"Claude API response status: {claude_response.status_code}")
+        
+        # Log response details for debugging
+        if claude_response.status_code != 200:
+            logger.error(f"Claude API error response: {claude_response.text}")
+        
         response_body = claude_response.json()
         
         # Convert Claude response back to Gemini format
