@@ -128,7 +128,7 @@ class SecureGeminiService {
         temperature: 0.7,
         topK: 40,
         topP: 0.95,
-        maxOutputTokens: 8192, // The value was 4096, now changed to 8192
+        maxOutputTokens: 8192,
       }
     };
 
@@ -417,54 +417,47 @@ class SecureGeminiService {
 
   // Private helper methods (same as original service)
   private buildTopicPrompt(topicName: string, description: string, documentUrls: string[], classLevel: string, subject: string): string {
-    // Check if description contains PDF content (longer than typical descriptions)
     const isPDFContent = description && description.length > 500;
     
-    const basePrompt = `Create a comprehensive lesson plan for a ${classLevel} ${subject} topic.
+    return `Create a simple 40-minute lesson plan for ${classLevel} ${subject}.
 
 Topic: ${topicName}
-Referenced Documents: ${documentUrls.length > 0 ? documentUrls.join(', ') : 'None provided'}`;
+${isPDFContent ? `Textbook Content: ${description}` : `Description: ${description || 'No description provided'}`}
 
-    const descriptionSection = isPDFContent 
-      ? `TEXTBOOK CONTENT (Use this as your primary reference):
-${description}
+FORMAT (Plain text only):
 
-IMPORTANT: Base your entire lesson plan on the specific content provided above. Reference specific sections, examples, and information from this textbook content. Use the actual content, data, and examples from the textbook in your lesson plan.`
-      : `Description: ${description || 'No description provided'}`;
+Learning Objectives:
+- [3-4 clear learning goals]
 
-    return `${basePrompt}
-${descriptionSection}
+Materials Needed:
+- [Basic materials list]
 
-CLASS STRUCTURE FORMAT (PLAIN TEXT, NO JSON, NO CODE BLOCKS):
+40-Minute Class Structure:
 
-Start with:
-- Learning Objectives (3–5 clear bullets)
-- Materials Needed (bulleted list)
+Introduction (0-5 min):
+- [What topic will be covered]
 
-Then provide a minute-by-minute (or segment-by-segment) 40-minute outline:
-- Introduction (e.g., 0–5 min): goals, prior knowledge activation
-- Segment 1 (e.g., 5–15 min): topic focus, teacher activity, student activity
-- Segment 2 (e.g., 15–25 min): topic focus, teacher activity, student activity
-- Segment 3 (e.g., 25–35 min): practice/application, quick checks for understanding
-- Wrap-up (e.g., 35–40 min): recap and exit ticket
+Segment 1 (5-15 min): [Sub-topic name]
+- [Key concept to teach]
+- [Simple activity]
 
-Within each segment include:
-- Main concept(s) covered
-- Brief activity description (what students do)
-- Assessment/check-for-understanding (1–2 quick prompts)
+Segment 2 (15-25 min): [Sub-topic name]  
+- [Key concept to teach]
+- [Simple activity]
 
-Optionally end with:
-- Homework/Extension (1–2 items)
-- Educational Resources (with explicit URLs if relevant)
+Segment 3 (25-35 min): [Sub-topic name]
+- [Key concept to teach] 
+- [Simple activity]
+
+Wrap-up (35-40 min):
+- [Summary points]
+- [Quick assessment]
 
 REQUIREMENTS:
-- Age-appropriate for ${classLevel} students
-- Clear headings and concise bullets
-- Include time estimates for segments
-- Align with ${subject} curriculum standards${isPDFContent ? `
-- Use specific content/examples from the provided textbook material when applicable` : ''}
-
-Return only plain text (no JSON / code blocks).`;
+- Keep it simple and structured
+- Focus on timing and key concepts only
+- Age-appropriate for ${classLevel}${isPDFContent ? `
+- Use content from the provided textbook material` : ''}`;
   }
 
   private buildTeachingGuidePrompt(topicName: string, description: string, documentUrls: string[], classLevel: string, subject: string): string {
