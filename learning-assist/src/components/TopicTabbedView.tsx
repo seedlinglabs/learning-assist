@@ -885,6 +885,19 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     );
   }, [topic.aiContent]);
 
+  // Check if any AI content exists
+  const anyAIContentExists = React.useMemo(() => {
+    const existingContent = topic.aiContent || {};
+    return !!(
+      existingContent.lessonPlan ||
+      existingContent.teachingGuide ||
+      existingContent.groupDiscussion ||
+      existingContent.assessmentQuestions ||
+      existingContent.worksheets ||
+      (existingContent.videos && existingContent.videos.length > 0)
+    );
+  }, [topic.aiContent]);
+
   // Debug logging for AI content
   React.useEffect(() => {
   }, [topic]);
@@ -1034,14 +1047,16 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
             onClick={generateAllAIContent}
             disabled={generatingAI || loading || allAIContentExists}
             className={`btn btn-sm ${allAIContentExists ? 'btn-success' : 'btn-primary'}`}
-            title={allAIContentExists ? 'All AI content has been generated' : 'Generate missing AI content for this topic'}
+            title={allAIContentExists ? 'All AI content has been generated' : anyAIContentExists ? 'Generate missing AI content for this topic' : 'Generate AI content for this topic'}
           >
             <Sparkles size={16} />
             {generatingAI 
               ? (aiGenerationStatus || 'Generating AI Content...') 
               : allAIContentExists 
                 ? 'All AI Content Generated' 
-                : 'Generate Missing AI Content'
+                : anyAIContentExists
+                  ? 'Generate Missing AI Content'
+                  : 'Generate AI Content'
             }
           </button>
           <button onClick={handleSave} className="btn btn-secondary btn-sm" disabled={loading}>
