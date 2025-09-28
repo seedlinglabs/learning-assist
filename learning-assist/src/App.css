@@ -2433,3 +2433,201 @@ body {
 .dark-mode .ai-video-card .video-actions .btn-danger:hover {
   background: rgba(239, 68, 68, 1);
 }
+
+/* AI Generation Overlay Styles */
+.ai-generation-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.ai-generation-modal {
+  background: white;
+  border-radius: 16px;
+  padding: 3rem;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  animation: slideIn 0.3s ease-out;
+}
+
+.ai-generation-content {
+  text-align: center;
+}
+
+.ai-generation-icon {
+  margin-bottom: 1.5rem;
+}
+
+.spinning-loader {
+  animation: spin 1s linear infinite;
+  color: #3b82f6;
+}
+
+.ai-generation-content h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 1rem;
+}
+
+.ai-generation-status {
+  font-size: 1rem;
+  color: #64748b;
+  margin-bottom: 2rem;
+  line-height: 1.5;
+}
+
+.ai-generation-progress {
+  margin-bottom: 2rem;
+}
+
+.progress-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.progress-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem 0.5rem;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  transition: all 0.3s ease;
+  opacity: 0.5;
+}
+
+.progress-step.active {
+  background: #dbeafe;
+  border-color: #3b82f6;
+  opacity: 1;
+  transform: scale(1.05);
+}
+
+.progress-step svg {
+  margin-bottom: 0.5rem;
+  color: #64748b;
+}
+
+.progress-step.active svg {
+  color: #3b82f6;
+}
+
+.progress-step span {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.progress-step.active span {
+  color: #1e40af;
+}
+
+.ai-generation-note {
+  padding: 1rem;
+  background: #f1f5f9;
+  border-radius: 8px;
+  border-left: 4px solid #3b82f6;
+}
+
+.ai-generation-note p {
+  font-size: 0.875rem;
+  color: #475569;
+  margin: 0;
+}
+
+/* Dark mode styles for AI generation overlay */
+.dark-mode .ai-generation-overlay {
+  background: rgba(0, 0, 0, 0.9);
+}
+
+.dark-mode .ai-generation-modal {
+  background: #1e293b;
+  border: 1px solid #334155;
+}
+
+.dark-mode .ai-generation-content h2 {
+  color: #f8fafc;
+}
+
+.dark-mode .ai-generation-status {
+  color: #94a3b8;
+}
+
+.dark-mode .progress-step {
+  background: #334155;
+  border-color: #475569;
+}
+
+.dark-mode .progress-step.active {
+  background: #1e40af;
+  border-color: #3b82f6;
+}
+
+.dark-mode .progress-step svg {
+  color: #94a3b8;
+}
+
+.dark-mode .progress-step.active svg {
+  color: #60a5fa;
+}
+
+.dark-mode .progress-step span {
+  color: #94a3b8;
+}
+
+.dark-mode .progress-step.active span {
+  color: #93c5fd;
+}
+
+.dark-mode .ai-generation-note {
+  background: #334155;
+  border-left-color: #60a5fa;
+}
+
+.dark-mode .ai-generation-note p {
+  color: #cbd5e1;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

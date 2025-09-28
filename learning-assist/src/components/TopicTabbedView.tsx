@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Calendar, ExternalLink, Trash2, Save, Sparkles, GraduationCap, Search, Youtube, User, Users, ClipboardList, BookOpen, Plus, Edit3, X } from 'lucide-react';
+import { FileText, Calendar, ExternalLink, Trash2, Save, Sparkles, GraduationCap, Search, Youtube, User, Users, ClipboardList, BookOpen, Plus, Edit3, X, Loader2 } from 'lucide-react';
 import { Topic, DocumentLink } from '../types';
 import { useApp } from '../context/AppContext';
 import { secureGeminiService } from '../services/secureGeminiService';
@@ -1539,6 +1539,54 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
           onDocumentsSelected={handleDiscoveredDocuments}
           onClose={() => setShowDiscoveryModal(false)}
         />
+      )}
+
+      {/* Full-page loading overlay during AI content generation */}
+      {generatingAI && (
+        <div className="ai-generation-overlay">
+          <div className="ai-generation-modal">
+            <div className="ai-generation-content">
+              <div className="ai-generation-icon">
+                <Loader2 size={48} className="spinning-loader" />
+              </div>
+              <h2>Generating AI Content</h2>
+              <p className="ai-generation-status">
+                {aiGenerationStatus || 'Please wait while we generate comprehensive educational content...'}
+              </p>
+              <div className="ai-generation-progress">
+                <div className="progress-steps">
+                  <div className={`progress-step ${aiGenerationStatus.includes('lesson plan') ? 'active' : ''}`}>
+                    <GraduationCap size={20} />
+                    <span>Lesson Plan</span>
+                  </div>
+                  <div className={`progress-step ${aiGenerationStatus.includes('teaching guide') ? 'active' : ''}`}>
+                    <User size={20} />
+                    <span>Teaching Guide</span>
+                  </div>
+                  <div className={`progress-step ${aiGenerationStatus.includes('group discussion') ? 'active' : ''}`}>
+                    <Users size={20} />
+                    <span>Group Discussion</span>
+                  </div>
+                  <div className={`progress-step ${aiGenerationStatus.includes('assessment') ? 'active' : ''}`}>
+                    <ClipboardList size={20} />
+                    <span>Assessment</span>
+                  </div>
+                  <div className={`progress-step ${aiGenerationStatus.includes('worksheets') ? 'active' : ''}`}>
+                    <BookOpen size={20} />
+                    <span>Worksheets</span>
+                  </div>
+                  <div className={`progress-step ${aiGenerationStatus.includes('videos') ? 'active' : ''}`}>
+                    <Youtube size={20} />
+                    <span>Videos</span>
+                  </div>
+                </div>
+              </div>
+              <div className="ai-generation-note">
+                <p>This may take a few minutes. Please don't close this page.</p>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
