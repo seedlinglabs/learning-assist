@@ -7,7 +7,7 @@ import NewTopicPanel from './NewTopicPanel';
 import '../styles/TopicSplitView.css';
 
 const TopicSplitView: React.FC = () => {
-  const { currentPath, refreshTopics, loading } = useApp();
+  const { currentPath, refreshTopics, loading, selectedTopicId, setSelectedTopicId } = useApp();
   const { school, class: cls, subject } = currentPath;
   const [selectedTopic, setSelectedTopic] = useState<Topic | undefined>();
   const [isCreatingNewTopic, setIsCreatingNewTopic] = useState(false);
@@ -17,25 +17,46 @@ const TopicSplitView: React.FC = () => {
     a.name.toLowerCase().localeCompare(b.name.toLowerCase())
   );
 
-  // Auto-select first topic when topics change
+  // Handle topic selection and updates when topics change
   useEffect(() => {
     if (isCreatingNewTopic) return; // Don't auto-select when creating new topic
 
-    if (sortedTopics.length > 0 && !selectedTopic) {
-      setSelectedTopic(sortedTopics[0]);
-    } else if (sortedTopics.length === 0) {
+    if (sortedTopics.length === 0) {
       setSelectedTopic(undefined);
-    } else if (selectedTopic && sortedTopics.length > 0) {
-      // Update selected topic with latest data
-      const updatedTopic = sortedTopics.find(t => t.id === selectedTopic.id);
-      if (updatedTopic) {
-        setSelectedTopic(updatedTopic);
-      } else {
-        // Topic was deleted, select first available or none
-        setSelectedTopic(sortedTopics.length > 0 ? sortedTopics[0] : undefined);
+      setSelectedTopicId(null);
+      return;
+    }
+
+    // If we have a selected topic ID from context, try to find and select it
+    if (selectedTopicId) {
+      const topicFromContext = sortedTopics.find(t => t.id === selectedTopicId);
+      if (topicFromContext) {
+        setSelectedTopic(topicFromContext);
+        return;
       }
     }
-  }, [sortedTopics, selectedTopic, isCreatingNewTopic]);
+
+    // If no topic selected or context topic not found, auto-select first one
+    if (!selectedTopic) {
+      const firstTopic = sortedTopics[0];
+      setSelectedTopic(firstTopic);
+      setSelectedTopicId(firstTopic.id);
+      return;
+    }
+
+    // Check if currently selected topic still exists and update it
+    const updatedTopic = sortedTopics.find(t => t.id === selectedTopic.id);
+    if (updatedTopic) {
+      // Topic exists, update with latest data
+      setSelectedTopic(updatedTopic);
+      setSelectedTopicId(updatedTopic.id);
+    } else {
+      // Topic was deleted, select first available
+      const firstTopic = sortedTopics[0];
+      setSelectedTopic(firstTopic);
+      setSelectedTopicId(firstTopic.id);
+    }
+  }, [sortedTopics, isCreatingNewTopic, selectedTopicId]);
 
   if (!school || !cls || !subject) {
     return null;
@@ -43,10 +64,12 @@ const TopicSplitView: React.FC = () => {
 
   const handleTopicDeleted = () => {
     setSelectedTopic(undefined);
+    setSelectedTopicId(null);
   };
 
   const handleNewTopicClick = () => {
     setSelectedTopic(undefined);
+    setSelectedTopicId(null);
     setIsCreatingNewTopic(true);
   };
 
@@ -54,7 +77,9 @@ const TopicSplitView: React.FC = () => {
     setIsCreatingNewTopic(false);
     // Auto-select first topic if available
     if (sortedTopics.length > 0) {
-      setSelectedTopic(sortedTopics[0]);
+      const firstTopic = sortedTopics[0];
+      setSelectedTopic(firstTopic);
+      setSelectedTopicId(firstTopic.id);
     }
   };
 
@@ -66,6 +91,7 @@ const TopicSplitView: React.FC = () => {
   const handleTopicSelect = (topic: Topic) => {
     setIsCreatingNewTopic(false);
     setSelectedTopic(topic);
+    setSelectedTopicId(topic.id);
   };
 
   const handleTopicsCreated = async (topics: Topic[]) => {
