@@ -152,7 +152,7 @@ def handle_ai_proxy(endpoint_name, body, user_id, headers):
         }
     
     logger.info(f"OriginalBody: {body}")
-    model = body.get('model', 'claude-3-5-sonnet-20241022')
+    model = body.get('model', 'gemini-2.5-pro')
     
     if model not in SUPPORTED_MODELS:
         return {
@@ -217,6 +217,7 @@ def handle_gemini_request(endpoint_name, body, user_id, headers, model):
         
         logger.info(f"Gemini API response status: {gemini_response.status_code}")
         response_body = gemini_response.json()
+        logger.info(f"Gemini API response body: {response_body}")
         
         # Check for MAX_TOKENS error
         if gemini_response.status_code == 200 and 'candidates' in response_body and response_body['candidates'][0].get('finishReason') == 'MAX_TOKENS':
