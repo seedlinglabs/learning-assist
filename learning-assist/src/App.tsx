@@ -54,32 +54,34 @@ const AppContent: React.FC = () => {
     <div className="app">
       <header className="app-header">
         <div className="header-content">
-          <div className="header-title">
-            <h1>Sprout AI</h1>
-            <p>AI-Powered Learning Assistant for Personalized Education</p>
-          </div>
-          <div className="header-actions">
-            <SearchBar />
-            <ModelSelector />
-            {user && (
-              <div className="user-info">
-                <button 
-                  onClick={() => setShowTraining(!showTraining)} 
-                  className={`nav-button ${showTraining ? 'active' : ''}`}
-                  title={showTraining ? 'Back to Main' : 'Teacher Training'}
-                >
-                  {showTraining ? <Home size={16} /> : <GraduationCap size={16} />}
-                  {showTraining ? 'Back to Main' : 'Training'}
-                </button>
-                <span className={`user-type-badge user-type-${user.user_type}`}>
-                  {user.user_type}
-                </span>
-                <span className="user-name">{user.name}</span>
-                <button onClick={logout} className="logout-btn">
-                  Logout
-                </button>
-              </div>
-            )}
+          <div className="header-top">
+            <div className="header-title">
+              <h1>Sprout AI</h1>
+              <p>AI-Powered Learning Assistant for Personalized Education</p>
+            </div>
+            <div className="header-actions">
+              <SearchBar />
+              <ModelSelector />
+              {user && (
+                <div className="user-info">
+                  <button 
+                    onClick={() => setShowTraining(!showTraining)} 
+                    className={`nav-button ${showTraining ? 'active' : ''}`}
+                    title={showTraining ? 'Back to Main' : 'Teacher Training'}
+                  >
+                    {showTraining ? <Home size={16} /> : <GraduationCap size={16} />}
+                    {showTraining ? 'Back to Main' : 'Training'}
+                  </button>
+                  <span className={`user-type-badge user-type-${user.user_type}`}>
+                    {user.user_type}
+                  </span>
+                  <span className="user-name">{user.name}</span>
+                  <button onClick={logout} className="logout-btn">
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
           <div className="theme-toggle-container">
             <ThemeToggle />
