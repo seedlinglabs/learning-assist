@@ -51,7 +51,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState<boolean>(false);
   const [classLoading, setClassLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedModel, setSelectedModelState] = useState<string>('gemini-2.5-Pro');
+  const [selectedModel, setSelectedModelState] = useState<string>('gemini-2.5-pro');
 
   // Filter schools and classes based on user access
   const getFilteredSchools = (): School[] => {
