@@ -75,6 +75,7 @@ class ChapterPlannerService {
         throw new Error('No analysis generated');
       }
 
+      console.log('Generated text:', generatedText);
       return this.parseTopicSuggestions(generatedText);
       
     } catch (error) {
@@ -277,16 +278,24 @@ CONTENT REQUIREMENTS:
       // Clean the response to extract JSON
       let jsonString = response.trim();
       
-      // Remove any markdown code blocks
+      // Remove any markdown code blocks (```json ... ```)
       jsonString = jsonString.replace(/```json\s*/g, '').replace(/```\s*/g, '');
       
-      // Find JSON array pattern
-      const jsonMatch = jsonString.match(/\[[\s\S]*\]/);
+      // Prefer a non-greedy JSON array match to avoid trailing artifacts
+      let jsonMatch = jsonString.match(/\[[\s\S]*?\]/);
+      
+      // If non-greedy fails, fallback to first-to-last bracket slice
       if (!jsonMatch) {
-        throw new Error('No valid JSON array found in response');
+        const firstBracket = jsonString.indexOf('[');
+        const lastBracket = jsonString.lastIndexOf(']');
+        if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
+          jsonString = jsonString.substring(firstBracket, lastBracket + 1);
+        } else {
+          throw new Error('No valid JSON array found in response');
+        }
+      } else {
+        jsonString = jsonMatch[0];
       }
-
-      jsonString = jsonMatch[0];
       
       // Try to fix common JSON issues
       jsonString = this.fixCommonJsonIssues(jsonString);
@@ -346,6 +355,9 @@ CONTENT REQUIREMENTS:
     
     // Fix single quotes to double quotes
     jsonString = jsonString.replace(/'/g, '"');
+
+    // Remove any residual markdown fences
+    jsonString = jsonString.replace(/```json\s*/g, '').replace(/```\s*/g, '');
     
     // Remove any non-JSON content before the first [
     const firstBracket = jsonString.indexOf('[');
@@ -359,7 +371,7 @@ CONTENT REQUIREMENTS:
       jsonString = jsonString.substring(0, lastBracket + 1);
     }
     
-    return jsonString;
+    return jsonString.trim();
   }
 
   /**
