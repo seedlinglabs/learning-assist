@@ -151,7 +151,7 @@ class SecureGeminiService {
         temperature: 0.7,
         topK: 40,
         topP: 0.95,
-        maxOutputTokens: 8192,
+        maxOutputTokens: 30000,
       }
     };
 
@@ -270,7 +270,7 @@ Return numbered list only:
         temperature: 0.3,
         topK: 20,
         topP: 0.8,
-        maxOutputTokens: 1024,
+        maxOutputTokens: 30000,
       }
     };
 
@@ -352,7 +352,7 @@ Keep it focused and practical. This is just for the "${concept}" part of the les
         temperature: 0.7,
         topK: 40,
         topP: 0.9,
-        maxOutputTokens: 2048,
+        maxOutputTokens: 30000,
       }
     };
 
@@ -442,7 +442,7 @@ ${guidance}
         temperature: 0.7,
         topK: 40,
         topP: 0.9,
-        maxOutputTokens: 4096,
+        maxOutputTokens: 30000,
       }
     };
 
@@ -508,7 +508,7 @@ ${guidance}
         temperature: 0.3,
         topK: 20,
         topP: 0.8,
-        maxOutputTokens: 4096,
+        maxOutputTokens: 30000,
       }
     };
 
@@ -607,7 +607,7 @@ ${guidance}
           temperature: 0.6,
           topK: 30,
           topP: 0.9,
-          maxOutputTokens: 4096,
+          maxOutputTokens: 30000,
         }
       };
 
@@ -1047,7 +1047,7 @@ Return only valid JSON in this format:
           temperature: 0.7,
           topK: 40,
           topP: 0.95,
-          maxOutputTokens: 4096,
+          maxOutputTokens: 30000,
         }
       };
 
@@ -1168,7 +1168,7 @@ Return only valid JSON in this format:
           temperature: 0.7,
           topK: 40,
           topP: 0.95,
-          maxOutputTokens: 4096,
+          maxOutputTokens: 30000,
         }
       };
 

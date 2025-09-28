@@ -182,7 +182,7 @@ Reason: [Educational value and age-appropriateness]
             temperature: 0.8,
             topK: 40,
             topP: 0.95,
-            maxOutputTokens: 4096,
+            maxOutputTokens: 30000,
             candidateCount: 1,
           },
           safetySettings: [
@@ -352,7 +352,7 @@ Please format the lesson plan clearly with headings and organize the content for
             temperature: 0.7,
             topK: 40,
             topP: 0.95,
-            maxOutputTokens: 4096,
+            maxOutputTokens: 30000,
             candidateCount: 1,
           },
           safetySettings: [
@@ -589,7 +589,7 @@ Return only the enhanced content with specific, working links.`;
             temperature: 0.8,
             topK: 40,
             topP: 0.95,
-            maxOutputTokens: 4096,
+            maxOutputTokens: 30000,
             candidateCount: 1,
           },
           safetySettings: [
