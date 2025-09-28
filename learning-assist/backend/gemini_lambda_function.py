@@ -30,8 +30,8 @@ CLAUDE_API_KEY = os.environ.get('CLAUDE_API_KEY')
 GEMINI_API_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models'
 CLAUDE_API_BASE_URL = 'https://api.anthropic.com/v1/messages'
 
-# CRITICAL FIX: Set timeout to be less than the 29s API Gateway timeout.
-REQUEST_TIMEOUT = 80 # Changed from 80 to 28 seconds
+# CRITICAL FIX: Set timeout to be less than the 80s API Gateway timeout.
+REQUEST_TIMEOUT = 80
 
 # Supported models
 SUPPORTED_MODELS = {
@@ -47,7 +47,7 @@ def lambda_handler(event, context):
     """
     headers = {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+        'Access-Control-Allow-Headers': 'Content-Type,Authorization,authorization',
         'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS'
     }
     
@@ -268,10 +268,6 @@ def handle_claude_request(endpoint_name, body, user_id, headers, model):
     
     try:
         claude_body = convert_gemini_to_claude_format(body, model)
-
-        print(f"Claude body: {claude_body}")
-        print(f"Claude API base URL: {CLAUDE_API_BASE_URL}")
-        print(f"Claude API timeout: {REQUEST_TIMEOUT}")
         
         claude_response = requests.post(
             CLAUDE_API_BASE_URL,
