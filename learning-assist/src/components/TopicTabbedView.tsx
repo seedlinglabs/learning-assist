@@ -375,167 +375,206 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     // Track accumulated AI content locally
     let accumulatedAiContent: any = { ...(topic.aiContent || {}) };
 
+    // Check which content items already exist
+    const existingContent = topic.aiContent || {};
+    const needsLessonPlan = !existingContent.lessonPlan;
+    const needsTeachingGuide = !existingContent.teachingGuide;
+    const needsGroupDiscussion = !existingContent.groupDiscussion;
+    const needsAssessment = !existingContent.assessmentQuestions;
+    const needsWorksheets = !existingContent.worksheets;
+    const needsVideos = !existingContent.videos || existingContent.videos.length === 0;
+
+    // Count how many items need to be generated
+    const itemsToGenerate = [
+      needsLessonPlan,
+      needsTeachingGuide,
+      needsGroupDiscussion,
+      needsAssessment,
+      needsWorksheets,
+      needsVideos
+    ].filter(Boolean).length;
+
+    if (itemsToGenerate === 0) {
+      setAiGenerationStatus('All AI content already exists!');
+      setGeneratingAI(false);
+      setIsGeneratingContent(false);
+      setTimeout(() => setAiGenerationStatus(''), 2000);
+      return;
+    }
+
     try {
-      // Step 1: Generate Lesson Plan
-      setAiGenerationStatus('Generating lesson plan...');
-      const lessonPlanResult = await secureGeminiService.generateTopicContent(
-        formData.name,
-        formData.description || '',
-        documentUrls,
-        classLevel,
-        subject
-      );
+      // Step 1: Generate Lesson Plan (if needed)
+      if (needsLessonPlan) {
+        setAiGenerationStatus('Generating lesson plan...');
+        const lessonPlanResult = await secureGeminiService.generateTopicContent(
+          formData.name,
+          formData.description || '',
+          documentUrls,
+          classLevel,
+          subject
+        );
 
-      if (lessonPlanResult.success && lessonPlanResult.aiContent) {
-        // Accumulate the lesson plan content
-        accumulatedAiContent = {
-          ...accumulatedAiContent,
-          ...lessonPlanResult.aiContent,
-          generatedAt: new Date()
-        };
-        
-        // Update local state immediately for UI feedback
-        if (lessonPlanResult.aiContent.lessonPlan) {
-          setEditingLessonPlan(lessonPlanResult.aiContent.lessonPlan);
+        if (lessonPlanResult.success && lessonPlanResult.aiContent) {
+          // Accumulate the lesson plan content
+          accumulatedAiContent = {
+            ...accumulatedAiContent,
+            ...lessonPlanResult.aiContent,
+            generatedAt: new Date()
+          };
+          
+          // Update local state immediately for UI feedback
+          if (lessonPlanResult.aiContent.lessonPlan) {
+            setEditingLessonPlan(lessonPlanResult.aiContent.lessonPlan);
+          }
+        } else {
+          throw new Error(lessonPlanResult.error || 'Failed to generate lesson plan');
         }
-      } else {
-        throw new Error(lessonPlanResult.error || 'Failed to generate lesson plan');
       }
 
-      // Step 2: Generate Teaching Guide
-      setAiGenerationStatus('Generating teaching guide...');
-      
-      // Add timeout to teaching guide generation
-      const teachingGuidePromise = secureGeminiService.generateTeachingGuide(
-        formData.name,
-        formData.description || '',
-        documentUrls,
-        classLevel,
-        subject
-      );
-      
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Teaching guide generation timeout after 180 seconds')), 180000)
-      );
-      
-      const teachingGuideResult = await Promise.race([teachingGuidePromise, timeoutPromise]) as any;
-
-      if (teachingGuideResult.success && teachingGuideResult.teachingGuide) {
-        // Update local state immediately for UI feedback
-        setTeachingGuide(teachingGuideResult.teachingGuide);
-        setEditingTeachingGuide(teachingGuideResult.teachingGuide);
+      // Step 2: Generate Teaching Guide (if needed)
+      if (needsTeachingGuide) {
+        setAiGenerationStatus('Generating teaching guide...');
         
-        // Accumulate the teaching guide content
-        accumulatedAiContent = {
-          ...accumulatedAiContent,
-          teachingGuide: teachingGuideResult.teachingGuide
-        };
-      } else {
-        console.error('Failed to generate teaching guide:', teachingGuideResult.error);
-        console.error('Teaching guide result details:', teachingGuideResult);
-      }
-
-      // Step 3: Generate Group Discussion
-      setAiGenerationStatus('Generating group discussion activities...');
-      
-      // Add timeout to group discussion generation
-      const groupDiscussionPromise = secureGeminiService.generateGroupDiscussion(
-        formData.name,
-        formData.description || '',
-        documentUrls,
-        classLevel,
-        subject
-      );
-      
-      const groupDiscussionTimeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Group discussion generation timeout after 180 seconds')), 180000)
-      );
-      
-      const groupDiscussionResult = await Promise.race([groupDiscussionPromise, groupDiscussionTimeoutPromise]) as any;
-
-      if (groupDiscussionResult.success && groupDiscussionResult.groupDiscussion) {
-        // Update local state immediately for UI feedback
-        setGroupDiscussion(groupDiscussionResult.groupDiscussion);
-        setEditingGroupDiscussion(groupDiscussionResult.groupDiscussion);
+        // Add timeout to teaching guide generation
+        const teachingGuidePromise = secureGeminiService.generateTeachingGuide(
+          formData.name,
+          formData.description || '',
+          documentUrls,
+          classLevel,
+          subject
+        );
         
-        // Accumulate the group discussion content
-        accumulatedAiContent = {
-          ...accumulatedAiContent,
-          groupDiscussion: groupDiscussionResult.groupDiscussion
-        };
-      } else {
-        console.error('Failed to generate group discussion:', groupDiscussionResult.error);
-        console.error('Group discussion result details:', groupDiscussionResult);
-      }
-
-      // Step 4: Generate Assessment Questions
-      setAiGenerationStatus('Generating assessment questions...');
-      
-      const assessmentPromise = secureGeminiService.generateAssessmentQuestions(
-        formData.name,
-        formData.description || '',
-        documentUrls,
-        classLevel,
-        subject
-      );
-      
-      const assessmentTimeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Assessment generation timeout after 180 seconds')), 180000)
-      );
-      
-      const assessmentResult = await Promise.race([assessmentPromise, assessmentTimeoutPromise]) as any;
-
-      if (assessmentResult.success && assessmentResult.assessmentQuestions) {
-        // Update local state immediately for UI feedback
-        setAssessmentQuestions(assessmentResult.assessmentQuestions);
-        setEditingAssessmentQuestions(assessmentResult.assessmentQuestions);
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Teaching guide generation timeout after 180 seconds')), 180000)
+        );
         
-        // Accumulate the assessment questions content
-        accumulatedAiContent = {
-          ...accumulatedAiContent,
-          assessmentQuestions: assessmentResult.assessmentQuestions
-        };
-      } else {
-        console.error('Failed to generate assessment questions:', assessmentResult.error);
+        const teachingGuideResult = await Promise.race([teachingGuidePromise, timeoutPromise]) as any;
+
+        if (teachingGuideResult.success && teachingGuideResult.teachingGuide) {
+          // Update local state immediately for UI feedback
+          setTeachingGuide(teachingGuideResult.teachingGuide);
+          setEditingTeachingGuide(teachingGuideResult.teachingGuide);
+          
+          // Accumulate the teaching guide content
+          accumulatedAiContent = {
+            ...accumulatedAiContent,
+            teachingGuide: teachingGuideResult.teachingGuide
+          };
+        } else {
+          console.error('Failed to generate teaching guide:', teachingGuideResult.error);
+          console.error('Teaching guide result details:', teachingGuideResult);
+        }
       }
 
-      // Step 5: Generate Worksheets
-      setAiGenerationStatus('Generating worksheets...');
-      
-      const worksheetsPromise = secureGeminiService.generateWorksheets(
-        formData.name,
-        formData.description || '',
-        documentUrls,
-        classLevel,
-        subject
-      );
-      
-      const worksheetsTimeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Worksheets generation timeout after 180 seconds')), 180000)
-      );
-      
-      const worksheetsResult = await Promise.race([worksheetsPromise, worksheetsTimeoutPromise]) as any;
-
-      if (worksheetsResult.success && worksheetsResult.worksheets) {
-        // Update local state immediately for UI feedback
-        setWorksheets(worksheetsResult.worksheets);
-        setEditingWorksheets(worksheetsResult.worksheets);
+      // Step 3: Generate Group Discussion (if needed)
+      if (needsGroupDiscussion) {
+        setAiGenerationStatus('Generating group discussion activities...');
         
-        // Accumulate the worksheets content
-        accumulatedAiContent = {
-          ...accumulatedAiContent,
-          worksheets: worksheetsResult.worksheets
-        };
-      } else {
-        console.error('Failed to generate worksheets:', worksheetsResult.error);
+        // Add timeout to group discussion generation
+        const groupDiscussionPromise = secureGeminiService.generateGroupDiscussion(
+          formData.name,
+          formData.description || '',
+          documentUrls,
+          classLevel,
+          subject
+        );
+        
+        const groupDiscussionTimeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Group discussion generation timeout after 180 seconds')), 180000)
+        );
+        
+        const groupDiscussionResult = await Promise.race([groupDiscussionPromise, groupDiscussionTimeoutPromise]) as any;
+
+        if (groupDiscussionResult.success && groupDiscussionResult.groupDiscussion) {
+          // Update local state immediately for UI feedback
+          setGroupDiscussion(groupDiscussionResult.groupDiscussion);
+          setEditingGroupDiscussion(groupDiscussionResult.groupDiscussion);
+          
+          // Accumulate the group discussion content
+          accumulatedAiContent = {
+            ...accumulatedAiContent,
+            groupDiscussion: groupDiscussionResult.groupDiscussion
+          };
+        } else {
+          console.error('Failed to generate group discussion:', groupDiscussionResult.error);
+          console.error('Group discussion result details:', groupDiscussionResult);
+        }
       }
 
-      // Step 6: Find Videos
-      setAiGenerationStatus('Searching for educational videos...');
-      await findVideosForTopic(accumulatedAiContent);
+      // Step 4: Generate Assessment Questions (if needed)
+      if (needsAssessment) {
+        setAiGenerationStatus('Generating assessment questions...');
+        
+        const assessmentPromise = secureGeminiService.generateAssessmentQuestions(
+          formData.name,
+          formData.description || '',
+          documentUrls,
+          classLevel,
+          subject
+        );
+        
+        const assessmentTimeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Assessment generation timeout after 180 seconds')), 180000)
+        );
+        
+        const assessmentResult = await Promise.race([assessmentPromise, assessmentTimeoutPromise]) as any;
+
+        if (assessmentResult.success && assessmentResult.assessmentQuestions) {
+          // Update local state immediately for UI feedback
+          setAssessmentQuestions(assessmentResult.assessmentQuestions);
+          setEditingAssessmentQuestions(assessmentResult.assessmentQuestions);
+          
+          // Accumulate the assessment questions content
+          accumulatedAiContent = {
+            ...accumulatedAiContent,
+            assessmentQuestions: assessmentResult.assessmentQuestions
+          };
+        } else {
+          console.error('Failed to generate assessment questions:', assessmentResult.error);
+        }
+      }
+
+      // Step 5: Generate Worksheets (if needed)
+      if (needsWorksheets) {
+        setAiGenerationStatus('Generating worksheets...');
+        
+        const worksheetsPromise = secureGeminiService.generateWorksheets(
+          formData.name,
+          formData.description || '',
+          documentUrls,
+          classLevel,
+          subject
+        );
+        
+        const worksheetsTimeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Worksheets generation timeout after 180 seconds')), 180000)
+        );
+        
+        const worksheetsResult = await Promise.race([worksheetsPromise, worksheetsTimeoutPromise]) as any;
+
+        if (worksheetsResult.success && worksheetsResult.worksheets) {
+          // Update local state immediately for UI feedback
+          setWorksheets(worksheetsResult.worksheets);
+          setEditingWorksheets(worksheetsResult.worksheets);
+          
+          // Accumulate the worksheets content
+          accumulatedAiContent = {
+            ...accumulatedAiContent,
+            worksheets: worksheetsResult.worksheets
+          };
+        } else {
+          console.error('Failed to generate worksheets:', worksheetsResult.error);
+        }
+      }
+
+      // Step 6: Find Videos (if needed)
+      if (needsVideos) {
+        setAiGenerationStatus('Searching for educational videos...');
+        await findVideosForTopic(accumulatedAiContent);
+      }
 
       // Final step: Save all accumulated content to the topic
-      setAiGenerationStatus('Saving all content...');
+      setAiGenerationStatus('Saving content...');
       await updateTopic(topic.id, {
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
@@ -832,6 +871,20 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     return '';
   };
 
+  // Check if all AI content has been generated
+  const allAIContentExists = React.useMemo(() => {
+    const existingContent = topic.aiContent || {};
+    return !!(
+      existingContent.lessonPlan &&
+      existingContent.teachingGuide &&
+      existingContent.groupDiscussion &&
+      existingContent.assessmentQuestions &&
+      existingContent.worksheets &&
+      existingContent.videos &&
+      existingContent.videos.length > 0
+    );
+  }, [topic.aiContent]);
+
   // Debug logging for AI content
   React.useEffect(() => {
   }, [topic]);
@@ -979,12 +1032,17 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
         <div className="topic-detail-actions">
           <button
             onClick={generateAllAIContent}
-            disabled={generatingAI || loading}
-            className="btn btn-primary btn-sm"
-            title="Generate AI content for this topic"
+            disabled={generatingAI || loading || allAIContentExists}
+            className={`btn btn-sm ${allAIContentExists ? 'btn-success' : 'btn-primary'}`}
+            title={allAIContentExists ? 'All AI content has been generated' : 'Generate missing AI content for this topic'}
           >
             <Sparkles size={16} />
-            {generatingAI ? (aiGenerationStatus || 'Generating AI Content...') : 'Generate AI Content'}
+            {generatingAI 
+              ? (aiGenerationStatus || 'Generating AI Content...') 
+              : allAIContentExists 
+                ? 'All AI Content Generated' 
+                : 'Generate Missing AI Content'
+            }
           </button>
           <button onClick={handleSave} className="btn btn-secondary btn-sm" disabled={loading}>
             <Save size={16} />
@@ -1555,30 +1613,42 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
               </p>
               <div className="ai-generation-progress">
                 <div className="progress-steps">
-                  <div className={`progress-step ${aiGenerationStatus.includes('lesson plan') ? 'active' : ''}`}>
-                    <GraduationCap size={20} />
-                    <span>Lesson Plan</span>
-                  </div>
-                  <div className={`progress-step ${aiGenerationStatus.includes('teaching guide') ? 'active' : ''}`}>
-                    <User size={20} />
-                    <span>Teaching Guide</span>
-                  </div>
-                  <div className={`progress-step ${aiGenerationStatus.includes('group discussion') ? 'active' : ''}`}>
-                    <Users size={20} />
-                    <span>Group Discussion</span>
-                  </div>
-                  <div className={`progress-step ${aiGenerationStatus.includes('assessment') ? 'active' : ''}`}>
-                    <ClipboardList size={20} />
-                    <span>Assessment</span>
-                  </div>
-                  <div className={`progress-step ${aiGenerationStatus.includes('worksheets') ? 'active' : ''}`}>
-                    <BookOpen size={20} />
-                    <span>Worksheets</span>
-                  </div>
-                  <div className={`progress-step ${aiGenerationStatus.includes('videos') ? 'active' : ''}`}>
-                    <Youtube size={20} />
-                    <span>Videos</span>
-                  </div>
+                  {!topic.aiContent?.lessonPlan && (
+                    <div className={`progress-step ${aiGenerationStatus.includes('lesson plan') ? 'active' : ''}`}>
+                      <GraduationCap size={20} />
+                      <span>Lesson Plan</span>
+                    </div>
+                  )}
+                  {!topic.aiContent?.teachingGuide && (
+                    <div className={`progress-step ${aiGenerationStatus.includes('teaching guide') ? 'active' : ''}`}>
+                      <User size={20} />
+                      <span>Teaching Guide</span>
+                    </div>
+                  )}
+                  {!topic.aiContent?.groupDiscussion && (
+                    <div className={`progress-step ${aiGenerationStatus.includes('group discussion') ? 'active' : ''}`}>
+                      <Users size={20} />
+                      <span>Group Discussion</span>
+                    </div>
+                  )}
+                  {!topic.aiContent?.assessmentQuestions && (
+                    <div className={`progress-step ${aiGenerationStatus.includes('assessment') ? 'active' : ''}`}>
+                      <ClipboardList size={20} />
+                      <span>Assessment</span>
+                    </div>
+                  )}
+                  {!topic.aiContent?.worksheets && (
+                    <div className={`progress-step ${aiGenerationStatus.includes('worksheets') ? 'active' : ''}`}>
+                      <BookOpen size={20} />
+                      <span>Worksheets</span>
+                    </div>
+                  )}
+                  {(!topic.aiContent?.videos || topic.aiContent.videos.length === 0) && (
+                    <div className={`progress-step ${aiGenerationStatus.includes('videos') ? 'active' : ''}`}>
+                      <Youtube size={20} />
+                      <span>Videos</span>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="ai-generation-note">
