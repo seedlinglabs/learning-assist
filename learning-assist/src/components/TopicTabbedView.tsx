@@ -387,7 +387,6 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
       );
 
       if (lessonPlanResult.success && lessonPlanResult.aiContent) {
-        
         // Accumulate the lesson plan content
         accumulatedAiContent = {
           ...accumulatedAiContent,
@@ -395,13 +394,10 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
           generatedAt: new Date()
         };
         
-        // Update the topic with the lesson plan
-        await updateTopic(topic.id, {
-          name: formData.name.trim(),
-          description: formData.description.trim() || undefined,
-          documentLinks: formData.documentLinks || [],
-          aiContent: accumulatedAiContent,
-        });
+        // Update local state immediately for UI feedback
+        if (lessonPlanResult.aiContent.lessonPlan) {
+          setEditingLessonPlan(lessonPlanResult.aiContent.lessonPlan);
+        }
       } else {
         throw new Error(lessonPlanResult.error || 'Failed to generate lesson plan');
       }
@@ -424,24 +420,16 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
       
       const teachingGuideResult = await Promise.race([teachingGuidePromise, timeoutPromise]) as any;
 
-
       if (teachingGuideResult.success && teachingGuideResult.teachingGuide) {
+        // Update local state immediately for UI feedback
         setTeachingGuide(teachingGuideResult.teachingGuide);
+        setEditingTeachingGuide(teachingGuideResult.teachingGuide);
         
         // Accumulate the teaching guide content
         accumulatedAiContent = {
           ...accumulatedAiContent,
           teachingGuide: teachingGuideResult.teachingGuide
         };
-        
-        // Update topic with teaching guide
-        const teachingGuideUpdate = {
-          name: formData.name.trim(),
-          description: formData.description.trim() || undefined,
-          documentLinks: formData.documentLinks || [],
-          aiContent: accumulatedAiContent,
-        };
-        await updateTopic(topic.id, teachingGuideUpdate);
       } else {
         console.error('Failed to generate teaching guide:', teachingGuideResult.error);
         console.error('Teaching guide result details:', teachingGuideResult);
@@ -466,22 +454,15 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
       const groupDiscussionResult = await Promise.race([groupDiscussionPromise, groupDiscussionTimeoutPromise]) as any;
 
       if (groupDiscussionResult.success && groupDiscussionResult.groupDiscussion) {
+        // Update local state immediately for UI feedback
         setGroupDiscussion(groupDiscussionResult.groupDiscussion);
+        setEditingGroupDiscussion(groupDiscussionResult.groupDiscussion);
         
         // Accumulate the group discussion content
         accumulatedAiContent = {
           ...accumulatedAiContent,
           groupDiscussion: groupDiscussionResult.groupDiscussion
         };
-        
-        // Update topic with group discussion
-        const groupDiscussionUpdate = {
-          name: formData.name.trim(),
-          description: formData.description.trim() || undefined,
-          documentLinks: formData.documentLinks || [],
-          aiContent: accumulatedAiContent,
-        };
-        await updateTopic(topic.id, groupDiscussionUpdate);
       } else {
         console.error('Failed to generate group discussion:', groupDiscussionResult.error);
         console.error('Group discussion result details:', groupDiscussionResult);
@@ -505,22 +486,15 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
       const assessmentResult = await Promise.race([assessmentPromise, assessmentTimeoutPromise]) as any;
 
       if (assessmentResult.success && assessmentResult.assessmentQuestions) {
+        // Update local state immediately for UI feedback
         setAssessmentQuestions(assessmentResult.assessmentQuestions);
+        setEditingAssessmentQuestions(assessmentResult.assessmentQuestions);
         
         // Accumulate the assessment questions content
         accumulatedAiContent = {
           ...accumulatedAiContent,
           assessmentQuestions: assessmentResult.assessmentQuestions
         };
-        
-        // Update topic with assessment questions
-        const assessmentUpdate = {
-          name: formData.name.trim(),
-          description: formData.description.trim() || undefined,
-          documentLinks: formData.documentLinks || [],
-          aiContent: accumulatedAiContent,
-        };
-        await updateTopic(topic.id, assessmentUpdate);
       } else {
         console.error('Failed to generate assessment questions:', assessmentResult.error);
       }
@@ -543,22 +517,15 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
       const worksheetsResult = await Promise.race([worksheetsPromise, worksheetsTimeoutPromise]) as any;
 
       if (worksheetsResult.success && worksheetsResult.worksheets) {
+        // Update local state immediately for UI feedback
         setWorksheets(worksheetsResult.worksheets);
+        setEditingWorksheets(worksheetsResult.worksheets);
         
         // Accumulate the worksheets content
         accumulatedAiContent = {
           ...accumulatedAiContent,
           worksheets: worksheetsResult.worksheets
         };
-        
-        // Update topic with worksheets
-        const worksheetsUpdate = {
-          name: formData.name.trim(),
-          description: formData.description.trim() || undefined,
-          documentLinks: formData.documentLinks || [],
-          aiContent: accumulatedAiContent,
-        };
-        await updateTopic(topic.id, worksheetsUpdate);
       } else {
         console.error('Failed to generate worksheets:', worksheetsResult.error);
       }
@@ -566,6 +533,15 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
       // Step 6: Find Videos
       setAiGenerationStatus('Searching for educational videos...');
       await findVideosForTopic(accumulatedAiContent);
+
+      // Final step: Save all accumulated content to the topic
+      setAiGenerationStatus('Saving all content...');
+      await updateTopic(topic.id, {
+        name: formData.name.trim(),
+        description: formData.description.trim() || undefined,
+        documentLinks: formData.documentLinks || [],
+        aiContent: accumulatedAiContent,
+      });
 
       setAiGenerationStatus('Complete!');
       
@@ -611,23 +587,9 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
 
       if (videoResults.videos.length > 0) {
         // Update the accumulated AI content with videos
-        const updatedAIContent = {
-          ...accumulatedAiContent,
-          videos: videoResults.videos
-        };
-
-        // Update the topic immediately for display
-        topic.aiContent = updatedAIContent;
+        accumulatedAiContent.videos = videoResults.videos;
         
-        // Save the updated topic with videos
-        await updateTopic(topic.id, {
-          name: formData.name.trim(),
-          description: formData.description.trim() || undefined,
-          documentLinks: formData.documentLinks || [],
-          aiContent: updatedAIContent,
-        });
-        
-        console.log('Found and saved videos:', videoResults.videos);
+        console.log('Found videos:', videoResults.videos);
       } else {
         console.log('No videos found for this topic');
       }
