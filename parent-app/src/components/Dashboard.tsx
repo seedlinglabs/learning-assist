@@ -16,8 +16,23 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onTopicSelect }) 
   const [error, setError] = useState('');
 
   useEffect(() => {
-    loadTopics();
-  }, [user.class_access]);
+    if (user) {
+      loadTopics();
+    }
+  }, [user?.class_access]);
+
+  // Safety check for user object (after hooks)
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="error-message">
+            User data not available. Please log in again.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const loadTopics = async () => {
     if (!user.class_access || user.class_access.length === 0) {
@@ -32,7 +47,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onTopicSelect }) 
       
       // Load topics for all accessible classes
       const allTopics: Topic[] = [];
-      for (const classId of user.class_access) {
+      for (const classId of user.class_access || []) {
         try {
           const classTopics = await TopicsService.getTopicsByClass(classId);
           allTopics.push(...classTopics);
@@ -72,31 +87,31 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onTopicSelect }) 
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      <header className="bg-white/10 backdrop-blur-md border-b border-seedling-gold/20 sticky top-0 z-40">
         <div className="container py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                <BookOpen className="w-6 h-6 text-blue-600" />
+              <div className="w-12 h-12 bg-seedling-gradient rounded-2xl flex items-center justify-center shadow-lg">
+                <BookOpen className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-gray-900">Parent Dashboard</h1>
-                <p className="text-sm text-gray-600">Welcome back, {user.name}</p>
+                <h1 className="text-lg font-bold text-white">SeedlingLabs</h1>
+                <p className="text-sm text-white/80">Welcome back, {user.name || 'Parent'}</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 text-sm text-gray-600">
+            <div className="flex items-center gap-2">
+              <div className="hidden sm:flex items-center gap-2 text-sm text-white/80 bg-white/10 px-3 py-1 rounded-full">
                 <User className="w-4 h-4" />
-                <span>Class Access: {user.class_access.length}</span>
+                <span>{user.class_access?.length || 0} classes</span>
               </div>
               <button
                 onClick={onLogout}
-                className="btn btn-outline"
+                className="btn btn-outline text-sm px-3 py-2"
               >
                 <LogOut className="w-4 h-4" />
-                Logout
+                <span className="hidden sm:inline">Logout</span>
               </button>
             </div>
           </div>
@@ -104,39 +119,39 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onTopicSelect }) 
       </header>
 
       {/* Main Content */}
-      <main className="container py-8">
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Learning Topics</h2>
-          <p className="text-gray-600">
+      <main className="container py-6">
+        <div className="mb-8 text-center">
+          <h2 className="text-3xl font-bold text-white mb-3">Learning Topics</h2>
+          <p className="text-white/80 text-lg">
             Track your child's progress through these educational topics
           </p>
         </div>
 
         {loading && (
-          <div className="flex items-center justify-center py-12">
+          <div className="flex items-center justify-center py-16">
             <div className="loading-spinner" />
-            <span className="ml-3 text-gray-600">Loading topics...</span>
+            <span className="ml-3 text-white/80 text-lg">Loading topics...</span>
           </div>
         )}
 
         {error && (
-          <div className="error-message">
+          <div className="error-message bg-red-500/20 border-red-500/30 text-red-100">
             {error}
           </div>
         )}
 
         {!loading && !error && topics.length === 0 && (
-          <div className="text-center py-12">
-            <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No Topics Available</h3>
-            <p className="text-gray-600">
+          <div className="text-center py-16">
+            <BookOpen className="w-20 h-20 text-white/40 mx-auto mb-6" />
+            <h3 className="text-xl font-semibold text-white mb-3">No Topics Available</h3>
+            <p className="text-white/70 text-lg">
               No learning topics have been assigned to your child's class yet.
             </p>
           </div>
         )}
 
         {!loading && !error && topics.length > 0 && (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {topics.map((topic) => (
               <div
                 key={topic.id}

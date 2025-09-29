@@ -4,6 +4,7 @@ import { AuthService } from './services/authService';
 import LoginForm from './components/LoginForm';
 import Dashboard from './components/Dashboard';
 import TopicDetail from './components/TopicDetail';
+import PWAInstallPrompt from './components/PWAInstallPrompt';
 import './styles/globals.css';
 
 type AppState = 'loading' | 'login' | 'dashboard' | 'topic-detail';
@@ -75,20 +76,26 @@ function App() {
 
   if (appState === 'dashboard' && user) {
     return (
-      <Dashboard
-        user={user}
-        onLogout={handleLogout}
-        onTopicSelect={handleTopicSelect}
-      />
+      <>
+        <Dashboard
+          user={user}
+          onLogout={handleLogout}
+          onTopicSelect={handleTopicSelect}
+        />
+        <PWAInstallPrompt />
+      </>
     );
   }
 
   if (appState === 'topic-detail' && selectedTopic) {
     return (
-      <TopicDetail
-        topic={selectedTopic}
-        onBack={handleBackToDashboard}
-      />
+      <>
+        <TopicDetail
+          topic={selectedTopic}
+          onBack={handleBackToDashboard}
+        />
+        <PWAInstallPrompt />
+      </>
     );
   }
 
