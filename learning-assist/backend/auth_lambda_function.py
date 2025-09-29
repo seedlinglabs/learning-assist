@@ -7,7 +7,6 @@ import base64
 from datetime import datetime, timedelta
 from decimal import Decimal
 from botocore.exceptions import ClientError
-from boto3.dynamodb.conditions import Key, Attr
 import time
 import os
 
@@ -59,22 +58,6 @@ def create_users_table_if_not_exists():
                             'ReadCapacityUnits': 5,
                             'WriteCapacityUnits': 5
                         }
-                    },
-                    {
-                        'IndexName': 'phone-index',
-                        'KeySchema': [
-                            {
-                                'AttributeName': 'phone_number',
-                                'KeyType': 'HASH'
-                            }
-                        ],
-                        'Projection': {
-                            'ProjectionType': 'ALL'
-                        },
-                        'ProvisionedThroughput': {
-                            'ReadCapacityUnits': 5,
-                            'WriteCapacityUnits': 5
-                        }
                     }
                 ],
                 AttributeDefinitions=[
@@ -84,10 +67,6 @@ def create_users_table_if_not_exists():
                     },
                     {
                         'AttributeName': 'email',
-                        'AttributeType': 'S'
-                    },
-                    {
-                        'AttributeName': 'phone_number',
                         'AttributeType': 'S'
                     }
                 ],
@@ -222,20 +201,6 @@ def lambda_handler(event, context):
             'body': json.dumps({'error': str(e)})
         }
 
-def normalize_phone_number(phone: str) -> str:
-    """Basic phone normalization to E.164-like format where possible."""
-    try:
-        digits = ''.join(ch for ch in phone if ch.isdigit())
-        if not digits:
-            return ''
-        # If it looks like it already has a country code (10+ digits), prefix with '+'
-        if len(digits) >= 10:
-            return '+' + digits
-        # Fallback: return digits as is
-        return '+' + digits
-    except Exception:
-        return phone.strip()
-
 def register_user(table, user_data):
     """Register a new user"""
     try:
@@ -267,14 +232,12 @@ def register_user(table, user_data):
             'user_type': user_data['user_type'],
             'class_access': user_data.get('class_access', []),
             'school_id': user_data.get('school_id', ''),
-            'phone_number': normalize_phone_number(user_data.get('phone_number', '')) if user_data.get('phone_number') else None,
+            'phone_number': user_data.get('phone_number', ''),  # Add phone number field
             'is_active': True,
             'created_at': current_time,
             'updated_at': current_time,
             'last_login': None
         }
-        # Remove None attributes to keep items tidy
-        item = {k: v for k, v in item.items() if v is not None}
         
         # Save to DynamoDB
         table.put_item(Item=item)
@@ -318,89 +281,13 @@ def register_user(table, user_data):
         }
 
 def login_user(table, login_data):
-    """Authenticate user login"""
+    """Authenticate user with email/password or phone-only (for parents)"""
     try:
-        # Phone-number-only login path for parents
-        if 'phone_number' in login_data and not login_data.get('password'):
-            phone = normalize_phone_number(str(login_data.get('phone_number', '')))
-            if not phone:
-                return {
-                    'statusCode': 400,
-                    'headers': {
-                        'Content-Type': 'application/json',
-                        'Access-Control-Allow-Origin': '*'
-                    },
-                    'body': json.dumps({'error': 'Invalid phone number'})
-                }
-            # Try to find user by phone using GSI first; fallback to scan
-            user = None
-            try:
-                resp = table.query(
-                    IndexName='phone-index',
-                    KeyConditionExpression=Key('phone_number').eq(phone)
-                )
-                items = resp.get('Items', [])
-                if items:
-                    user = items[0]
-            except Exception:
-                # Fallback: scan if index not available
-                try:
-                    scan_resp = table.scan(
-                        FilterExpression=Attr('phone_number').eq(phone)
-                    )
-                    items = scan_resp.get('Items', [])
-                    if items:
-                        user = items[0]
-                except Exception:
-                    pass
-
-            # Auto-register parent if not found
-            if not user:
-                user_id = str(uuid.uuid4())
-                current_time = datetime.utcnow().isoformat()
-                user = {
-                    'user_id': user_id,
-                    'email': '',
-                    'name': login_data.get('name', 'Parent'),
-                    'user_type': 'parent',
-                    'class_access': login_data.get('class_access', []),
-                    'school_id': login_data.get('school_id', ''),
-                    'phone_number': phone,
-                    'is_active': True,
-                    'created_at': current_time,
-                    'updated_at': current_time,
-                    'last_login': None
-                }
-                table.put_item(Item=user)
-
-            # Generate simple token
-            token = generate_simple_token(user)
-
-            user_response = {
-                'user_id': user['user_id'],
-                'email': user.get('email', ''),
-                'name': user.get('name', 'Parent'),
-                'user_type': user.get('user_type', 'parent'),
-                'class_access': user.get('class_access', []),
-                'school_id': user.get('school_id', ''),
-                'phone_number': user.get('phone_number', phone),
-                'last_login': datetime.utcnow().isoformat()
-            }
-
-            return {
-                'statusCode': 200,
-                'headers': {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
-                },
-                'body': json.dumps({
-                    'user': user_response,
-                    'token': token,
-                    'message': 'Login successful'
-                }, cls=DecimalEncoder)
-            }
-
-        # Email/password login path (original behavior)
+        # Check if this is phone-only login (for parent app)
+        if 'phone_number' in login_data and 'email' not in login_data and 'password' not in login_data:
+            return phone_login_user(table, login_data)
+        
+        # Validate required fields for email/password login
         if 'email' not in login_data or 'password' not in login_data:
             return {
                 'statusCode': 400,
@@ -408,7 +295,7 @@ def login_user(table, login_data):
                     'Content-Type': 'application/json',
                     'Access-Control-Allow-Origin': '*'
                 },
-                'body': json.dumps({'error': 'Email and password are required'})
+                'body': json.dumps({'error': 'Email and password are required for standard login, or phone_number for parent login'})
             }
         
         email = login_data['email'].lower().strip()
@@ -417,7 +304,7 @@ def login_user(table, login_data):
         # Find user by email
         response = table.query(
             IndexName='email-index',
-            KeyConditionExpression=Key('email').eq(email)
+            KeyConditionExpression=boto3.dynamodb.conditions.Key('email').eq(email)
         )
         
         if not response['Items']:
@@ -479,6 +366,168 @@ def login_user(table, login_data):
                 'Access-Control-Allow-Origin': '*'
             },
             'body': json.dumps({'error': str(e)})
+        }
+
+def phone_login_user(table, login_data):
+    """Authenticate user with phone number only (for parent app)"""
+    try:
+        # Validate required fields
+        if 'phone_number' not in login_data:
+            return {
+                'statusCode': 400,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                'body': json.dumps({'error': 'Phone number is required'})
+            }
+        
+        phone_number = login_data['phone_number'].strip()
+        
+        # Clean phone number (remove any formatting)
+        clean_phone = ''.join(filter(str.isdigit, phone_number))
+        
+        # Validate phone number format (10 digits or 11 with country code)
+        if len(clean_phone) not in [10, 11]:
+            return {
+                'statusCode': 400,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                'body': json.dumps({'error': 'Invalid phone number format'})
+            }
+        
+        # Normalize to 10 digits (remove country code if present)
+        if len(clean_phone) == 11 and clean_phone.startswith('1'):
+            clean_phone = clean_phone[1:]
+        
+        # Search for user by phone number
+        # Since we don't have a phone number index, we'll scan the table
+        # In production, you should add a GSI on phone_number for better performance
+        try:
+            response = table.scan(
+                FilterExpression='phone_number = :phone',
+                ExpressionAttributeValues={':phone': clean_phone}
+            )
+        except Exception as e:
+            # If phone_number attribute doesn't exist, try alternative approaches
+            print(f"Phone number scan failed: {str(e)}")
+            # For now, we'll check if the phone number matches any user_id or email pattern
+            # This is a fallback - in production you should have phone_number as a proper field
+            return {
+                'statusCode': 404,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                'body': json.dumps({
+                    'success': False,
+                    'message': 'Phone number not found. Please contact your school administrator to register your phone number.',
+                    'error': 'PHONE_NOT_REGISTERED'
+                })
+            }
+        
+        users = response.get('Items', [])
+        
+        if not users:
+            return {
+                'statusCode': 404,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                'body': json.dumps({
+                    'success': False,
+                    'message': 'Phone number not found. Please contact your school administrator to register your phone number.',
+                    'error': 'PHONE_NOT_FOUND'
+                })
+            }
+        
+        user = users[0]  # Take the first match
+        
+        # Verify this is a parent user
+        if user.get('user_type') != 'parent':
+            return {
+                'statusCode': 403,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                'body': json.dumps({
+                    'success': False,
+                    'message': 'This phone number is not registered for parent access.',
+                    'error': 'NOT_PARENT_USER'
+                })
+            }
+        
+        # Check if user is active
+        if not user.get('is_active', True):
+            return {
+                'statusCode': 403,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                'body': json.dumps({
+                    'success': False,
+                    'message': 'This account has been deactivated. Please contact your school administrator.',
+                    'error': 'ACCOUNT_DEACTIVATED'
+                })
+            }
+        
+        # Generate simple token
+        token = generate_simple_token(user)
+        
+        # Update last login time
+        try:
+            table.update_item(
+                Key={'user_id': user['user_id']},
+                UpdateExpression='SET last_login = :login_time',
+                ExpressionAttributeValues={':login_time': datetime.utcnow().isoformat()}
+            )
+        except Exception as e:
+            print(f"Failed to update last login: {str(e)}")
+            # Don't fail the login if we can't update last login time
+        
+        # Return user data (without sensitive info)
+        user_response = {
+            'user_id': user['user_id'],
+            'phone_number': clean_phone,
+            'name': user.get('name', 'Parent'),
+            'user_type': user['user_type'],
+            'class_access': user.get('class_access', []),
+            'school_id': user.get('school_id', ''),
+            'last_login': datetime.utcnow().isoformat()
+        }
+        
+        return {
+            'statusCode': 200,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
+            'body': json.dumps({
+                'success': True,
+                'user': user_response,
+                'token': token,
+                'message': 'Login successful'
+            }, cls=DecimalEncoder)
+        }
+    
+    except Exception as e:
+        print(f"Phone login error: {str(e)}")
+        return {
+            'statusCode': 500,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
+            'body': json.dumps({
+                'success': False,
+                'error': 'Internal server error',
+                'message': 'An error occurred during login. Please try again.'
+            })
         }
 
 def verify_token(event):
