@@ -7,6 +7,7 @@ import base64
 from datetime import datetime, timedelta
 from decimal import Decimal
 from botocore.exceptions import ClientError
+from boto3.dynamodb.conditions import Key, Attr
 import time
 import os
 
@@ -58,6 +59,22 @@ def create_users_table_if_not_exists():
                             'ReadCapacityUnits': 5,
                             'WriteCapacityUnits': 5
                         }
+                    },
+                    {
+                        'IndexName': 'phone-index',
+                        'KeySchema': [
+                            {
+                                'AttributeName': 'phone_number',
+                                'KeyType': 'HASH'
+                            }
+                        ],
+                        'Projection': {
+                            'ProjectionType': 'ALL'
+                        },
+                        'ProvisionedThroughput': {
+                            'ReadCapacityUnits': 5,
+                            'WriteCapacityUnits': 5
+                        }
                     }
                 ],
                 AttributeDefinitions=[
@@ -67,6 +84,10 @@ def create_users_table_if_not_exists():
                     },
                     {
                         'AttributeName': 'email',
+                        'AttributeType': 'S'
+                    },
+                    {
+                        'AttributeName': 'phone_number',
                         'AttributeType': 'S'
                     }
                 ],
@@ -201,6 +222,20 @@ def lambda_handler(event, context):
             'body': json.dumps({'error': str(e)})
         }
 
+def normalize_phone_number(phone: str) -> str:
+    """Basic phone normalization to E.164-like format where possible."""
+    try:
+        digits = ''.join(ch for ch in phone if ch.isdigit())
+        if not digits:
+            return ''
+        # If it looks like it already has a country code (10+ digits), prefix with '+'
+        if len(digits) >= 10:
+            return '+' + digits
+        # Fallback: return digits as is
+        return '+' + digits
+    except Exception:
+        return phone.strip()
+
 def register_user(table, user_data):
     """Register a new user"""
     try:
@@ -232,11 +267,14 @@ def register_user(table, user_data):
             'user_type': user_data['user_type'],
             'class_access': user_data.get('class_access', []),
             'school_id': user_data.get('school_id', ''),
+            'phone_number': normalize_phone_number(user_data.get('phone_number', '')) if user_data.get('phone_number') else None,
             'is_active': True,
             'created_at': current_time,
             'updated_at': current_time,
             'last_login': None
         }
+        # Remove None attributes to keep items tidy
+        item = {k: v for k, v in item.items() if v is not None}
         
         # Save to DynamoDB
         table.put_item(Item=item)
@@ -282,7 +320,87 @@ def register_user(table, user_data):
 def login_user(table, login_data):
     """Authenticate user login"""
     try:
-        # Validate required fields
+        # Phone-number-only login path for parents
+        if 'phone_number' in login_data and not login_data.get('password'):
+            phone = normalize_phone_number(str(login_data.get('phone_number', '')))
+            if not phone:
+                return {
+                    'statusCode': 400,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': json.dumps({'error': 'Invalid phone number'})
+                }
+            # Try to find user by phone using GSI first; fallback to scan
+            user = None
+            try:
+                resp = table.query(
+                    IndexName='phone-index',
+                    KeyConditionExpression=Key('phone_number').eq(phone)
+                )
+                items = resp.get('Items', [])
+                if items:
+                    user = items[0]
+            except Exception:
+                # Fallback: scan if index not available
+                try:
+                    scan_resp = table.scan(
+                        FilterExpression=Attr('phone_number').eq(phone)
+                    )
+                    items = scan_resp.get('Items', [])
+                    if items:
+                        user = items[0]
+                except Exception:
+                    pass
+
+            # Auto-register parent if not found
+            if not user:
+                user_id = str(uuid.uuid4())
+                current_time = datetime.utcnow().isoformat()
+                user = {
+                    'user_id': user_id,
+                    'email': '',
+                    'name': login_data.get('name', 'Parent'),
+                    'user_type': 'parent',
+                    'class_access': login_data.get('class_access', []),
+                    'school_id': login_data.get('school_id', ''),
+                    'phone_number': phone,
+                    'is_active': True,
+                    'created_at': current_time,
+                    'updated_at': current_time,
+                    'last_login': None
+                }
+                table.put_item(Item=user)
+
+            # Generate simple token
+            token = generate_simple_token(user)
+
+            user_response = {
+                'user_id': user['user_id'],
+                'email': user.get('email', ''),
+                'name': user.get('name', 'Parent'),
+                'user_type': user.get('user_type', 'parent'),
+                'class_access': user.get('class_access', []),
+                'school_id': user.get('school_id', ''),
+                'phone_number': user.get('phone_number', phone),
+                'last_login': datetime.utcnow().isoformat()
+            }
+
+            return {
+                'statusCode': 200,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                'body': json.dumps({
+                    'user': user_response,
+                    'token': token,
+                    'message': 'Login successful'
+                }, cls=DecimalEncoder)
+            }
+
+        # Email/password login path (original behavior)
         if 'email' not in login_data or 'password' not in login_data:
             return {
                 'statusCode': 400,
@@ -299,7 +417,7 @@ def login_user(table, login_data):
         # Find user by email
         response = table.query(
             IndexName='email-index',
-            KeyConditionExpression=boto3.dynamodb.conditions.Key('email').eq(email)
+            KeyConditionExpression=Key('email').eq(email)
         )
         
         if not response['Items']:
