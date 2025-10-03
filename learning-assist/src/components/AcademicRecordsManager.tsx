@@ -38,11 +38,7 @@ const AcademicRecordsManager: React.FC<AcademicRecordsManagerProps> = ({ onBack 
     topic_name: '',
     teacher_id: '',
     teacher_name: '',
-    parent_phone: '',
-    parent_name: '',
     status: 'not_started',
-    start_date: '',
-    end_date: '',
     notes: ''
   });
 
@@ -93,8 +89,7 @@ const AcademicRecordsManager: React.FC<AcademicRecordsManagerProps> = ({ onBack 
       filtered = filtered.filter(r =>
         r.subject_name.toLowerCase().includes(query) ||
         r.topic_name.toLowerCase().includes(query) ||
-        r.teacher_name.toLowerCase().includes(query) ||
-        r.parent_name.toLowerCase().includes(query)
+        (r.teacher_name && r.teacher_name.toLowerCase().includes(query))
       );
     }
 
@@ -133,12 +128,8 @@ const AcademicRecordsManager: React.FC<AcademicRecordsManagerProps> = ({ onBack 
           status: formData.status,
           teacher_id: formData.teacher_id,
           teacher_name: formData.teacher_name,
-          parent_phone: formData.parent_phone,
-          parent_name: formData.parent_name,
           subject_name: formData.subject_name,
           topic_name: formData.topic_name,
-          start_date: formData.start_date,
-          end_date: formData.end_date,
           notes: formData.notes
         }
       );
@@ -181,11 +172,7 @@ const AcademicRecordsManager: React.FC<AcademicRecordsManagerProps> = ({ onBack 
       topic_name: record.topic_name,
       teacher_id: record.teacher_id || '',
       teacher_name: record.teacher_name || '',
-      parent_phone: record.parent_phone || '',
-      parent_name: record.parent_name || '',
       status: record.status,
-      start_date: record.start_date || '',
-      end_date: record.end_date || '',
       notes: record.notes || ''
     });
     setShowCreateForm(true);
@@ -203,11 +190,7 @@ const AcademicRecordsManager: React.FC<AcademicRecordsManagerProps> = ({ onBack 
       topic_name: '',
       teacher_id: '',
       teacher_name: '',
-      parent_phone: '',
-      parent_name: '',
       status: 'not_started',
-      start_date: '',
-      end_date: '',
       notes: ''
     });
   };
@@ -419,22 +402,6 @@ const AcademicRecordsManager: React.FC<AcademicRecordsManagerProps> = ({ onBack 
                   />
                 </div>
                 <div className="form-group">
-                  <label>Parent Phone</label>
-                  <input
-                    type="text"
-                    value={formData.parent_phone}
-                    onChange={(e) => setFormData({...formData, parent_phone: e.target.value})}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Parent Name</label>
-                  <input
-                    type="text"
-                    value={formData.parent_name}
-                    onChange={(e) => setFormData({...formData, parent_name: e.target.value})}
-                  />
-                </div>
-                <div className="form-group">
                   <label>Status *</label>
                   <select
                     value={formData.status}
@@ -447,22 +414,6 @@ const AcademicRecordsManager: React.FC<AcademicRecordsManagerProps> = ({ onBack 
                     <option value="on_hold">On Hold</option>
                     <option value="cancelled">Cancelled</option>
                   </select>
-                </div>
-                <div className="form-group">
-                  <label>Start Date</label>
-                  <input
-                    type="date"
-                    value={formData.start_date}
-                    onChange={(e) => setFormData({...formData, start_date: e.target.value})}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>End Date</label>
-                  <input
-                    type="date"
-                    value={formData.end_date}
-                    onChange={(e) => setFormData({...formData, end_date: e.target.value})}
-                  />
                 </div>
                 <div className="form-group full-width">
                   <label>Notes</label>
@@ -498,16 +449,14 @@ const AcademicRecordsManager: React.FC<AcademicRecordsManagerProps> = ({ onBack 
                 <th>Subject</th>
                 <th>Topic</th>
                 <th>Teacher</th>
-                <th>Parent</th>
                 <th>Status</th>
-                <th>Dates</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredRecords.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="empty-state">
+                  <td colSpan={7} className="empty-state">
                     No records found. Create your first academic record to get started.
                   </td>
                 </tr>
@@ -520,30 +469,12 @@ const AcademicRecordsManager: React.FC<AcademicRecordsManagerProps> = ({ onBack 
                     <td>{record.topic_name}</td>
                     <td>{record.teacher_name || '—'}</td>
                     <td>
-                      {record.parent_name && (
-                        <div>
-                          <div>{record.parent_name}</div>
-                          <small>{record.parent_phone}</small>
-                        </div>
-                      )}
-                      {!record.parent_name && '—'}
-                    </td>
-                    <td>
                       <span
                         className="status-badge"
                         style={{ backgroundColor: getStatusColor(record.status) }}
                       >
                         {record.status.replace('_', ' ')}
                       </span>
-                    </td>
-                    <td>
-                      {record.start_date && (
-                        <small>
-                          {new Date(record.start_date).toLocaleDateString()} -{' '}
-                          {record.end_date ? new Date(record.end_date).toLocaleDateString() : 'Ongoing'}
-                        </small>
-                      )}
-                      {!record.start_date && '—'}
                     </td>
                     <td>
                       <div className="action-buttons">

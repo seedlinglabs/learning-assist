@@ -13,13 +13,9 @@ export interface AcademicRecord {
   subject_id: string;
   subject_name: string;
   topic_name: string;
-  teacher_id: string;
-  teacher_name: string;
-  parent_phone: string;
-  parent_name: string;
+  teacher_id?: string;
+  teacher_name?: string;
   status: 'not_started' | 'in_progress' | 'completed' | 'on_hold' | 'cancelled';
-  start_date?: string;
-  end_date?: string;
   notes?: string;
   created_at: string;
   updated_at: string;
@@ -36,11 +32,7 @@ export interface CreateAcademicRecordRequest {
   topic_name: string;
   teacher_id?: string;
   teacher_name?: string;
-  parent_phone?: string;
-  parent_name?: string;
   status?: string;
-  start_date?: string;
-  end_date?: string;
   notes?: string;
 }
 
@@ -48,12 +40,8 @@ export interface UpdateAcademicRecordRequest {
   status?: string;
   teacher_id?: string;
   teacher_name?: string;
-  parent_phone?: string;
-  parent_name?: string;
   subject_name?: string;
   topic_name?: string;
-  start_date?: string;
-  end_date?: string;
   notes?: string;
 }
 
@@ -139,14 +127,7 @@ class AcademicRecordsServiceClass {
     );
   }
 
-  /**
-   * Query records by parent phone
-   */
-  async getRecordsByParentPhone(parentPhone: string): Promise<AcademicRecord[]> {
-    return this.makeRequest<AcademicRecord[]>(
-      `/academic-records?parent_phone=${encodeURIComponent(parentPhone)}`
-    );
-  }
+  // Parent phone query removed - parent fields no longer used
 
   /**
    * Query records by teacher ID
