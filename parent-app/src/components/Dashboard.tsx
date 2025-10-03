@@ -86,7 +86,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   const loadAcademicRecords = async (subjectsList: Subject[]) => {
     try {
       const academicYear = '2025-26'; // Current academic year
-      console.log('Loading academic records for academic year:', academicYear);
+      console.log('=== LOADING ACADEMIC RECORDS ===');
+      console.log('Academic Year:', academicYear);
+      console.log('School ID:', user.school_id);
+      console.log('Class Access:', user.class_access);
       
       // Fetch academic records for all parent's classes
       const allRecords = await AcademicRecordsService.getRecordsForParent(
@@ -95,13 +98,17 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
         user.class_access
       );
       
-      console.log('Academic records loaded:', allRecords);
+      console.log('Academic records received:', allRecords);
+      console.log('Total records found:', allRecords.length);
       
       // Group completed topics by subject
       const completedBySubject = new Map<string, Set<string>>();
       
+      let completedCount = 0;
       for (const record of allRecords) {
+        console.log(`Record: ${record.subject_name} - ${record.topic_name} - Status: ${record.status}`);
         if (record.status === 'completed') {
+          completedCount++;
           if (!completedBySubject.has(record.subject_id)) {
             completedBySubject.set(record.subject_id, new Set());
           }
@@ -109,7 +116,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
         }
       }
       
+      console.log('Total completed records:', completedCount);
       console.log('Completed topics by subject:', completedBySubject);
+      console.log('Subjects with completed topics:', Array.from(completedBySubject.keys()));
       
       // Update subjects with progress information and completed topics list
       const updatedSubjects = await Promise.all(
@@ -319,8 +328,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                           </span>
                         </div>
                         
-                        {/* View Completed Topics Button */}
-                        {hasCompletedTopics && (
+                        {/* View Completed Topics Button or Message */}
+                        {hasCompletedTopics ? (
                           <button
                             onClick={() => toggleSubject(subject.id)}
                             style={{
@@ -339,6 +348,19 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                           >
                             {isExpanded ? '▼ Hide' : '▶'} Completed Topics ({subject.completedTopics})
                           </button>
+                        ) : (
+                          <div style={{
+                            marginTop: '12px',
+                            padding: '10px',
+                            backgroundColor: 'rgba(158, 158, 158, 0.1)',
+                            border: '1px solid rgba(158, 158, 158, 0.3)',
+                            borderRadius: '6px',
+                            color: '#666',
+                            fontSize: '12px',
+                            textAlign: 'center'
+                          }}>
+                            No topics completed yet
+                          </div>
                         )}
                       </div>
                     )}
