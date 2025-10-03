@@ -14,7 +14,7 @@ FUNCTION_NAME="academic-records-service"
 REGION="us-west-2"
 RUNTIME="python3.9"
 HANDLER="academic_records_lambda_function.lambda_handler"
-ROLE_NAME="lambda-academic-records-role"
+ROLE_ARN="arn:aws:iam::143320675925:role/service-role/learning-assist-lambda-role-k2v61duu"
 ZIP_FILE="academic-records-lambda.zip"
 
 echo ""
@@ -57,79 +57,8 @@ if aws lambda get-function --function-name $FUNCTION_NAME --region $REGION 2>/de
 else
     echo "Function does not exist. Creating new function..."
     
-    # Get IAM role ARN
-    ROLE_ARN=$(aws iam get-role --role-name $ROLE_NAME --query 'Role.Arn' --output text 2>/dev/null || echo "")
-    
-    if [ -z "$ROLE_ARN" ]; then
-        echo "Creating IAM role..."
-        
-        # Create trust policy
-        cat > trust-policy.json << EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "Service": "lambda.amazonaws.com"
-      },
-      "Action": "sts:AssumeRole"
-    }
-  ]
-}
-EOF
-        
-        # Create role
-        ROLE_ARN=$(aws iam create-role \
-            --role-name $ROLE_NAME \
-            --assume-role-policy-document file://trust-policy.json \
-            --query 'Role.Arn' \
-            --output text)
-        
-        # Attach policies
-        aws iam attach-role-policy \
-            --role-name $ROLE_NAME \
-            --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-        
-        # Create inline policy for DynamoDB access
-        cat > dynamodb-policy.json << EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "dynamodb:CreateTable",
-        "dynamodb:DescribeTable",
-        "dynamodb:PutItem",
-        "dynamodb:GetItem",
-        "dynamodb:UpdateItem",
-        "dynamodb:DeleteItem",
-        "dynamodb:Query",
-        "dynamodb:Scan",
-        "dynamodb:ListTables"
-      ],
-      "Resource": [
-        "arn:aws:dynamodb:${REGION}:*:table/academic_records",
-        "arn:aws:dynamodb:${REGION}:*:table/academic_records/index/*"
-      ]
-    }
-  ]
-}
-EOF
-        
-        aws iam put-role-policy \
-            --role-name $ROLE_NAME \
-            --policy-name DynamoDBAccess \
-            --policy-document file://dynamodb-policy.json
-        
-        # Clean up policy files
-        rm trust-policy.json dynamodb-policy.json
-        
-        echo "✓ IAM role created"
-        echo "Waiting 10 seconds for role to propagate..."
-        sleep 10
-    fi
+    # Use existing IAM role
+    echo "Using existing IAM role: $ROLE_ARN"
     
     # Create Lambda function
     aws lambda create-function \
