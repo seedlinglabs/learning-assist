@@ -72,6 +72,36 @@ class AuthServiceClass {
     }
   }
 
+  async register(registerData: {
+    email: string;
+    password: string;
+    name: string;
+    user_type: 'parent';
+    phone_number: string;
+    school_id: string;
+    class_access: string[];
+  }): Promise<AuthResponse> {
+    try {
+      console.log('Attempting registration:', { ...registerData, password: '[REDACTED]' });
+      const response = await this.makeRequest('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify(registerData),
+      });
+
+      console.log('Registration response:', response);
+      this.token = response.token;
+      this.user = response.user;
+      
+      localStorage.setItem('parent_auth_token', this.token!);
+      localStorage.setItem('parent_auth_user', JSON.stringify(this.user));
+
+      return response;
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw error;
+    }
+  }
+
   async logout(): Promise<void> {
     this.clearAuth();
   }

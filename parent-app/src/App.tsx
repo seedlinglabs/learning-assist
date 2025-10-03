@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Parent } from './types';
 import { AuthService } from './services/authService';
 import LoginScreen from './components/LoginScreen';
+import RegisterScreen from './components/RegisterScreen';
 import Dashboard from './components/Dashboard';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import './App.css';
 
-type AppState = 'loading' | 'login' | 'dashboard';
+type AppState = 'loading' | 'login' | 'register' | 'dashboard';
 
 function App() {
   const [appState, setAppState] = useState<AppState>('loading');
@@ -40,6 +41,19 @@ function App() {
     setAppState('dashboard');
   };
 
+  const handleRegisterSuccess = (userData: Parent) => {
+    setUser(userData);
+    setAppState('dashboard');
+  };
+
+  const handleShowRegister = () => {
+    setAppState('register');
+  };
+
+  const handleBackToLogin = () => {
+    setAppState('login');
+  };
+
   const handleLogout = async () => {
     await AuthService.logout();
     setUser(null);
@@ -56,7 +70,11 @@ function App() {
   }
 
   if (appState === 'login') {
-    return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
+    return <LoginScreen onLoginSuccess={handleLoginSuccess} onRegisterClick={handleShowRegister} />;
+  }
+
+  if (appState === 'register') {
+    return <RegisterScreen onRegisterSuccess={handleRegisterSuccess} onBackToLogin={handleBackToLogin} />;
   }
 
   if (appState === 'dashboard' && user) {

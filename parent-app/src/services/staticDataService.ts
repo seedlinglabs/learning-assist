@@ -9,6 +9,13 @@ class StaticDataServiceClass {
     return this.schools;
   }
 
+  getAllSchools(): Array<{ id: string; name: string }> {
+    return this.schools.map(school => ({
+      id: school.id,
+      name: school.name
+    }));
+  }
+
   getSchoolById(schoolId: string): School | null {
     return this.schools.find(school => school.id === schoolId) || null;
   }

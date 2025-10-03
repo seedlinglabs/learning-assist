@@ -4,9 +4,10 @@ import { LoginRequest } from '../types';
 
 interface LoginScreenProps {
   onLoginSuccess: (user: any) => void;
+  onRegisterClick: () => void;
 }
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
+const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, onRegisterClick }) => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
@@ -134,7 +135,25 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           </button>
         </form>
 
-        <div style={{ textAlign: 'center', marginTop: '24px' }}>
+        <div style={{ textAlign: 'center', marginTop: '20px' }}>
+          <button
+            type="button"
+            onClick={onRegisterClick}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#c4963d',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              textDecoration: 'underline'
+            }}
+          >
+            Don't have an account? Register Here
+          </button>
+        </div>
+
+        <div style={{ textAlign: 'center', marginTop: '16px' }}>
           <p style={{ color: '#666', fontSize: '12px' }}>
             By signing in, you agree to access your child's educational content
           </p>
