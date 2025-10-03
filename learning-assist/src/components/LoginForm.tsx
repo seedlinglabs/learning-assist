@@ -16,9 +16,14 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
     password: '',
     name: '',
     userType: 'teacher' as 'teacher' | 'student' | 'parent',
-    classAccess: [] as string[],
+    phoneNumber: '',
+    selectedGrades: [] as string[], // For building class_access
+    selectedSections: [] as string[], // For building class_access
     schoolId: ''
   });
+  
+  const availableGrades = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+  const availableSections = ['A', 'B', 'C', 'D', 'E', 'F'];
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -28,12 +33,33 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
     }));
   };
 
-  const handleClassAccessChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const classIds = e.target.value.split(',').map(id => id.trim()).filter(id => id);
+  const handleGradeToggle = (grade: string) => {
     setFormData(prev => ({
       ...prev,
-      classAccess: classIds
+      selectedGrades: prev.selectedGrades.includes(grade)
+        ? prev.selectedGrades.filter(g => g !== grade)
+        : [...prev.selectedGrades, grade]
     }));
+  };
+
+  const handleSectionToggle = (section: string) => {
+    setFormData(prev => ({
+      ...prev,
+      selectedSections: prev.selectedSections.includes(section)
+        ? prev.selectedSections.filter(s => s !== section)
+        : [...prev.selectedSections, section]
+    }));
+  };
+
+  // Build class_access array in format "6A", "7B", etc.
+  const buildClassAccess = (): string[] => {
+    const classAccess: string[] = [];
+    for (const grade of formData.selectedGrades) {
+      for (const section of formData.selectedSections) {
+        classAccess.push(`${grade}${section}`);
+      }
+    }
+    return classAccess;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -47,8 +73,9 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
           password: formData.password,
           name: formData.name,
           user_type: formData.userType,
-          class_access: formData.userType === 'parent' ? formData.classAccess : undefined,
-          school_id: formData.schoolId || undefined
+          class_access: formData.userType === 'parent' ? buildClassAccess() : undefined,
+          school_id: formData.schoolId || undefined,
+          phone_number: formData.userType === 'parent' ? formData.phoneNumber : undefined
         };
         await register(registerData);
       } else {
@@ -76,7 +103,9 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
       password: '',
       name: '',
       userType: 'teacher',
-      classAccess: [],
+      phoneNumber: '',
+      selectedGrades: [],
+      selectedSections: [],
       schoolId: ''
     });
   };
@@ -170,21 +199,105 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
               </div>
 
               {formData.userType === 'parent' && (
-                <div className="form-group">
-                  <label htmlFor="classAccess">Children's Classes</label>
-                  <input
-                    type="text"
-                    id="classAccess"
-                    name="classAccess"
-                    value={formData.classAccess.join(', ')}
-                    onChange={handleClassAccessChange}
-                    placeholder="Enter class IDs separated by commas (e.g., class-1, class-2)"
-                    required
-                  />
-                  <small className="form-help">
-                    Enter the class IDs for all classes your children are enrolled in
-                  </small>
-                </div>
+                <>
+                  <div className="form-group">
+                    <label htmlFor="phoneNumber">Phone Number * (10 digits)</label>
+                    <input
+                      type="tel"
+                      id="phoneNumber"
+                      name="phoneNumber"
+                      value={formData.phoneNumber}
+                      onChange={(e) => {
+                        const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        setFormData({...formData, phoneNumber: digits});
+                      }}
+                      placeholder="9876543210"
+                      required
+                      maxLength={10}
+                      minLength={10}
+                      pattern="[0-9]{10}"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Select Grade(s) *</label>
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: 'repeat(6, 1fr)', 
+                      gap: '8px', 
+                      marginTop: '8px' 
+                    }}>
+                      {availableGrades.map((grade) => (
+                        <label
+                          key={grade}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: '8px',
+                            border: `2px solid ${formData.selectedGrades.includes(grade) ? 'var(--primary-color)' : 'var(--border-color)'}`,
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            backgroundColor: formData.selectedGrades.includes(grade) ? 'var(--primary-color-light, rgba(76, 175, 80, 0.1))' : 'transparent',
+                            transition: 'all 0.2s',
+                            fontSize: '14px',
+                            fontWeight: '500'
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.selectedGrades.includes(grade)}
+                            onChange={() => handleGradeToggle(grade)}
+                            style={{ display: 'none' }}
+                          />
+                          {grade}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Select Section(s) *</label>
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: 'repeat(6, 1fr)', 
+                      gap: '8px', 
+                      marginTop: '8px' 
+                    }}>
+                      {availableSections.map((section) => (
+                        <label
+                          key={section}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: '8px',
+                            border: `2px solid ${formData.selectedSections.includes(section) ? 'var(--primary-color)' : 'var(--border-color)'}`,
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            backgroundColor: formData.selectedSections.includes(section) ? 'var(--primary-color-light, rgba(76, 175, 80, 0.1))' : 'transparent',
+                            transition: 'all 0.2s',
+                            fontSize: '14px',
+                            fontWeight: '500'
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.selectedSections.includes(section)}
+                            onChange={() => handleSectionToggle(section)}
+                            style={{ display: 'none' }}
+                          />
+                          {section}
+                        </label>
+                      ))}
+                    </div>
+                    {formData.selectedGrades.length > 0 && formData.selectedSections.length > 0 && (
+                      <small className="form-help" style={{ marginTop: '8px', display: 'block' }}>
+                        Selected: {buildClassAccess().join(', ')}
+                      </small>
+                    )}
+                  </div>
+                </>
               )}
 
               <div className="form-group">

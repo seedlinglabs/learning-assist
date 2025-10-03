@@ -1,0 +1,629 @@
+openapi: 3.0.1
+info:
+  title: Academic Records API
+  description: API for managing academic records including academic years, grades, sections, subjects, topics, teachers, and parent assignments
+  version: 1.0.0
+  contact:
+    name: SeedlingLabs
+    email: support@seedlingslabs.com
+
+servers:
+  - url: https://xvq11x0421.execute-api.us-west-2.amazonaws.com/pre-prod
+    description: Pre-production environment
+
+tags:
+  - name: Academic Records
+    description: Operations for managing academic records
+
+paths:
+  /academic-records:
+    get:
+      tags:
+        - Academic Records
+      summary: Query academic records
+      description: Query records by parent phone, teacher ID, school ID, or class details
+      operationId: queryAcademicRecords
+      parameters:
+        - name: parent_phone
+          in: query
+          description: Parent's phone number
+          required: false
+          schema:
+            type: string
+          example: "9900509938"
+        - name: teacher_id
+          in: query
+          description: Teacher's ID
+          required: false
+          schema:
+            type: string
+          example: "teacher-123"
+        - name: school_id
+          in: query
+          description: School ID
+          required: false
+          schema:
+            type: string
+          example: "content-development-school"
+        - name: academic_year
+          in: query
+          description: Academic year (use with school_id, grade, and section)
+          required: false
+          schema:
+            type: string
+          example: "2024-25"
+        - name: grade
+          in: query
+          description: Grade/Class number (use with school_id, academic_year, and section)
+          required: false
+          schema:
+            type: string
+          example: "6"
+        - name: section
+          in: query
+          description: Section letter (use with school_id, academic_year, and grade)
+          required: false
+          schema:
+            type: string
+          example: "A"
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AcademicRecord'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - BearerAuth: []
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        httpMethod: POST
+        uri: arn:aws:apigateway:us-west-2:lambda:path/2015-03-31/functions/arn:aws:lambda:us-west-2:143320675925:function:academic-records-service/invocations
+        passthroughBehavior: when_no_match
+        contentHandling: CONVERT_TO_TEXT
+
+    post:
+      tags:
+        - Academic Records
+      summary: Create a new academic record
+      description: Create a new academic record for tracking topic progress
+      operationId: createAcademicRecord
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAcademicRecordRequest'
+      responses:
+        '201':
+          description: Record created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcademicRecord'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - BearerAuth: []
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        httpMethod: POST
+        uri: arn:aws:apigateway:us-west-2:lambda:path/2015-03-31/functions/arn:aws:lambda:us-west-2:143320675925:function:academic-records-service/invocations
+        passthroughBehavior: when_no_match
+        contentHandling: CONVERT_TO_TEXT
+
+    options:
+      tags:
+        - Academic Records
+      summary: CORS support
+      description: Enable CORS by returning correct headers
+      responses:
+        '200':
+          description: CORS headers
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+            Access-Control-Allow-Methods:
+              schema:
+                type: string
+            Access-Control-Allow-Headers:
+              schema:
+                type: string
+      x-amazon-apigateway-integration:
+        type: mock
+        requestTemplates:
+          application/json: '{"statusCode": 200}'
+        responses:
+          default:
+            statusCode: '200'
+            responseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'DELETE,GET,HEAD,OPTIONS,PATCH,POST,PUT'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+            responseTemplates:
+              application/json: '{}'
+
+  /academic-records/{record_id}/{topic_id}:
+    get:
+      tags:
+        - Academic Records
+      summary: Get a specific academic record
+      description: Retrieve a specific academic record by record ID and topic ID
+      operationId: getAcademicRecord
+      parameters:
+        - name: record_id
+          in: path
+          description: Composite record ID (school#year#grade#section#subject)
+          required: true
+          schema:
+            type: string
+          example: "content-development-school#2024-25#6#A#science"
+        - name: topic_id
+          in: path
+          description: Topic ID
+          required: true
+          schema:
+            type: string
+          example: "topic-photosynthesis"
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcademicRecord'
+        '404':
+          description: Record not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - BearerAuth: []
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        httpMethod: POST
+        uri: arn:aws:apigateway:us-west-2:lambda:path/2015-03-31/functions/arn:aws:lambda:us-west-2:143320675925:function:academic-records-service/invocations
+        passthroughBehavior: when_no_match
+        contentHandling: CONVERT_TO_TEXT
+
+    put:
+      tags:
+        - Academic Records
+      summary: Update an academic record
+      description: Update an existing academic record
+      operationId: updateAcademicRecord
+      parameters:
+        - name: record_id
+          in: path
+          description: Composite record ID
+          required: true
+          schema:
+            type: string
+          example: "content-development-school#2024-25#6#A#science"
+        - name: topic_id
+          in: path
+          description: Topic ID
+          required: true
+          schema:
+            type: string
+          example: "topic-photosynthesis"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAcademicRecordRequest'
+      responses:
+        '200':
+          description: Record updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcademicRecord'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Record not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - BearerAuth: []
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        httpMethod: POST
+        uri: arn:aws:apigateway:us-west-2:lambda:path/2015-03-31/functions/arn:aws:lambda:us-west-2:143320675925:function:academic-records-service/invocations
+        passthroughBehavior: when_no_match
+        contentHandling: CONVERT_TO_TEXT
+
+    delete:
+      tags:
+        - Academic Records
+      summary: Delete an academic record
+      description: Delete a specific academic record
+      operationId: deleteAcademicRecord
+      parameters:
+        - name: record_id
+          in: path
+          description: Composite record ID
+          required: true
+          schema:
+            type: string
+          example: "content-development-school#2024-25#6#A#science"
+        - name: topic_id
+          in: path
+          description: Topic ID
+          required: true
+          schema:
+            type: string
+          example: "topic-photosynthesis"
+      responses:
+        '200':
+          description: Record deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Record deleted successfully"
+        '404':
+          description: Record not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - BearerAuth: []
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        httpMethod: POST
+        uri: arn:aws:apigateway:us-west-2:lambda:path/2015-03-31/functions/arn:aws:lambda:us-west-2:143320675925:function:academic-records-service/invocations
+        passthroughBehavior: when_no_match
+        contentHandling: CONVERT_TO_TEXT
+
+    options:
+      tags:
+        - Academic Records
+      summary: CORS support
+      description: Enable CORS by returning correct headers
+      parameters:
+        - name: record_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: topic_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: CORS headers
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+            Access-Control-Allow-Methods:
+              schema:
+                type: string
+            Access-Control-Allow-Headers:
+              schema:
+                type: string
+      x-amazon-apigateway-integration:
+        type: mock
+        requestTemplates:
+          application/json: '{"statusCode": 200}'
+        responses:
+          default:
+            statusCode: '200'
+            responseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'DELETE,GET,HEAD,OPTIONS,PATCH,POST,PUT'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+            responseTemplates:
+              application/json: '{}'
+
+components:
+  schemas:
+    AcademicRecord:
+      type: object
+      required:
+        - record_id
+        - topic_id
+        - school_id
+        - academic_year
+        - grade
+        - section
+        - subject_id
+        - subject_name
+        - topic_name
+        - status
+        - created_at
+        - updated_at
+      properties:
+        record_id:
+          type: string
+          description: Composite ID (school#year#grade#section#subject)
+          example: "content-development-school#2024-25#6#A#science"
+        topic_id:
+          type: string
+          description: Unique topic identifier
+          example: "topic-photosynthesis"
+        school_id:
+          type: string
+          description: School identifier
+          example: "content-development-school"
+        academic_year:
+          type: string
+          description: Academic year
+          example: "2024-25"
+        grade:
+          type: string
+          description: Grade/Class number
+          example: "6"
+        section:
+          type: string
+          description: Section letter
+          example: "A"
+        subject_id:
+          type: string
+          description: Subject identifier
+          example: "science"
+        subject_name:
+          type: string
+          description: Subject display name
+          example: "Science"
+        topic_name:
+          type: string
+          description: Topic display name
+          example: "Photosynthesis"
+        teacher_id:
+          type: string
+          description: Teacher identifier
+          example: "teacher-123"
+        teacher_name:
+          type: string
+          description: Teacher name
+          example: "Mrs. Smith"
+        parent_phone:
+          type: string
+          description: Parent's phone number
+          example: "9900509938"
+        parent_name:
+          type: string
+          description: Parent's name
+          example: "Parent 001"
+        status:
+          type: string
+          description: Current status of the topic
+          enum:
+            - not_started
+            - in_progress
+            - completed
+            - on_hold
+            - cancelled
+          example: "in_progress"
+        start_date:
+          type: string
+          format: date
+          description: Start date (ISO format)
+          example: "2024-09-01"
+        end_date:
+          type: string
+          format: date
+          description: End date (ISO format)
+          example: "2024-09-30"
+        notes:
+          type: string
+          description: Additional notes
+          example: "Started with basic concepts"
+        created_at:
+          type: string
+          format: date-time
+          description: Record creation timestamp
+          example: "2024-09-29T12:00:00.000Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+          example: "2024-09-29T12:00:00.000Z"
+
+    CreateAcademicRecordRequest:
+      type: object
+      required:
+        - school_id
+        - academic_year
+        - grade
+        - section
+        - subject_id
+        - subject_name
+        - topic_id
+        - topic_name
+      properties:
+        school_id:
+          type: string
+          example: "content-development-school"
+        academic_year:
+          type: string
+          example: "2024-25"
+        grade:
+          type: string
+          example: "6"
+        section:
+          type: string
+          example: "A"
+        subject_id:
+          type: string
+          example: "science"
+        subject_name:
+          type: string
+          example: "Science"
+        topic_id:
+          type: string
+          example: "topic-photosynthesis"
+        topic_name:
+          type: string
+          example: "Photosynthesis"
+        teacher_id:
+          type: string
+          example: "teacher-123"
+        teacher_name:
+          type: string
+          example: "Mrs. Smith"
+        parent_phone:
+          type: string
+          example: "9900509938"
+        parent_name:
+          type: string
+          example: "Parent 001"
+        status:
+          type: string
+          enum:
+            - not_started
+            - in_progress
+            - completed
+            - on_hold
+            - cancelled
+          default: not_started
+          example: "in_progress"
+        start_date:
+          type: string
+          format: date
+          example: "2024-09-01"
+        end_date:
+          type: string
+          format: date
+          example: "2024-09-30"
+        notes:
+          type: string
+          example: "Started with basic concepts"
+
+    UpdateAcademicRecordRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - not_started
+            - in_progress
+            - completed
+            - on_hold
+            - cancelled
+          example: "completed"
+        teacher_id:
+          type: string
+          example: "teacher-123"
+        teacher_name:
+          type: string
+          example: "Mrs. Smith"
+        parent_phone:
+          type: string
+          example: "9900509938"
+        parent_name:
+          type: string
+          example: "Parent 001"
+        subject_name:
+          type: string
+          example: "Science"
+        topic_name:
+          type: string
+          example: "Photosynthesis"
+        start_date:
+          type: string
+          format: date
+          example: "2024-09-01"
+        end_date:
+          type: string
+          format: date
+          example: "2024-09-30"
+        notes:
+          type: string
+          example: "Topic completed successfully"
+
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "Invalid request parameters"
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from authentication service
+
+x-amazon-apigateway-request-validators:
+  all:
+    validateRequestBody: true
+    validateRequestParameters: true
+  params-only:
+    validateRequestBody: false
+    validateRequestParameters: true
+
+x-amazon-apigateway-gateway-responses:
+  DEFAULT_4XX:
+    responseParameters:
+      gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+      gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
+  DEFAULT_5XX:
+    responseParameters:
+      gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+      gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
+

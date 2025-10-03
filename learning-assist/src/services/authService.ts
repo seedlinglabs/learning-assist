@@ -4,9 +4,10 @@ export interface User {
   user_id: string;
   email: string;
   name: string;
-  user_type: 'teacher' | 'student' | 'parent';
-  class_access: string[]; // Array of class IDs that parents can access
+  user_type: 'teacher' | 'student' | 'parent' | 'admin';
+  class_access: string[]; // Array of class IDs (e.g., ["6A", "6B"] for grade 6 sections A and B)
   school_id: string;
+  phone_number?: string;
   is_active: boolean;
   created_at: string;
   last_login?: string;
@@ -21,9 +22,10 @@ export interface RegisterRequest {
   email: string;
   password: string;
   name: string;
-  user_type: 'teacher' | 'student' | 'parent';
-  class_access?: string[]; // Required for parents
+  user_type: 'teacher' | 'student' | 'parent' | 'admin';
+  class_access?: string[]; // Required for parents (format: ["6A", "7B"] - grade + section)
   school_id?: string;
+  phone_number?: string; // Required for parents
 }
 
 export interface AuthResponse {
@@ -190,8 +192,8 @@ class AuthServiceClass {
   canAccessClass(classId: string): boolean {
     if (!this.user) return false;
     
-    // Teachers can access all classes
-    if (this.user.user_type === 'teacher') return true;
+    // Admins have full access like teachers
+    if (this.user.user_type === 'admin' || this.user.user_type === 'teacher') return true;
     
     // Parents can only access their children's classes
     if (this.user.user_type === 'parent') {
@@ -209,8 +211,8 @@ class AuthServiceClass {
   getAccessibleClasses(): string[] {
     if (!this.user) return [];
     
-    // Teachers can access all classes (return empty array to indicate full access)
-    if (this.user.user_type === 'teacher') return [];
+    // Admins and teachers can access all classes (return empty array to indicate full access)
+    if (this.user.user_type === 'admin' || this.user.user_type === 'teacher') return [];
     
     // Parents and students have specific class access
     return this.user.class_access;

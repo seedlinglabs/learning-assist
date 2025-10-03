@@ -1,6 +1,7 @@
 {
-  "short_name": "Parent Dashboard",
-  "name": "Learning Assist Parent Dashboard",
+  "short_name": "Parent Portal",
+  "name": "SeedlingLabs Parent Portal",
+  "description": "Access your child's learning progress and educational content",
   "icons": [
     {
       "src": "favicon.ico",
@@ -8,19 +9,30 @@
       "type": "image/x-icon"
     },
     {
+      "src": "SeedlingLabsLogo.png",
+      "type": "image/png",
+      "sizes": "80x80",
+      "purpose": "any maskable"
+    },
+    {
       "src": "logo192.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "purpose": "any maskable"
     },
     {
       "src": "logo512.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "purpose": "any maskable"
     }
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#1e3a8a",
-  "background_color": "#ffffff",
-  "orientation": "portrait-primary"
+  "theme_color": "#4d2917",
+  "background_color": "#daa429",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en",
+  "categories": ["education", "productivity"]
 }

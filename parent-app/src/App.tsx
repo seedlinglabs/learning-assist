@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Parent, Topic } from './types';
+import { Parent } from './types';
 import { AuthService } from './services/authService';
-import LoginForm from './components/LoginForm';
+import LoginScreen from './components/LoginScreen';
+import RegisterScreen from './components/RegisterScreen';
 import Dashboard from './components/Dashboard';
-import TopicDetail from './components/TopicDetail';
-import './styles/globals.css';
+import PWAInstallPrompt from './components/PWAInstallPrompt';
+import './App.css';
 
-type AppState = 'loading' | 'login' | 'dashboard' | 'topic-detail';
+type AppState = 'loading' | 'login' | 'register' | 'dashboard';
 
 function App() {
   const [appState, setAppState] = useState<AppState>('loading');
   const [user, setUser] = useState<Parent | null>(null);
-  const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
 
   useEffect(() => {
     checkAuthStatus();
@@ -41,54 +41,51 @@ function App() {
     setAppState('dashboard');
   };
 
-  const handleLogout = async () => {
-    await AuthService.logout();
-    setUser(null);
-    setSelectedTopic(null);
+  const handleRegisterSuccess = (userData: Parent) => {
+    setUser(userData);
+    setAppState('dashboard');
+  };
+
+  const handleShowRegister = () => {
+    setAppState('register');
+  };
+
+  const handleBackToLogin = () => {
     setAppState('login');
   };
 
-  const handleTopicSelect = (topic: Topic) => {
-    setSelectedTopic(topic);
-    setAppState('topic-detail');
-  };
-
-  const handleBackToDashboard = () => {
-    setSelectedTopic(null);
-    setAppState('dashboard');
+  const handleLogout = async () => {
+    await AuthService.logout();
+    setUser(null);
+    setAppState('login');
   };
 
   if (appState === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="loading-spinner mx-auto mb-4" />
-          <p className="text-gray-600">Loading...</p>
-        </div>
+      <div className="loading">
+        <div className="spinner"></div>
+        <span>Loading...</span>
       </div>
     );
   }
 
   if (appState === 'login') {
-    return <LoginForm onLoginSuccess={handleLoginSuccess} />;
+    return <LoginScreen onLoginSuccess={handleLoginSuccess} onRegisterClick={handleShowRegister} />;
+  }
+
+  if (appState === 'register') {
+    return <RegisterScreen onRegisterSuccess={handleRegisterSuccess} onBackToLogin={handleBackToLogin} />;
   }
 
   if (appState === 'dashboard' && user) {
     return (
-      <Dashboard
-        user={user}
-        onLogout={handleLogout}
-        onTopicSelect={handleTopicSelect}
-      />
-    );
-  }
-
-  if (appState === 'topic-detail' && selectedTopic) {
-    return (
-      <TopicDetail
-        topic={selectedTopic}
-        onBack={handleBackToDashboard}
-      />
+      <>
+        <Dashboard
+          user={user}
+          onLogout={handleLogout}
+        />
+        <PWAInstallPrompt />
+      </>
     );
   }
 

@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Calendar, ExternalLink, Trash2, Save, Sparkles, GraduationCap, Search, Youtube, User, Users, ClipboardList, BookOpen, Plus, Edit3, X, Loader2 } from 'lucide-react';
+import { FileText, Calendar, ExternalLink, Trash2, Save, Sparkles, GraduationCap, Search, Youtube, User, Users, ClipboardList, BookOpen, Plus, Edit3, X, Loader2, CheckCircle } from 'lucide-react';
 import { Topic, DocumentLink } from '../types';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { secureGeminiService } from '../services/secureGeminiService';
 import { youtubeService } from '../services/youtubeService';
 import DocumentDiscoveryModal from './DocumentDiscoveryModal';
 import { PDFUpload } from './PDFUpload';
+import { AcademicRecordsService } from '../services/academicRecordsService';
  
 
 interface TopicTabbedViewProps {
@@ -17,6 +19,7 @@ type TabType = 'details' | 'lesson-plan' | 'teaching-guide' | 'group-discussion'
 
 const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted }) => {
   const { updateTopic, deleteTopic, loading, error, clearError, currentPath } = useApp();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('details');
   const [generatingAI, setGeneratingAI] = useState(false);
   const [findingVideos, setFindingVideos] = useState(false);
@@ -30,6 +33,14 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
   const [isGeneratingContent, setIsGeneratingContent] = useState(false);
   const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
+  
+  // Mark Complete modal states
+  const [showMarkCompleteModal, setShowMarkCompleteModal] = useState(false);
+  const [academicYear, setAcademicYear] = useState('2025-26');
+  const [selectedSections, setSelectedSections] = useState<string[]>([]);
+  const [markingComplete, setMarkingComplete] = useState(false);
+  const [markCompleteError, setMarkCompleteError] = useState<string | null>(null);
+  const availableSections = ['A', 'B', 'C', 'D', 'E', 'F'];
   
   // Editing states for AI content
   const [isEditingLessonPlan, setIsEditingLessonPlan] = useState(false);
@@ -707,6 +718,77 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     }
   };
 
+  const handleMarkCompleteClick = () => {
+    setShowMarkCompleteModal(true);
+    setSelectedSections([]);
+    setMarkCompleteError(null);
+  };
+
+  const handleSectionToggle = (section: string) => {
+    setSelectedSections(prev => 
+      prev.includes(section) 
+        ? prev.filter(s => s !== section)
+        : [...prev, section]
+    );
+  };
+
+  const handleMarkComplete = async () => {
+    if (selectedSections.length === 0) {
+      setMarkCompleteError('Please select at least one section');
+      return;
+    }
+
+    setMarkingComplete(true);
+    setMarkCompleteError(null);
+
+    try {
+      // Extract grade from class ID (e.g., "content-dev-grade-6" -> "6" or "class-1" -> "1")
+      const classId = currentPath.class?.id || '';
+      const gradeMatch = classId.match(/(\d+)/);
+      const grade = gradeMatch ? gradeMatch[1] : '';
+
+      if (!grade) {
+        throw new Error('Unable to determine grade from class');
+      }
+
+      const schoolId = currentPath.school?.id || '';
+      const subjectId = currentPath.subject?.id || '';
+      const subjectName = currentPath.subject?.name || '';
+
+      // Create/update academic records for each selected section
+      for (const section of selectedSections) {
+        try {
+          await AcademicRecordsService.createRecord({
+            school_id: schoolId,
+            academic_year: academicYear,
+            grade: grade,
+            section: section,
+            subject_id: subjectId,
+            subject_name: subjectName,
+            topic_id: topic.id,
+            topic_name: topic.name,
+            teacher_id: user?.user_id,
+            teacher_name: user?.name,
+            status: 'completed',
+            notes: `Marked complete by ${user?.name} on ${new Date().toLocaleDateString()}`
+          });
+        } catch (err) {
+          console.error(`Error marking section ${section} complete:`, err);
+          // Continue with other sections even if one fails
+        }
+      }
+
+      // Success
+      setShowMarkCompleteModal(false);
+      setSelectedSections([]);
+      alert(`Topic marked as completed for section(s): ${selectedSections.join(', ')}`);
+    } catch (err) {
+      setMarkCompleteError(err instanceof Error ? err.message : 'Failed to mark topic as complete');
+    } finally {
+      setMarkingComplete(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (window.confirm('Are you sure you want to delete this topic?')) {
       try {
@@ -1045,19 +1127,28 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
         <div className="topic-detail-actions">
           <button
             onClick={generateAllAIContent}
-            disabled={generatingAI || loading || allAIContentExists}
-            className={`btn btn-sm ${allAIContentExists ? 'btn-success' : 'btn-primary'}`}
-            title={allAIContentExists ? 'All AI content has been generated' : anyAIContentExists ? 'Generate missing AI content for this topic' : 'Generate AI content for this topic'}
+            disabled={generatingAI || loading || (allAIContentExists && user?.email !== 's.p@seedlinglabs.com')}
+            className={`btn btn-sm ${allAIContentExists && user?.email !== 's.p@seedlinglabs.com' ? 'btn-success' : 'btn-primary'}`}
+            title={allAIContentExists && user?.email !== 's.p@seedlinglabs.com' ? 'All AI content has been generated' : anyAIContentExists ? 'Generate missing AI content for this topic' : 'Generate AI content for this topic'}
           >
             <Sparkles size={16} />
             {generatingAI 
               ? (aiGenerationStatus || 'Generating AI Content...') 
-              : allAIContentExists 
+              : allAIContentExists && user?.email !== 's.p@seedlinglabs.com'
                 ? 'All AI Content Generated' 
                 : anyAIContentExists
                   ? 'Generate Missing AI Content'
                   : 'Generate AI Content'
             }
+          </button>
+          <button
+            onClick={handleMarkCompleteClick}
+            className="btn btn-success btn-sm"
+            disabled={loading}
+            title="Mark this topic as complete for specific sections"
+          >
+            <CheckCircle size={16} />
+            Mark Complete
           </button>
           <button onClick={handleSave} className="btn btn-secondary btn-sm" disabled={loading}>
             <Save size={16} />
@@ -1669,6 +1760,122 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
               <div className="ai-generation-note">
                 <p>This may take a few minutes. Please don't close this page.</p>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mark Complete Modal */}
+      {showMarkCompleteModal && (
+        <div className="modal-overlay" onClick={() => setShowMarkCompleteModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h2>
+                <CheckCircle size={24} style={{ color: 'var(--primary-color)' }} />
+                Mark Topic Complete
+              </h2>
+              <button className="btn-icon" onClick={() => setShowMarkCompleteModal(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="modal-body" style={{ padding: '24px' }}>
+              <div style={{ marginBottom: '24px' }}>
+                <h3 style={{ fontSize: '16px', marginBottom: '8px' }}>Topic: {topic.name}</h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
+                  {currentPath.school?.name} - {currentPath.class?.name} - {currentPath.subject?.name}
+                </p>
+              </div>
+
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                  Academic Year
+                </label>
+                <input
+                  type="text"
+                  value={academicYear}
+                  onChange={(e) => setAcademicYear(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '12px', fontWeight: '500' }}>
+                  Select Section(s)
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                  {availableSections.map((section) => (
+                    <label
+                      key={section}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '12px',
+                        border: `2px solid ${selectedSections.includes(section) ? 'var(--primary-color)' : 'var(--border-color)'}`,
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        backgroundColor: selectedSections.includes(section) ? 'var(--primary-color-light, rgba(76, 175, 80, 0.1))' : 'transparent',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedSections.includes(section)}
+                        onChange={() => handleSectionToggle(section)}
+                        style={{ marginRight: '8px', cursor: 'pointer' }}
+                      />
+                      <span style={{ fontWeight: '500' }}>Section {section}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {markCompleteError && (
+                <div style={{
+                  marginTop: '16px',
+                  padding: '12px',
+                  backgroundColor: '#fee',
+                  border: '1px solid #fcc',
+                  borderRadius: '6px',
+                  color: '#c33',
+                  fontSize: '14px'
+                }}>
+                  {markCompleteError}
+                </div>
+              )}
+            </div>
+
+            <div className="modal-footer">
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowMarkCompleteModal(false)}
+                disabled={markingComplete}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-success"
+                onClick={handleMarkComplete}
+                disabled={markingComplete || selectedSections.length === 0}
+              >
+                {markingComplete ? (
+                  <>
+                    <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                    Marking Complete...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle size={16} />
+                    Mark as Complete
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>
