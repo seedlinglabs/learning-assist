@@ -190,8 +190,8 @@ class AuthServiceClass {
   canAccessClass(classId: string): boolean {
     if (!this.user) return false;
     
-    // Teachers can access all classes
-    if (this.user.user_type === 'teacher') return true;
+    // Admins have full access like teachers
+    if (this.user.user_type === 'admin' || this.user.user_type === 'teacher') return true;
     
     // Parents can only access their children's classes
     if (this.user.user_type === 'parent') {
@@ -209,8 +209,8 @@ class AuthServiceClass {
   getAccessibleClasses(): string[] {
     if (!this.user) return [];
     
-    // Teachers can access all classes (return empty array to indicate full access)
-    if (this.user.user_type === 'teacher') return [];
+    // Admins and teachers can access all classes (return empty array to indicate full access)
+    if (this.user.user_type === 'admin' || this.user.user_type === 'teacher') return [];
     
     // Parents and students have specific class access
     return this.user.class_access;
