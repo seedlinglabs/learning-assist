@@ -37,14 +37,27 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
       setError('');
       
       const allSubjects: Subject[] = [];
-      for (const classId of user.class_access) {
+      // Extract unique grades from class_access (e.g., "6A" -> "6")
+      const gradesSet = new Set<string>();
+      for (const classAccess of user.class_access) {
+        const gradeMatch = classAccess.match(/^(\d+)/);
+        if (gradeMatch) {
+          gradesSet.add(gradeMatch[1]);
+        }
+      }
+      
+      const grades = Array.from(gradesSet);
+      console.log('Extracted grades from class_access:', grades);
+      
+      // Load subjects for each unique grade
+      for (const grade of grades) {
         try {
-          console.log(`Loading subjects for school: ${user.school_id}, class: ${classId}`);
-          const classSubjects = await TopicsService.getSubjectsBySchoolAndClass(user.school_id, classId);
-          console.log(`Subjects found for class ${classId}:`, classSubjects);
+          console.log(`Loading subjects for school: ${user.school_id}, grade: ${grade}`);
+          const classSubjects = await TopicsService.getSubjectsBySchoolAndClass(user.school_id, grade);
+          console.log(`Subjects found for grade ${grade}:`, classSubjects);
           allSubjects.push(...classSubjects);
         } catch (err) {
-          console.error(`Error loading subjects for school ${user.school_id}, class ${classId}:`, err);
+          console.error(`Error loading subjects for school ${user.school_id}, grade ${grade}:`, err);
         }
       }
       
