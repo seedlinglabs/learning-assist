@@ -78,7 +78,25 @@ class TopicsServiceClass {
     try {
       console.log('Getting topics for subject:', subjectId);
       const response = await this.makeRequest(`/topics?subject_id=${encodeURIComponent(subjectId)}`);
-      return Array.isArray(response) ? response : [];
+      const topics = Array.isArray(response) ? response : [];
+      
+      // Transform snake_case ai_content to camelCase aiContent
+      const transformedTopics = topics.map((topic: any) => {
+        if (topic.ai_content && !topic.aiContent) {
+          return {
+            ...topic,
+            aiContent: topic.ai_content
+          };
+        }
+        return topic;
+      });
+      
+      console.log('✅ Transformed topics. First topic has aiContent?', !!transformedTopics[0]?.aiContent);
+      if (transformedTopics[0]?.aiContent) {
+        console.log('✅ Videos in aiContent:', transformedTopics[0].aiContent.videos?.length || 0);
+      }
+      
+      return transformedTopics;
     } catch (error) {
       console.error('Error fetching topics by subject:', error);
       throw error;

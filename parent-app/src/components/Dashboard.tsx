@@ -2,26 +2,33 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Parent, Subject, Topic } from '../types';
 import { TopicsService } from '../services/topicsService';
 import { AcademicRecordsService } from '../services/academicRecordsService';
+import Quiz from './Quiz';
 
 interface DashboardProps {
   user: Parent;
   onLogout: () => void;
 }
 
+interface TopicWithCompletion extends Topic {
+  completedAt?: string;
+}
+
 interface SubjectWithProgress extends Subject {
   completedTopics?: number;
   totalTopics?: number;
-  completedTopicsList?: Topic[];
+  completedTopicsList?: TopicWithCompletion[];
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   const [subjects, setSubjects] = useState<SubjectWithProgress[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(new Set());
+  const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
+  const [selectedTopic, setSelectedTopic] = useState<TopicWithCompletion | null>(null);
+  const [showQuiz, setShowQuiz] = useState(false);
 
   const loadSubjects = useCallback(async () => {
-    console.log('=== DEBUG: Loading subjects ===');
+    console.log('=== DEBUG: Loading subjects from academic records ===');
     console.log('User data:', user);
     console.log('user.class_access:', user.class_access);
     console.log('user.school_id:', user.school_id);
@@ -44,52 +51,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
       setLoading(true);
       setError('');
       
-      const allSubjects: Subject[] = [];
-      // Extract unique grades from class_access (e.g., "6A" -> "6")
-      const gradesSet = new Set<string>();
-      for (const classAccess of user.class_access) {
-        const gradeMatch = classAccess.match(/^(\d+)/);
-        if (gradeMatch) {
-          gradesSet.add(gradeMatch[1]);
-        }
-      }
-      
-      const grades = Array.from(gradesSet);
-      console.log('Extracted grades from class_access:', grades);
-      
-      // Load subjects for each unique grade
-      for (const grade of grades) {
-        try {
-          console.log(`Loading subjects for school: ${user.school_id}, grade: ${grade}`);
-          const classSubjects = await TopicsService.getSubjectsBySchoolAndClass(user.school_id, grade);
-          console.log(`Subjects found for grade ${grade}:`, classSubjects);
-          allSubjects.push(...classSubjects);
-        } catch (err) {
-          console.error(`Error loading subjects for school ${user.school_id}, grade ${grade}:`, err);
-        }
-      }
-      
-      console.log('Total subjects loaded:', allSubjects);
-      
-      // Load academic records for completed topics
-      await loadAcademicRecords(allSubjects);
-      
-      setSubjects(allSubjects);
-    } catch (err) {
-      setError('Failed to load subjects. Please try again.');
-      console.error('Error loading subjects:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-
-  const loadAcademicRecords = async (subjectsList: Subject[]) => {
-    try {
       const academicYear = '2025-26'; // Current academic year
-      console.log('=== LOADING ACADEMIC RECORDS ===');
-      console.log('Academic Year:', academicYear);
-      console.log('School ID:', user.school_id);
-      console.log('Class Access:', user.class_access);
+      console.log('Fetching academic records for academic year:', academicYear);
       
       // Fetch academic records for all parent's classes
       const allRecords = await AcademicRecordsService.getRecordsForParent(
@@ -101,68 +64,109 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
       console.log('Academic records received:', allRecords);
       console.log('Total records found:', allRecords.length);
       
-      // Group completed topics by subject
-      const completedBySubject = new Map<string, Set<string>>();
+      // Build subject map from academic records
+      const subjectMap = new Map<string, {
+        subjectName: string;
+        grade: string;
+        section: string;
+        completedTopics: Map<string, { topicId: string; topicName: string; completedAt: string }>;
+      }>();
       
-      let completedCount = 0;
+      // Group records by subject
       for (const record of allRecords) {
-        console.log(`Record: ${record.subject_name} - ${record.topic_name} - Status: ${record.status}`);
         if (record.status === 'completed') {
-          completedCount++;
-          if (!completedBySubject.has(record.subject_id)) {
-            completedBySubject.set(record.subject_id, new Set());
+          const key = record.subject_id;
+          
+          if (!subjectMap.has(key)) {
+            subjectMap.set(key, {
+              subjectName: record.subject_name,
+              grade: record.grade,
+              section: record.section,
+              completedTopics: new Map()
+            });
           }
-          completedBySubject.get(record.subject_id)!.add(record.topic_id);
+          
+          const subjectData = subjectMap.get(key)!;
+          subjectData.completedTopics.set(record.topic_id, {
+            topicId: record.topic_id,
+            topicName: record.topic_name,
+            completedAt: record.updated_at
+          });
         }
       }
       
-      console.log('Total completed records:', completedCount);
-      console.log('Completed topics by subject:', completedBySubject);
-      console.log('Subjects with completed topics:', Array.from(completedBySubject.keys()));
+      console.log('Subjects with completed topics:', Array.from(subjectMap.keys()));
+      console.log('Subject map:', subjectMap);
       
-      // Update subjects with progress information and completed topics list
-      const updatedSubjects = await Promise.all(
-        subjectsList.map(async (subject) => {
-          try {
-            const allTopics = await TopicsService.getTopicsBySubject(subject.id);
-            const completedSet = completedBySubject.get(subject.id) || new Set();
-            
-            // Filter to get only completed topics
-            const completedTopicsList = allTopics.filter(topic => completedSet.has(topic.id));
-            
-            console.log(`Subject ${subject.name}: ${completedTopicsList.length} completed out of ${allTopics.length} topics`);
-            
-            return {
-              ...subject,
-              totalTopics: allTopics.length,
-              completedTopics: completedSet.size,
-              completedTopicsList: completedTopicsList
-            };
-          } catch (err) {
-            console.error(`Error loading topics for subject ${subject.id}:`, err);
-            return {
-              ...subject,
-              totalTopics: 0,
-              completedTopics: 0,
-              completedTopicsList: []
-            };
-          }
-        })
-      );
+      // Fetch full topic details for each subject
+      const subjectsWithProgress: SubjectWithProgress[] = [];
       
-      setSubjects(updatedSubjects);
+      for (const [subjectId, subjectData] of Array.from(subjectMap.entries())) {
+        try {
+          console.log(`Fetching all topics for subject: ${subjectId}`);
+          const allTopics = await TopicsService.getTopicsBySubject(subjectId);
+          console.log(`Subject ${subjectData.subjectName}: Found ${allTopics.length} total topics`);
+          
+          // Filter to get completed topics with full details and add completion dates
+          const completedTopicsList = allTopics
+            .filter(topic => subjectData.completedTopics.has(topic.id))
+            .map(topic => ({
+              ...topic,
+              completedAt: subjectData.completedTopics.get(topic.id)?.completedAt
+            }))
+            // Sort by completion date (most recent first)
+            .sort((a, b) => {
+              const dateA = new Date(a.completedAt || 0).getTime();
+              const dateB = new Date(b.completedAt || 0).getTime();
+              return dateB - dateA;
+            });
+          
+          console.log(`Subject ${subjectData.subjectName}: ${completedTopicsList.length} completed topics`);
+          
+          // Create a subject object
+          const subject: SubjectWithProgress = {
+            id: subjectId,
+            name: subjectData.subjectName,
+            description: `Grade ${subjectData.grade}${subjectData.section} - ${subjectData.subjectName}`,
+            class_id: `${subjectData.grade}${subjectData.section}`,
+            school_id: user.school_id,
+            school_name: user.school_id,
+            class_name: `Grade ${subjectData.grade}${subjectData.section}`,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            totalTopics: allTopics.length,
+            completedTopics: completedTopicsList.length,
+            completedTopicsList: completedTopicsList
+          };
+          
+          subjectsWithProgress.push(subject);
+        } catch (err) {
+          console.error(`Error fetching topics for subject ${subjectId}:`, err);
+        }
+      }
+      
+      console.log('Final subjects with progress:', subjectsWithProgress);
+      setSubjects(subjectsWithProgress);
+      
+      if (subjectsWithProgress.length === 0) {
+        setError('No completed topics found yet. Topics will appear here as your child progresses.');
+      }
+      
     } catch (err) {
-      console.error('Error loading academic records:', err);
+      setError('Failed to load academic records. Please try again.');
+      console.error('Error loading subjects:', err);
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [user]);
 
-  const toggleSubject = (subjectId: string) => {
-    setExpandedSubjects(prev => {
+  const toggleTopic = (topicId: string) => {
+    setExpandedTopics(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(subjectId)) {
-        newSet.delete(subjectId);
+      if (newSet.has(topicId)) {
+        newSet.delete(topicId);
       } else {
-        newSet.add(subjectId);
+        newSet.add(topicId);
       }
       return newSet;
     });
@@ -179,7 +183,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
           <div className="container">
             <div className="header-content">
               <div>
-                <h1>SeedlingLabs Parent Portal</h1>
+                <h1>Sprout AI</h1>
                 <p>Welcome back, {user.name || 'Parent'}</p>
               </div>
               <button onClick={onLogout} className="back-button">
@@ -207,7 +211,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
           <div className="container">
             <div className="header-content">
               <div>
-                <h1>SeedlingLabs Parent Portal</h1>
+                <h1>Sprout AI</h1>
                 <p>Welcome back, {user.name || 'Parent'}</p>
               </div>
               <button onClick={onLogout} className="back-button">
@@ -237,7 +241,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                 style={{ width: '40px', height: '40px' }}
               />
               <div>
-                <h1>SeedlingLabs Parent Portal</h1>
+                <h1>Sprout AI</h1>
                 <p>Welcome back, {user.name || 'Parent'}</p>
                 {user.school_id && (
                   <p style={{ fontSize: '12px', opacity: 0.8 }}>
@@ -272,8 +276,16 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                 const progress = subject.totalTopics && subject.totalTopics > 0
                   ? Math.round((subject.completedTopics || 0) / subject.totalTopics * 100)
                   : 0;
-                const isExpanded = expandedSubjects.has(subject.id);
                 const hasCompletedTopics = (subject.completedTopicsList?.length || 0) > 0;
+                
+                const formatDate = (dateStr?: string) => {
+                  if (!dateStr) return '';
+                  const date = new Date(dateStr);
+                  return date.toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric' 
+                  });
+                };
                 
                 return (
                   <div
@@ -308,7 +320,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                           height: '8px',
                           backgroundColor: 'rgba(218, 164, 41, 0.2)',
                           borderRadius: '4px',
-                          overflow: 'hidden'
+                          overflow: 'hidden',
+                          marginBottom: '16px'
                         }}>
                           <div style={{
                             width: `${progress}%`,
@@ -317,105 +330,237 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                             transition: 'width 0.3s ease'
                           }} />
                         </div>
-                        
-                        <div style={{ marginTop: '8px', textAlign: 'center' }}>
-                          <span style={{ 
-                            fontSize: '12px', 
-                            fontWeight: '600',
-                            color: progress === 100 ? '#4caf50' : '#666'
-                          }}>
-                            {progress}% Complete
-                          </span>
-                        </div>
-                        
-                        {/* View Completed Topics Button or Message */}
-                        {hasCompletedTopics ? (
-                          <button
-                            onClick={() => toggleSubject(subject.id)}
-                            style={{
-                              width: '100%',
-                              marginTop: '12px',
-                              padding: '10px',
-                              backgroundColor: isExpanded ? 'rgba(218, 164, 41, 0.1)' : 'transparent',
-                              border: '1px solid #daa429',
-                              borderRadius: '6px',
-                              color: '#4d2917',
-                              fontSize: '13px',
-                              fontWeight: '600',
-                              cursor: 'pointer',
-                              transition: 'all 0.2s'
-                            }}
-                          >
-                            {isExpanded ? '▼ Hide' : '▶'} Completed Topics ({subject.completedTopics})
-                          </button>
-                        ) : (
-                          <div style={{
-                            marginTop: '12px',
-                            padding: '10px',
-                            backgroundColor: 'rgba(158, 158, 158, 0.1)',
-                            border: '1px solid rgba(158, 158, 158, 0.3)',
-                            borderRadius: '6px',
-                            color: '#666',
-                            fontSize: '12px',
-                            textAlign: 'center'
-                          }}>
-                            No topics completed yet
-                          </div>
-                        )}
                       </div>
                     )}
                     
-                    {/* Completed Topics List */}
-                    {isExpanded && hasCompletedTopics && (
-                      <div style={{
-                        marginTop: '12px',
-                        paddingTop: '12px',
-                        borderTop: '1px solid rgba(218, 164, 41, 0.2)'
-                      }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          {subject.completedTopicsList!.map((topic, index) => (
+                    {/* Completed Topics Accordions */}
+                    {hasCompletedTopics && (
+                      <div style={{ marginTop: '16px' }}>
+                        {subject.completedTopicsList!.map((topic, index) => {
+                          const isTopicExpanded = expandedTopics.has(topic.id);
+                          const videos = topic.aiContent?.videos || [];
+                          const hasAssessment = topic.aiContent?.assessmentQuestions;
+                          
+                          // Debug logging
+                          if (isTopicExpanded) {
+                            console.log('=== TOPIC EXPANDED ===');
+                            console.log('Topic:', topic.name);
+                            console.log('Full topic object:', topic);
+                            console.log('Topic keys:', Object.keys(topic));
+                            console.log('Has aiContent?', !!topic.aiContent);
+                            console.log('Has ai_content?', !!(topic as any).ai_content);
+                            console.log('Videos from aiContent:', videos);
+                            console.log('Videos from ai_content:', (topic as any).ai_content?.videos);
+                            console.log('Videos length:', videos.length);
+                            console.log('Has assessment?', !!hasAssessment);
+                          }
+                          
+                          return (
                             <div
                               key={topic.id}
                               style={{
-                                padding: '12px',
-                                backgroundColor: 'rgba(76, 175, 80, 0.05)',
-                                border: '1px solid rgba(76, 175, 80, 0.2)',
-                                borderRadius: '6px',
-                                display: 'flex',
-                                alignItems: 'flex-start',
-                                gap: '10px'
+                                marginBottom: '8px',
+                                border: '1px solid rgba(76, 175, 80, 0.3)',
+                                borderRadius: '8px',
+                                overflow: 'hidden',
+                                backgroundColor: 'white'
                               }}
                             >
-                              <span style={{
-                                fontSize: '16px',
-                                color: '#4caf50',
-                                flexShrink: 0,
-                                marginTop: '2px'
-                              }}>
-                                ✓
-                              </span>
-                              <div style={{ flex: 1 }}>
-                                <div style={{
-                                  fontSize: '14px',
-                                  fontWeight: '600',
-                                  color: '#4d2917',
-                                  marginBottom: '4px'
+                              {/* Topic Header (Accordion Button) */}
+                              <button
+                                onClick={() => toggleTopic(topic.id)}
+                                style={{
+                                  width: '100%',
+                                  padding: '12px 16px',
+                                  backgroundColor: isTopicExpanded ? 'rgba(76, 175, 80, 0.08)' : 'white',
+                                  border: 'none',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '12px',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s',
+                                  textAlign: 'left'
+                                }}
+                                onMouseEnter={(e) => {
+                                  if (!isTopicExpanded) {
+                                    e.currentTarget.style.backgroundColor = 'rgba(76, 175, 80, 0.05)';
+                                  }
+                                }}
+                                onMouseLeave={(e) => {
+                                  if (!isTopicExpanded) {
+                                    e.currentTarget.style.backgroundColor = 'white';
+                                  }
+                                }}
+                              >
+                                <span style={{
+                                  fontSize: '16px',
+                                  color: '#4caf50',
+                                  flexShrink: 0
                                 }}>
-                                  {index + 1}. {topic.name}
-                                </div>
-                                {topic.description && (
+                                  ✓
+                                </span>
+                                <div style={{ flex: 1 }}>
                                   <div style={{
-                                    fontSize: '12px',
-                                    color: '#666',
-                                    lineHeight: '1.4'
+                                    fontSize: '14px',
+                                    fontWeight: '600',
+                                    color: '#4d2917',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    gap: '12px'
                                   }}>
-                                    {topic.description}
+                                    <span>{topic.name}</span>
+                                    {topic.completedAt && (
+                                      <span style={{
+                                        fontSize: '11px',
+                                        color: '#4caf50',
+                                        fontWeight: '500',
+                                        whiteSpace: 'nowrap'
+                                      }}>
+                                        {formatDate(topic.completedAt)}
+                                      </span>
+                                    )}
                                   </div>
-                                )}
-                              </div>
+                                </div>
+                                <span style={{
+                                  fontSize: '14px',
+                                  color: '#4d2917',
+                                  transition: 'transform 0.2s',
+                                  transform: isTopicExpanded ? 'rotate(90deg)' : 'rotate(0deg)'
+                                }}>
+                                  ▶
+                                </span>
+                              </button>
+
+                              {/* Topic Content (Videos + Quiz Button) */}
+                              {isTopicExpanded && (
+                                <div style={{
+                                  padding: '16px',
+                                  backgroundColor: 'rgba(76, 175, 80, 0.02)',
+                                  borderTop: '1px solid rgba(76, 175, 80, 0.2)'
+                                }}>
+                                  {/* Videos */}
+                                  {videos.length > 0 ? (
+                                    <div style={{ marginBottom: hasAssessment ? '16px' : '0' }}>
+                                      <div style={{
+                                        fontSize: '13px',
+                                        fontWeight: '600',
+                                        color: '#4d2917',
+                                        marginBottom: '12px'
+                                      }}>
+                                        📺 Videos
+                                      </div>
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        {videos.map((video, vidIndex) => (
+                                          <a
+                                            key={vidIndex}
+                                            href={video.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            style={{
+                                              padding: '10px 12px',
+                                              backgroundColor: 'white',
+                                              border: '1px solid rgba(218, 164, 41, 0.3)',
+                                              borderRadius: '6px',
+                                              textDecoration: 'none',
+                                              color: '#4d2917',
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              gap: '12px',
+                                              transition: 'all 0.2s'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                              e.currentTarget.style.borderColor = '#daa429';
+                                              e.currentTarget.style.backgroundColor = 'rgba(218, 164, 41, 0.05)';
+                                              e.currentTarget.style.transform = 'translateX(4px)';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                              e.currentTarget.style.borderColor = 'rgba(218, 164, 41, 0.3)';
+                                              e.currentTarget.style.backgroundColor = 'white';
+                                              e.currentTarget.style.transform = 'translateX(0)';
+                                            }}
+                                          >
+                                            <span style={{
+                                              width: '32px',
+                                              height: '32px',
+                                              backgroundColor: 'rgba(218, 164, 41, 0.2)',
+                                              borderRadius: '6px',
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              justifyContent: 'center',
+                                              fontSize: '14px',
+                                              flexShrink: 0
+                                            }}>
+                                              ▶
+                                            </span>
+                                            <div style={{ flex: 1 }}>
+                                              <div style={{ fontSize: '13px', fontWeight: '500' }}>
+                                                {video.title}
+                                              </div>
+                                              {video.duration && (
+                                                <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
+                                                  {video.duration}
+                                                </div>
+                                              )}
+                                            </div>
+                                          </a>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div style={{
+                                      padding: '12px',
+                                      textAlign: 'center',
+                                      color: '#666',
+                                      fontSize: '13px',
+                                      marginBottom: hasAssessment ? '16px' : '0'
+                                    }}>
+                                      No videos available
+                                    </div>
+                                  )}
+
+                                  {/* Quiz Button */}
+                                  {hasAssessment && (
+                                    <button
+                                      onClick={() => {
+                                        setSelectedTopic(topic);
+                                        setShowQuiz(true);
+                                      }}
+                                      style={{
+                                        width: '100%',
+                                        padding: '12px',
+                                        backgroundColor: 'linear-gradient(135deg, #4d2917 0%, #6b3a1e 100%)',
+                                        background: 'linear-gradient(135deg, #4d2917 0%, #6b3a1e 100%)',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        color: 'white',
+                                        fontSize: '14px',
+                                        fontWeight: '600',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '8px'
+                                      }}
+                                      onMouseEnter={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(-2px)';
+                                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(77, 41, 23, 0.3)';
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                        e.currentTarget.style.boxShadow = 'none';
+                                      }}
+                                    >
+                                      <span>🎯</span>
+                                      <span>Take Quiz</span>
+                                    </button>
+                                  )}
+                                </div>
+                              )}
                             </div>
-                          ))}
-                        </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -425,6 +570,17 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
           )}
         </div>
       </div>
+
+      {/* Quiz Modal */}
+      {selectedTopic && showQuiz && (
+        <Quiz
+          topic={selectedTopic}
+          onClose={() => {
+            setShowQuiz(false);
+            setSelectedTopic(null);
+          }}
+        />
+      )}
     </div>
   );
 };
