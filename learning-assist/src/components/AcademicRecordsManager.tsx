@@ -767,20 +767,35 @@ const AcademicRecordsManager: React.FC<AcademicRecordsManagerProps> = ({ onBack 
           left: 0;
           right: 0;
           bottom: 0;
-          background: rgba(0, 0, 0, 0.5);
+          background: rgba(0, 0, 0, 0.7);
           display: flex;
           align-items: center;
           justify-content: center;
           z-index: 1000;
+          backdrop-filter: blur(4px);
         }
 
         .modal-content {
-          background: var(--card-bg);
+          background: var(--bg-primary, #ffffff);
+          border: 1px solid var(--border-color, #e0e0e0);
           border-radius: 12px;
           width: 90%;
           max-width: 800px;
           max-height: 90vh;
           overflow-y: auto;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Light theme overrides */
+        :root {
+          --modal-bg: #ffffff;
+          --modal-border: #e0e0e0;
+        }
+
+        /* Dark theme overrides */
+        [data-theme="dark"] .modal-content {
+          background: #2d2d2d;
+          border-color: #404040;
         }
 
         .modal-header {
@@ -829,9 +844,18 @@ const AcademicRecordsManager: React.FC<AcademicRecordsManagerProps> = ({ onBack 
         .form-group select,
         .form-group textarea {
           padding: 8px 12px;
-          border: 1px solid var(--border-color);
+          border: 1px solid var(--border-color, #d0d0d0);
           border-radius: 6px;
-          background: var(--bg-primary);
+          background: var(--bg-primary, #ffffff);
+          color: var(--text-primary, #000000);
+        }
+
+        [data-theme="dark"] .form-group input,
+        [data-theme="dark"] .form-group select,
+        [data-theme="dark"] .form-group textarea {
+          background: #1a1a1a;
+          border-color: #404040;
+          color: #ffffff;
         }
 
         .form-group input:disabled,
