@@ -12,7 +12,9 @@ import SubjectList from './components/SubjectList';
 import TopicList from './components/TopicList';
 import ProtectedRoute from './components/ProtectedRoute';
 import TeacherTraining from './components/TeacherTraining';
-import { GraduationCap, Home } from 'lucide-react';
+import AdminDashboard from './components/AdminDashboard';
+import AcademicRecordsManager from './components/AcademicRecordsManager';
+import { GraduationCap, Home, Shield } from 'lucide-react';
 import './App.css';
 import './styles/Auth.css';
 
@@ -21,9 +23,23 @@ const AppContent: React.FC = () => {
   const { user, logout } = useAuth();
   const { school, class: cls, subject } = currentPath;
   const [showTraining, setShowTraining] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [adminView, setAdminView] = useState<string>('dashboard');
+
+  const isAdmin = user?.user_type === 'admin';
+
+  const handleAdminNavigation = (view: string) => {
+    setAdminView(view);
+  };
 
   const renderContent = () => {
-    if (showTraining) {
+    if (showAdmin && isAdmin) {
+      if (adminView === 'dashboard') {
+        return <AdminDashboard onNavigate={handleAdminNavigation} />;
+      } else if (adminView === 'academic-records') {
+        return <AcademicRecordsManager onBack={() => setAdminView('dashboard')} />;
+      }
+    } else if (showTraining) {
       return <TeacherTraining />;
     } else if (!school) {
       return <SchoolList />;
@@ -64,8 +80,25 @@ const AppContent: React.FC = () => {
               <ModelSelector />
               {user && (
                 <div className="user-info">
+                  {isAdmin && (
+                    <button 
+                      onClick={() => {
+                        setShowAdmin(!showAdmin);
+                        setShowTraining(false);
+                        if (!showAdmin) setAdminView('dashboard');
+                      }} 
+                      className={`nav-button ${showAdmin ? 'active' : ''}`}
+                      title={showAdmin ? 'Back to Main' : 'Admin Panel'}
+                    >
+                      {showAdmin ? <Home size={16} /> : <Shield size={16} />}
+                      {showAdmin ? 'Back to Main' : 'Admin'}
+                    </button>
+                  )}
                   <button 
-                    onClick={() => setShowTraining(!showTraining)} 
+                    onClick={() => {
+                      setShowTraining(!showTraining);
+                      setShowAdmin(false);
+                    }} 
                     className={`nav-button ${showTraining ? 'active' : ''}`}
                     title={showTraining ? 'Back to Main' : 'Teacher Training'}
                   >

@@ -25,8 +25,17 @@ class StaticDataServiceClass {
   }
 
   getSubjectsByClass(schoolId: string, classId: string): Subject[] {
-    const classData = this.getClassById(schoolId, classId);
-    if (!classData) return [];
+    // Handle numeric class IDs (e.g., "6" -> "content-dev-grade-6")
+    let actualClassId = classId;
+    if (schoolId === 'content-development-school' && /^\d+$/.test(classId)) {
+      actualClassId = `content-dev-grade-${classId}`;
+    }
+    
+    const classData = this.getClassById(schoolId, actualClassId);
+    if (!classData) {
+      console.log(`Class not found: schoolId=${schoolId}, classId=${classId}, actualClassId=${actualClassId}`);
+      return [];
+    }
     
     const school = this.getSchoolById(schoolId);
     if (!school) return [];

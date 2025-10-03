@@ -4,7 +4,7 @@ export interface User {
   user_id: string;
   email: string;
   name: string;
-  user_type: 'teacher' | 'student' | 'parent';
+  user_type: 'teacher' | 'student' | 'parent' | 'admin';
   class_access: string[]; // Array of class IDs that parents can access
   school_id: string;
   is_active: boolean;
@@ -21,7 +21,7 @@ export interface RegisterRequest {
   email: string;
   password: string;
   name: string;
-  user_type: 'teacher' | 'student' | 'parent';
+  user_type: 'teacher' | 'student' | 'parent' | 'admin';
   class_access?: string[]; // Required for parents
   school_id?: string;
 }

@@ -3,16 +3,14 @@ import { Parent } from './types';
 import { AuthService } from './services/authService';
 import LoginScreen from './components/LoginScreen';
 import Dashboard from './components/Dashboard';
-import TopicDetail from './components/TopicDetail';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import './App.css';
 
-type AppState = 'loading' | 'login' | 'dashboard' | 'topic-detail';
+type AppState = 'loading' | 'login' | 'dashboard';
 
 function App() {
   const [appState, setAppState] = useState<AppState>('loading');
   const [user, setUser] = useState<Parent | null>(null);
-  const [selectedTopic, setSelectedTopic] = useState<any>(null);
 
   useEffect(() => {
     checkAuthStatus();
@@ -45,18 +43,7 @@ function App() {
   const handleLogout = async () => {
     await AuthService.logout();
     setUser(null);
-    setSelectedTopic(null);
     setAppState('login');
-  };
-
-  const handleTopicSelect = (topic: any) => {
-    setSelectedTopic(topic);
-    setAppState('topic-detail');
-  };
-
-  const handleBackToDashboard = () => {
-    setSelectedTopic(null);
-    setAppState('dashboard');
   };
 
   if (appState === 'loading') {
@@ -78,19 +65,6 @@ function App() {
         <Dashboard
           user={user}
           onLogout={handleLogout}
-          onTopicSelect={handleTopicSelect}
-        />
-        <PWAInstallPrompt />
-      </>
-    );
-  }
-
-  if (appState === 'topic-detail' && selectedTopic) {
-    return (
-      <>
-        <TopicDetail
-          topic={selectedTopic}
-          onBack={handleBackToDashboard}
         />
         <PWAInstallPrompt />
       </>

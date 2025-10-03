@@ -1,32 +1,32 @@
-import React, { useState, useEffect } from 'react';
-import { Parent, Subject, Topic } from '../types';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Parent, Subject } from '../types';
 import { TopicsService } from '../services/topicsService';
 
 interface DashboardProps {
   user: Parent;
   onLogout: () => void;
-  onTopicSelect: (topic: Topic) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onTopicSelect }) => {
+const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
-  const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    loadSubjects();
-  }, [user.class_access, user.school_id]);
-
-  const loadSubjects = async () => {
+  const loadSubjects = useCallback(async () => {
+    console.log('=== DEBUG: Loading subjects ===');
+    console.log('User data:', user);
+    console.log('user.class_access:', user.class_access);
+    console.log('user.school_id:', user.school_id);
+    
     if (!user.class_access || user.class_access.length === 0) {
+      console.log('ERROR: No class access found');
       setError('No class access found. Please contact your school administrator.');
       setLoading(false);
       return;
     }
 
     if (!user.school_id) {
+      console.log('ERROR: No school_id found');
       setError('No school information found. Please contact your school administrator.');
       setLoading(false);
       return;
@@ -36,23 +36,19 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onTopicSelect }) 
       setLoading(true);
       setError('');
       
-      // Debug: Check what's in localStorage
-      console.log('Current token in localStorage:', localStorage.getItem('parent_auth_token'));
-      console.log('User school_id:', user.school_id);
-      console.log('User class access:', user.class_access);
-      
       const allSubjects: Subject[] = [];
       for (const classId of user.class_access) {
         try {
           console.log(`Loading subjects for school: ${user.school_id}, class: ${classId}`);
           const classSubjects = await TopicsService.getSubjectsBySchoolAndClass(user.school_id, classId);
-          console.log(`Subjects for school ${user.school_id}, class ${classId}:`, classSubjects);
+          console.log(`Subjects found for class ${classId}:`, classSubjects);
           allSubjects.push(...classSubjects);
         } catch (err) {
           console.error(`Error loading subjects for school ${user.school_id}, class ${classId}:`, err);
         }
       }
       
+      console.log('Total subjects loaded:', allSubjects);
       setSubjects(allSubjects);
     } catch (err) {
       setError('Failed to load subjects. Please try again.');
@@ -60,29 +56,13 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onTopicSelect }) 
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
-  const loadTopics = async (subject: Subject) => {
-    try {
-      setLoading(true);
-      setError('');
-      const subjectTopics = await TopicsService.getTopicsBySubject(subject.id);
-      setTopics(subjectTopics);
-      setSelectedSubject(subject);
-    } catch (err) {
-      setError('Failed to load topics. Please try again.');
-      console.error('Error loading topics:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    loadSubjects();
+  }, [loadSubjects]);
 
-  const handleBackToSubjects = () => {
-    setSelectedSubject(null);
-    setTopics([]);
-  };
-
-  if (loading && subjects.length === 0) {
+  if (loading) {
     return (
       <div>
         <div className="header">
@@ -135,59 +115,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onTopicSelect }) 
     );
   }
 
-  if (selectedSubject) {
-    return (
-      <div>
-        <div className="header">
-          <div className="container">
-            <div className="header-content">
-              <div>
-                <button onClick={handleBackToSubjects} className="back-button" style={{ marginRight: '16px' }}>
-                  ← Back
-                </button>
-                <div>
-                  <h1>{selectedSubject.name}</h1>
-                  <p>Topics and content</p>
-                </div>
-              </div>
-              <button onClick={onLogout} className="back-button">
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-        <div className="main-content">
-          <div className="container">
-            {loading ? (
-              <div className="loading">
-                <div className="spinner"></div>
-                <span>Loading topics...</span>
-              </div>
-            ) : topics.length === 0 ? (
-              <div className="empty-state">
-                <h3>No Topics Available</h3>
-                <p>No topics have been created for this subject yet. Topics are loaded from the backend API.</p>
-              </div>
-            ) : (
-              <div className="topic-list">
-                {topics.map((topic) => (
-                  <div
-                    key={topic.id}
-                    className="topic-item"
-                    onClick={() => onTopicSelect(topic)}
-                  >
-                    <h4>{topic.name}</h4>
-                    {topic.description && <p>{topic.description}</p>}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div>
       <div className="header">
@@ -221,7 +148,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onTopicSelect }) 
             Subjects
           </h2>
           <p style={{ color: 'rgba(255, 255, 255, 0.8)', marginBottom: '24px' }}>
-            Select a subject to view topics and content
+            Subjects available for your child's class
           </p>
           
           {subjects.length === 0 ? (
@@ -235,7 +162,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onTopicSelect }) 
                 <div
                   key={subject.id}
                   className="card subject-card"
-                  onClick={() => loadTopics(subject)}
                 >
                   <h3>{subject.name}</h3>
                   {subject.class_name && (
