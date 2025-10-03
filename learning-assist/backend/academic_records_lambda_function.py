@@ -171,10 +171,6 @@ def create_academic_record(data: Dict[str, Any]) -> Dict[str, Any]:
             'subject_id': data['subject_id'],
             'subject_name': data.get('subject_name', ''),
             'topic_name': data.get('topic_name', ''),
-            'teacher_id': data.get('teacher_id', ''),
-            'teacher_name': data.get('teacher_name', ''),
-            'parent_phone': data.get('parent_phone', ''),
-            'parent_name': data.get('parent_name', ''),
             'status': status,
             'start_date': data.get('start_date', ''),
             'end_date': data.get('end_date', ''),
@@ -182,6 +178,16 @@ def create_academic_record(data: Dict[str, Any]) -> Dict[str, Any]:
             'created_at': datetime.utcnow().isoformat(),
             'updated_at': datetime.utcnow().isoformat()
         }
+        
+        # Only add GSI key fields if they have values (DynamoDB doesn't allow empty strings in GSI keys)
+        if data.get('teacher_id'):
+            record['teacher_id'] = data['teacher_id']
+        if data.get('teacher_name'):
+            record['teacher_name'] = data['teacher_name']
+        if data.get('parent_phone'):
+            record['parent_phone'] = data['parent_phone']
+        if data.get('parent_name'):
+            record['parent_name'] = data['parent_name']
         
         # Add to DynamoDB
         table.put_item(Item=record)

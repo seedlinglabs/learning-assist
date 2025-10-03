@@ -165,7 +165,7 @@ def create_records_from_data(school_data, academic_year='2025-26'):
             
             print(f"    Creating record for: {subject_name}")
             
-            # Prepare record data
+            # Prepare record data (omit empty fields for GSI keys)
             record_data = {
                 'school_id': school_id,
                 'academic_year': academic_year,
@@ -175,15 +175,11 @@ def create_records_from_data(school_data, academic_year='2025-26'):
                 'subject_name': subject_name,
                 'topic_id': topic_id,
                 'topic_name': topic_name,
-                'teacher_id': '',
-                'teacher_name': '',
-                'parent_phone': '',
-                'parent_name': '',
                 'status': 'not_started',
-                'start_date': '',
-                'end_date': '',
                 'notes': f'Auto-generated record for {academic_year}'
             }
+            # Don't include teacher_id, teacher_name, parent_phone, parent_name if empty
+            # DynamoDB GSI doesn't allow empty strings
             
             try:
                 result = create_academic_record(record_data)
