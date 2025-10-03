@@ -201,15 +201,21 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
               {formData.userType === 'parent' && (
                 <>
                   <div className="form-group">
-                    <label htmlFor="phoneNumber">Phone Number *</label>
+                    <label htmlFor="phoneNumber">Phone Number * (10 digits)</label>
                     <input
                       type="tel"
                       id="phoneNumber"
                       name="phoneNumber"
                       value={formData.phoneNumber}
-                      onChange={handleInputChange}
-                      placeholder="Enter your phone number"
+                      onChange={(e) => {
+                        const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        setFormData({...formData, phoneNumber: digits});
+                      }}
+                      placeholder="9876543210"
                       required
+                      maxLength={10}
+                      minLength={10}
+                      pattern="[0-9]{10}"
                     />
                   </div>
 

@@ -33,21 +33,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, onRegisterCli
     }
   };
 
-  const formatPhoneNumber = (value: string) => {
-    const digits = value.replace(/\D/g, '');
-    
-    if (digits.length <= 10) {
-      if (digits.length <= 3) return digits;
-      if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
-      return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
-    }
-    
-    return `+${digits}`;
-  };
-
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatPhoneNumber(e.target.value);
-    setPhoneNumber(formatted);
+    // Only allow digits, max 10 characters
+    const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+    setPhoneNumber(digits);
   };
 
   return (
@@ -88,16 +77,18 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, onRegisterCli
               fontWeight: '600', 
               marginBottom: '8px' 
             }}>
-              Phone Number
+              Phone Number (10 digits)
             </label>
             <input
               type="tel"
               value={phoneNumber}
               onChange={handlePhoneChange}
-              placeholder="(555) 123-4567"
+              placeholder="9876543210"
               className="input"
               required
-              maxLength={17}
+              maxLength={10}
+              minLength={10}
+              pattern="[0-9]{10}"
             />
           </div>
 

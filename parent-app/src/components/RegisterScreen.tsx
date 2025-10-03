@@ -59,21 +59,10 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onRegisterSuccess, onBa
     return classAccess;
   };
 
-  const formatPhoneNumber = (value: string) => {
-    const digits = value.replace(/\D/g, '');
-    
-    if (digits.length <= 10) {
-      if (digits.length <= 3) return digits;
-      if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
-      return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
-    }
-    
-    return `+${digits}`;
-  };
-
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatPhoneNumber(e.target.value);
-    setFormData(prev => ({ ...prev, phoneNumber: formatted }));
+    // Only allow digits, max 10 characters
+    const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+    setFormData(prev => ({ ...prev, phoneNumber: digits }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -90,6 +79,12 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onRegisterSuccess, onBa
 
     if (formData.password.length < 6) {
       setError('Password must be at least 6 characters');
+      setLoading(false);
+      return;
+    }
+
+    if (formData.phoneNumber.length !== 10) {
+      setError('Phone number must be exactly 10 digits');
       setLoading(false);
       return;
     }
@@ -229,16 +224,18 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onRegisterSuccess, onBa
               fontWeight: '600', 
               marginBottom: '6px' 
             }}>
-              Phone Number *
+              Phone Number * (10 digits)
             </label>
             <input
               type="tel"
               value={formData.phoneNumber}
               onChange={handlePhoneChange}
-              placeholder="(555) 123-4567"
+              placeholder="9876543210"
               className="input"
               required
-              maxLength={17}
+              maxLength={10}
+              minLength={10}
+              pattern="[0-9]{10}"
               style={{ fontSize: '16px' }}
             />
           </div>
