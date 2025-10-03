@@ -1,16 +1,23 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Parent, Subject } from '../types';
 import { TopicsService } from '../services/topicsService';
+import { AcademicRecordsService } from '../services/academicRecordsService';
 
 interface DashboardProps {
   user: Parent;
   onLogout: () => void;
 }
 
+interface SubjectWithProgress extends Subject {
+  completedTopics?: number;
+  totalTopics?: number;
+}
+
 const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
-  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [subjects, setSubjects] = useState<SubjectWithProgress[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [completedTopicsBySubject, setCompletedTopicsBySubject] = useState<Map<string, Set<string>>>(new Map());
 
   const loadSubjects = useCallback(async () => {
     console.log('=== DEBUG: Loading subjects ===');
@@ -62,6 +69,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
       }
       
       console.log('Total subjects loaded:', allSubjects);
+      
+      // Load academic records for completed topics
+      await loadAcademicRecords(allSubjects);
+      
       setSubjects(allSubjects);
     } catch (err) {
       setError('Failed to load subjects. Please try again.');
@@ -70,6 +81,64 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
       setLoading(false);
     }
   }, [user]);
+
+  const loadAcademicRecords = async (subjectsList: Subject[]) => {
+    try {
+      const academicYear = '2025-26'; // Current academic year
+      console.log('Loading academic records for academic year:', academicYear);
+      
+      // Fetch academic records for all parent's classes
+      const allRecords = await AcademicRecordsService.getRecordsForParent(
+        user.school_id,
+        academicYear,
+        user.class_access
+      );
+      
+      console.log('Academic records loaded:', allRecords);
+      
+      // Group completed topics by subject
+      const completedBySubject = new Map<string, Set<string>>();
+      
+      for (const record of allRecords) {
+        if (record.status === 'completed') {
+          if (!completedBySubject.has(record.subject_id)) {
+            completedBySubject.set(record.subject_id, new Set());
+          }
+          completedBySubject.get(record.subject_id)!.add(record.topic_id);
+        }
+      }
+      
+      console.log('Completed topics by subject:', completedBySubject);
+      setCompletedTopicsBySubject(completedBySubject);
+      
+      // Update subjects with progress information
+      const updatedSubjects = await Promise.all(
+        subjectsList.map(async (subject) => {
+          try {
+            const topics = await TopicsService.getTopicsBySubject(subject.id);
+            const completedSet = completedBySubject.get(subject.id) || new Set();
+            
+            return {
+              ...subject,
+              totalTopics: topics.length,
+              completedTopics: completedSet.size
+            };
+          } catch (err) {
+            console.error(`Error loading topics for subject ${subject.id}:`, err);
+            return {
+              ...subject,
+              totalTopics: 0,
+              completedTopics: 0
+            };
+          }
+        })
+      );
+      
+      setSubjects(updatedSubjects);
+    } catch (err) {
+      console.error('Error loading academic records:', err);
+    }
+  };
 
   useEffect(() => {
     loadSubjects();
@@ -171,20 +240,68 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
             </div>
           ) : (
             <div className="subjects-grid">
-              {subjects.map((subject) => (
-                <div
-                  key={subject.id}
-                  className="card subject-card"
-                >
-                  <h3>{subject.name}</h3>
-                  {subject.class_name && (
-                    <p style={{ fontSize: '12px', color: '#daa429', fontWeight: '600', marginBottom: '4px' }}>
-                      {subject.class_name}
-                    </p>
-                  )}
-                  {subject.description && <p>{subject.description}</p>}
-                </div>
-              ))}
+              {subjects.map((subject) => {
+                const progress = subject.totalTopics && subject.totalTopics > 0
+                  ? Math.round((subject.completedTopics || 0) / subject.totalTopics * 100)
+                  : 0;
+                
+                return (
+                  <div
+                    key={subject.id}
+                    className="card subject-card"
+                  >
+                    <div style={{ marginBottom: '12px' }}>
+                      <h3>{subject.name}</h3>
+                      {subject.class_name && (
+                        <p style={{ fontSize: '12px', color: '#daa429', fontWeight: '600', marginBottom: '4px' }}>
+                          {subject.class_name}
+                        </p>
+                      )}
+                      {subject.description && <p style={{ fontSize: '14px', opacity: 0.8, marginTop: '8px' }}>{subject.description}</p>}
+                    </div>
+                    
+                    {/* Progress Information */}
+                    {subject.totalTopics !== undefined && (
+                      <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(218, 164, 41, 0.2)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                          <span style={{ fontSize: '13px', fontWeight: '600', color: '#4d2917' }}>
+                            Progress
+                          </span>
+                          <span style={{ fontSize: '13px', fontWeight: '600', color: '#daa429' }}>
+                            {subject.completedTopics || 0} / {subject.totalTopics} topics
+                          </span>
+                        </div>
+                        
+                        {/* Progress Bar */}
+                        <div style={{
+                          width: '100%',
+                          height: '8px',
+                          backgroundColor: 'rgba(218, 164, 41, 0.2)',
+                          borderRadius: '4px',
+                          overflow: 'hidden'
+                        }}>
+                          <div style={{
+                            width: `${progress}%`,
+                            height: '100%',
+                            backgroundColor: progress === 100 ? '#4caf50' : '#daa429',
+                            transition: 'width 0.3s ease'
+                          }} />
+                        </div>
+                        
+                        <div style={{ marginTop: '8px', textAlign: 'center' }}>
+                          <span style={{ 
+                            fontSize: '12px', 
+                            fontWeight: '600',
+                            color: progress === 100 ? '#4caf50' : '#666'
+                          }}>
+                            {progress}% Complete
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
