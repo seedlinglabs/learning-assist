@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Parent, Subject } from '../types';
+import { Parent, Subject, Topic } from '../types';
 import { TopicsService } from '../services/topicsService';
 import { AcademicRecordsService } from '../services/academicRecordsService';
 
@@ -11,13 +11,14 @@ interface DashboardProps {
 interface SubjectWithProgress extends Subject {
   completedTopics?: number;
   totalTopics?: number;
+  completedTopicsList?: Topic[];
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   const [subjects, setSubjects] = useState<SubjectWithProgress[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [completedTopicsBySubject, setCompletedTopicsBySubject] = useState<Map<string, Set<string>>>(new Map());
+  const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(new Set());
 
   const loadSubjects = useCallback(async () => {
     console.log('=== DEBUG: Loading subjects ===');
@@ -109,26 +110,32 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
       }
       
       console.log('Completed topics by subject:', completedBySubject);
-      setCompletedTopicsBySubject(completedBySubject);
       
-      // Update subjects with progress information
+      // Update subjects with progress information and completed topics list
       const updatedSubjects = await Promise.all(
         subjectsList.map(async (subject) => {
           try {
-            const topics = await TopicsService.getTopicsBySubject(subject.id);
+            const allTopics = await TopicsService.getTopicsBySubject(subject.id);
             const completedSet = completedBySubject.get(subject.id) || new Set();
+            
+            // Filter to get only completed topics
+            const completedTopicsList = allTopics.filter(topic => completedSet.has(topic.id));
+            
+            console.log(`Subject ${subject.name}: ${completedTopicsList.length} completed out of ${allTopics.length} topics`);
             
             return {
               ...subject,
-              totalTopics: topics.length,
-              completedTopics: completedSet.size
+              totalTopics: allTopics.length,
+              completedTopics: completedSet.size,
+              completedTopicsList: completedTopicsList
             };
           } catch (err) {
             console.error(`Error loading topics for subject ${subject.id}:`, err);
             return {
               ...subject,
               totalTopics: 0,
-              completedTopics: 0
+              completedTopics: 0,
+              completedTopicsList: []
             };
           }
         })
@@ -138,6 +145,18 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
     } catch (err) {
       console.error('Error loading academic records:', err);
     }
+  };
+
+  const toggleSubject = (subjectId: string) => {
+    setExpandedSubjects(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(subjectId)) {
+        newSet.delete(subjectId);
+      } else {
+        newSet.add(subjectId);
+      }
+      return newSet;
+    });
   };
 
   useEffect(() => {
@@ -244,6 +263,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                 const progress = subject.totalTopics && subject.totalTopics > 0
                   ? Math.round((subject.completedTopics || 0) / subject.totalTopics * 100)
                   : 0;
+                const isExpanded = expandedSubjects.has(subject.id);
+                const hasCompletedTopics = (subject.completedTopicsList?.length || 0) > 0;
                 
                 return (
                   <div
@@ -296,6 +317,82 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                           }}>
                             {progress}% Complete
                           </span>
+                        </div>
+                        
+                        {/* View Completed Topics Button */}
+                        {hasCompletedTopics && (
+                          <button
+                            onClick={() => toggleSubject(subject.id)}
+                            style={{
+                              width: '100%',
+                              marginTop: '12px',
+                              padding: '10px',
+                              backgroundColor: isExpanded ? 'rgba(218, 164, 41, 0.1)' : 'transparent',
+                              border: '1px solid #daa429',
+                              borderRadius: '6px',
+                              color: '#4d2917',
+                              fontSize: '13px',
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            {isExpanded ? '▼ Hide' : '▶'} Completed Topics ({subject.completedTopics})
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Completed Topics List */}
+                    {isExpanded && hasCompletedTopics && (
+                      <div style={{
+                        marginTop: '12px',
+                        paddingTop: '12px',
+                        borderTop: '1px solid rgba(218, 164, 41, 0.2)'
+                      }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {subject.completedTopicsList!.map((topic, index) => (
+                            <div
+                              key={topic.id}
+                              style={{
+                                padding: '12px',
+                                backgroundColor: 'rgba(76, 175, 80, 0.05)',
+                                border: '1px solid rgba(76, 175, 80, 0.2)',
+                                borderRadius: '6px',
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                gap: '10px'
+                              }}
+                            >
+                              <span style={{
+                                fontSize: '16px',
+                                color: '#4caf50',
+                                flexShrink: 0,
+                                marginTop: '2px'
+                              }}>
+                                ✓
+                              </span>
+                              <div style={{ flex: 1 }}>
+                                <div style={{
+                                  fontSize: '14px',
+                                  fontWeight: '600',
+                                  color: '#4d2917',
+                                  marginBottom: '4px'
+                                }}>
+                                  {index + 1}. {topic.name}
+                                </div>
+                                {topic.description && (
+                                  <div style={{
+                                    fontSize: '12px',
+                                    color: '#666',
+                                    lineHeight: '1.4'
+                                  }}>
+                                    {topic.description}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     )}
