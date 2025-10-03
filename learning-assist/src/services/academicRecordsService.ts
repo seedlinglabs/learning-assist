@@ -58,7 +58,7 @@ export interface UpdateAcademicRecordRequest {
 }
 
 const API_BASE_URL = process.env.REACT_APP_ACADEMIC_RECORDS_API_URL || 
-                     'https://xvq11x0421.execute-api.us-west-2.amazonaws.com/pre-prod';
+                     'https://a34mmmc1te.execute-api.us-west-2.amazonaws.com/pre-prod';
 
 class AcademicRecordsServiceClass {
   private getHeaders(): HeadersInit {
