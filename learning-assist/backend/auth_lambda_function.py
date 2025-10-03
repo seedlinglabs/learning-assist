@@ -217,6 +217,17 @@ def register_user(table, user_data):
                     'body': json.dumps({'error': f'Missing required field: {field}'})
                 }
         
+        # For parents, phone_number is mandatory
+        if user_data['user_type'] == 'parent' and not user_data.get('phone_number'):
+            return {
+                'statusCode': 400,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                'body': json.dumps({'error': 'Phone number is required for parents'})
+            }
+        
         # Generate unique user ID and hash password
         user_id = str(uuid.uuid4())
         password_hash, salt = hash_password(user_data['password'])

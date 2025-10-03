@@ -5,8 +5,9 @@ export interface User {
   email: string;
   name: string;
   user_type: 'teacher' | 'student' | 'parent' | 'admin';
-  class_access: string[]; // Array of class IDs that parents can access
+  class_access: string[]; // Array of class IDs (e.g., ["6A", "6B"] for grade 6 sections A and B)
   school_id: string;
+  phone_number?: string;
   is_active: boolean;
   created_at: string;
   last_login?: string;
@@ -22,8 +23,9 @@ export interface RegisterRequest {
   password: string;
   name: string;
   user_type: 'teacher' | 'student' | 'parent' | 'admin';
-  class_access?: string[]; // Required for parents
+  class_access?: string[]; // Required for parents (format: ["6A", "7B"] - grade + section)
   school_id?: string;
+  phone_number?: string; // Required for parents
 }
 
 export interface AuthResponse {
