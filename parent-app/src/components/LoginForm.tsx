@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Smartphone, User, ArrowRight, AlertCircle } from 'lucide-react';
 import { AuthService } from '../services/authService';
 import { LoginRequest } from '../types';
 
@@ -54,58 +53,46 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        <div className="card p-8">
-          <div className="text-center mb-8">
-            <div className="w-24 h-24 bg-seedling-gradient rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl border-4 border-white/20">
-              <Smartphone className="w-12 h-12 text-white" />
-            </div>
-            <h1 className="text-3xl font-bold text-seedling-dark mb-3">SeedlingLabs</h1>
-            <h2 className="text-xl font-semibold text-seedling-brown mb-3">Parent Dashboard</h2>
-            <p className="text-seedling-brown text-lg leading-relaxed opacity-80">Enter your phone number to access your child's learning progress</p>
+    <div>
+      <div>
+        <div>
+          <div>
+            <h1>SeedlingLabs</h1>
+            <h2>Parent Dashboard</h2>
+            <p>Enter your phone number to access your child's learning progress</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit}>
             <div>
-              <label htmlFor="phone" className="block text-sm font-semibold text-seedling-brown mb-3">
+              <label htmlFor="phone">
                 Phone Number
               </label>
-              <div className="relative">
-                <Smartphone className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-seedling-brown opacity-60" />
-                <input
-                  id="phone"
-                  type="tel"
-                  value={phoneNumber}
-                  onChange={handlePhoneChange}
-                  placeholder="(555) 123-4567"
-                  className="input pl-12"
-                  required
-                  maxLength={17}
-                />
-              </div>
+              <input
+                id="phone"
+                type="tel"
+                value={phoneNumber}
+                onChange={handlePhoneChange}
+                placeholder="(555) 123-4567"
+                required
+                maxLength={17}
+              />
             </div>
 
             <div>
-              <label htmlFor="name" className="block text-sm font-semibold text-seedling-brown mb-3">
+              <label htmlFor="name">
                 Your Name (Optional)
               </label>
-              <div className="relative">
-                <User className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-seedling-brown opacity-60" />
-                <input
-                  id="name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Enter your name"
-                  className="input pl-12"
-                />
-              </div>
+              <input
+                id="name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Enter your name"
+              />
             </div>
 
             {error && (
-              <div className="error-message flex items-center gap-2">
-                <AlertCircle className="w-5 h-5" />
+              <div>
                 {error}
               </div>
             )}
@@ -113,24 +100,13 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
             <button
               type="submit"
               disabled={loading || !phoneNumber}
-              className="btn btn-primary w-full"
             >
-              {loading ? (
-                <>
-                  <div className="loading-spinner" />
-                  Signing In...
-                </>
-              ) : (
-                <>
-                  Access Dashboard
-                  <ArrowRight className="w-5 h-5" />
-                </>
-              )}
+              {loading ? 'Signing In...' : 'Access Dashboard'}
             </button>
           </form>
 
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-500">
+          <div>
+            <p>
               By signing in, you agree to access your child's educational content
             </p>
           </div>

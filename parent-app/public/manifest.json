@@ -1,12 +1,18 @@
 {
-  "short_name": "SeedlingLabs",
-  "name": "SeedlingLabs Parent Dashboard",
-  "description": "Track your child's learning progress and access educational content",
+  "short_name": "Parent Portal",
+  "name": "SeedlingLabs Parent Portal",
+  "description": "Access your child's learning progress and educational content",
   "icons": [
     {
       "src": "favicon.ico",
       "sizes": "64x64 32x32 24x24 16x16",
       "type": "image/x-icon"
+    },
+    {
+      "src": "SeedlingLabsLogo.png",
+      "type": "image/png",
+      "sizes": "80x80",
+      "purpose": "any maskable"
     },
     {
       "src": "logo192.png",
@@ -28,13 +34,5 @@
   "orientation": "portrait-primary",
   "scope": "/",
   "lang": "en",
-  "categories": ["education", "productivity"],
-  "screenshots": [
-    {
-      "src": "logo512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "form_factor": "wide"
-    }
-  ]
+  "categories": ["education", "productivity"]
 }

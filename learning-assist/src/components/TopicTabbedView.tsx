@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FileText, Calendar, ExternalLink, Trash2, Save, Sparkles, GraduationCap, Search, Youtube, User, Users, ClipboardList, BookOpen, Plus, Edit3, X, Loader2 } from 'lucide-react';
 import { Topic, DocumentLink } from '../types';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { secureGeminiService } from '../services/secureGeminiService';
 import { youtubeService } from '../services/youtubeService';
 import DocumentDiscoveryModal from './DocumentDiscoveryModal';
@@ -17,6 +18,7 @@ type TabType = 'details' | 'lesson-plan' | 'teaching-guide' | 'group-discussion'
 
 const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted }) => {
   const { updateTopic, deleteTopic, loading, error, clearError, currentPath } = useApp();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('details');
   const [generatingAI, setGeneratingAI] = useState(false);
   const [findingVideos, setFindingVideos] = useState(false);
@@ -1045,14 +1047,14 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
         <div className="topic-detail-actions">
           <button
             onClick={generateAllAIContent}
-            disabled={generatingAI || loading || allAIContentExists}
-            className={`btn btn-sm ${allAIContentExists ? 'btn-success' : 'btn-primary'}`}
-            title={allAIContentExists ? 'All AI content has been generated' : anyAIContentExists ? 'Generate missing AI content for this topic' : 'Generate AI content for this topic'}
+            disabled={generatingAI || loading || (allAIContentExists && user?.email !== 's.p@seedlinglabs.com')}
+            className={`btn btn-sm ${allAIContentExists && user?.email !== 's.p@seedlinglabs.com' ? 'btn-success' : 'btn-primary'}`}
+            title={allAIContentExists && user?.email !== 's.p@seedlinglabs.com' ? 'All AI content has been generated' : anyAIContentExists ? 'Generate missing AI content for this topic' : 'Generate AI content for this topic'}
           >
             <Sparkles size={16} />
             {generatingAI 
               ? (aiGenerationStatus || 'Generating AI Content...') 
-              : allAIContentExists 
+              : allAIContentExists && user?.email !== 's.p@seedlinglabs.com'
                 ? 'All AI Content Generated' 
                 : anyAIContentExists
                   ? 'Generate Missing AI Content'

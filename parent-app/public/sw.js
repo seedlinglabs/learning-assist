@@ -1,5 +1,4 @@
-// Service Worker for Parent App PWA
-const CACHE_NAME = 'parent-app-v1';
+const CACHE_NAME = 'parent-portal-v1';
 const urlsToCache = [
   '/',
   '/static/js/bundle.js',

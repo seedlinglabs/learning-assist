@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Parent, Topic } from './types';
+import { Parent } from './types';
 import { AuthService } from './services/authService';
-import LoginForm from './components/LoginForm';
+import LoginScreen from './components/LoginScreen';
 import Dashboard from './components/Dashboard';
 import TopicDetail from './components/TopicDetail';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
-import './styles/globals.css';
+import './App.css';
 
 type AppState = 'loading' | 'login' | 'dashboard' | 'topic-detail';
 
 function App() {
   const [appState, setAppState] = useState<AppState>('loading');
   const [user, setUser] = useState<Parent | null>(null);
-  const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
+  const [selectedTopic, setSelectedTopic] = useState<any>(null);
 
   useEffect(() => {
     checkAuthStatus();
@@ -49,7 +49,7 @@ function App() {
     setAppState('login');
   };
 
-  const handleTopicSelect = (topic: Topic) => {
+  const handleTopicSelect = (topic: any) => {
     setSelectedTopic(topic);
     setAppState('topic-detail');
   };
@@ -61,17 +61,15 @@ function App() {
 
   if (appState === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="loading-spinner mx-auto mb-4" />
-          <p className="text-gray-600">Loading...</p>
-        </div>
+      <div className="loading">
+        <div className="spinner"></div>
+        <span>Loading...</span>
       </div>
     );
   }
 
   if (appState === 'login') {
-    return <LoginForm onLoginSuccess={handleLoginSuccess} />;
+    return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
   }
 
   if (appState === 'dashboard' && user) {

@@ -1,4 +1,4 @@
-import { Parent, LoginRequest, AuthResponse, ApiError } from '../types';
+import { Parent, LoginRequest, AuthResponse } from '../types';
 
 const AUTH_API_BASE_URL = 'https://xvq11x0421.execute-api.us-west-2.amazonaws.com/pre-prod';
 
@@ -7,7 +7,6 @@ class AuthServiceClass {
   private user: Parent | null = null;
 
   constructor() {
-    // Load token from localStorage on initialization
     this.token = localStorage.getItem('parent_auth_token');
     const storedUser = localStorage.getItem('parent_auth_user');
     if (storedUser) {
@@ -50,17 +49,21 @@ class AuthServiceClass {
 
   async loginWithPhone(phoneData: LoginRequest): Promise<AuthResponse> {
     try {
+      console.log('Attempting login with phone data:', phoneData);
       const response = await this.makeRequest('/auth/login', {
         method: 'POST',
         body: JSON.stringify(phoneData),
       });
 
+      console.log('Login response:', response);
       this.token = response.token;
       this.user = response.user;
       
-      // Store in localStorage
       localStorage.setItem('parent_auth_token', this.token!);
       localStorage.setItem('parent_auth_user', JSON.stringify(this.user));
+
+      console.log('Token stored:', this.token);
+      console.log('User stored:', this.user);
 
       return response;
     } catch (error) {
@@ -121,5 +124,4 @@ class AuthServiceClass {
   }
 }
 
-// Export singleton instance
 export const AuthService = new AuthServiceClass();

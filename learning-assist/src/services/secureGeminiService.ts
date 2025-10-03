@@ -1044,7 +1044,7 @@ Return only valid JSON in this format:
           }]
         }],
         generationConfig: {
-          temperature: 0.7,
+          temperature: 0.9,
           topK: 40,
           topP: 0.95,
           maxOutputTokens: 30000,
@@ -1117,25 +1117,29 @@ Return only valid JSON in this format:
     subject: string
   ): Promise<{ success: boolean; worksheets?: string; error?: string }> {
     try {
-      const prompt = `Generate comprehensive worksheets for the topic "${topicName}" for ${classLevel} students studying ${subject}.
+      const prompt = `Generate creative and engaging worksheets for the topic "${topicName}" for ${classLevel} students studying ${subject}.
 
 Topic Description: ${description}
 
-Create worksheets inspired by NCERT's approach (referencing [https://ncert.nic.in/cncl/worksheet.php](https://ncert.nic.in/cncl/worksheet.php)) with the following structure:
+Create innovative worksheets inspired by NCERT's approach (referencing [https://ncert.nic.in/cncl/worksheet.php](https://ncert.nic.in/cncl/worksheet.php)) with the following creative structure:
 
-1. **Worksheet 1: Foundation Practice** - Basic concepts and skills
-2. **Worksheet 2: Application Practice** - Problem-solving and application
-3. **Worksheet 3: Extension Activities** - Advanced challenges and creative tasks
+1. **Worksheet 1: Creative Foundation** - Fun, imaginative activities that build basic concepts through storytelling, games, and interactive elements
+2. **Worksheet 2: Real-World Adventures** - Problem-solving scenarios, case studies, and hands-on applications that connect learning to everyday life
+3. **Worksheet 3: Innovation Lab** - Creative challenges, design thinking activities, and open-ended projects that encourage critical thinking
 
-Each worksheet should include:
-- Clear instructions
-- Age-appropriate activities
-- Varied question types (fill-in-the-blanks, matching, short answers, etc.)
-- Visual elements where helpful
-- Answer keys for teachers
-- Parent engagement suggestions
+Each worksheet should be CREATIVE and include:
+- Engaging storylines, characters, or scenarios that make learning fun
+- Interactive elements like puzzles, games, role-playing, or creative writing
+- Real-world connections and practical applications
+- Visual storytelling elements and creative formatting
+- Varied question types (story-based problems, creative challenges, design tasks, etc.)
+- Age-appropriate but imaginative activities that spark curiosity
+- Creative answer keys with explanations and extension ideas
+- Fun parent engagement activities that turn learning into play
 
-Format the response as structured JSON. Make content engaging, educational, and suitable for both classroom and homework use.
+BE CREATIVE: Use storytelling, gamification, real-world scenarios, and imaginative elements. Make students excited to learn!
+
+Format the response as structured JSON. Make content highly engaging, creative, educational, and suitable for both classroom and homework use.
 
 ${documentUrls.length > 0 ? `Reference these documents: ${documentUrls.join(', ')}` : ''}
 
@@ -1143,17 +1147,17 @@ Return only valid JSON in this format:
 {
   "worksheets": [
     {
-      "title": "Worksheet 1: Foundation Practice",
-      "instructions": "Clear instructions for students",
+      "title": "Worksheet 1: Creative Foundation",
+      "instructions": "Engaging, story-based instructions that capture student interest",
       "activities": [
         {
-          "type": "fill in the blanks",
-          "question": "Question text with ___ blanks",
-          "answer": "Expected answer"
+          "type": "creative storytelling",
+          "question": "Imaginative question with creative elements and real-world connections",
+          "answer": "Expected answer with creative explanations"
         }
       ],
-      "answerKey": "Answers for teachers",
-      "parentTips": "How parents can help"
+      "answerKey": "Creative answers with teaching tips and extension ideas",
+      "parentTips": "Fun ways parents can engage with creative learning at home"
     }
   ]
 }`;
@@ -1165,7 +1169,7 @@ Return only valid JSON in this format:
           }]
         }],
         generationConfig: {
-          temperature: 0.7,
+          temperature: 0.9,
           topK: 40,
           topP: 0.95,
           maxOutputTokens: 30000,
@@ -1277,8 +1281,8 @@ Return only valid JSON in this format:
    * Format worksheets into readable text
    */
   private formatWorksheets(data: any): string {
-    let formatted = '# Worksheets\n\n';
-    formatted += '*Inspired by NCERT worksheet methodology*\n\n';
+    let formatted = '# Creative Worksheets\n\n';
+    formatted += '*Innovative, engaging activities inspired by NCERT methodology*\n\n';
     
     if (data.worksheets && data.worksheets.length > 0) {
       data.worksheets.forEach((worksheet: any, index: number) => {

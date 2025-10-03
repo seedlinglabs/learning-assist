@@ -11,6 +11,18 @@ export interface Parent {
   last_login?: string;
 }
 
+export interface Subject {
+  id: string;
+  name: string;
+  description?: string;
+  class_id: string;
+  school_id: string;
+  school_name?: string;
+  class_name?: string;
+  created_at: string | Date;
+  updated_at: string | Date;
+}
+
 export interface Topic {
   id: string;
   name: string;
