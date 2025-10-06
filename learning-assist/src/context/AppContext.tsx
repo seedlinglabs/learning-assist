@@ -53,7 +53,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState<boolean>(false);
   const [classLoading, setClassLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedModel, setSelectedModelState] = useState<string>('gemini-2.5-pro');
+  const [selectedModel, setSelectedModelState] = useState<string>('deepseek-chat');
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
 
   // Filter schools and classes based on user access

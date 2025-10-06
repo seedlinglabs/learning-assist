@@ -45,7 +45,7 @@ export interface GeminiResponse {
 }
 
 class SecureGeminiService {
-  private selectedModel: string = 'gemini-2.5-pro';
+  private selectedModel: string = 'deepseek-chat';
 
   setModel(model: string) {
     this.selectedModel = model;
