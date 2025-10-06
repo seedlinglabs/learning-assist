@@ -50,6 +50,7 @@ export interface Topic {
 
 export interface LoginRequest {
   phone_number: string;
+  password: string;
   name?: string;
   class_access?: string[];
   school_id?: string;

@@ -27,8 +27,10 @@ usage_table = dynamodb.Table('learning_assist_gemini_usage')
 # API configuration
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 CLAUDE_API_KEY = os.environ.get('CLAUDE_API_KEY')
+DEEPSEEK_API_KEY = os.environ.get('DEEPSEEK_API_KEY')
 GEMINI_API_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models'
 CLAUDE_API_BASE_URL = 'https://api.anthropic.com/v1/messages'
+DEEPSEEK_API_BASE_URL = 'https://api.deepseek.com/v1/chat/completions'
 
 # CRITICAL FIX: Set timeout to be less than the 80s API Gateway timeout.
 REQUEST_TIMEOUT = 80
@@ -36,7 +38,9 @@ REQUEST_TIMEOUT = 80
 # Supported models
 SUPPORTED_MODELS = {
     'gemini-2.5-pro': 'gemini',
-    'claude-3-5-sonnet-20241022': 'claude'
+    'claude-3-5-sonnet-20241022': 'claude',
+    'deepseek-chat': 'deepseek',
+    'deepseek-coder': 'deepseek'
 }
 
 # --- Utility Functions ---
@@ -56,7 +60,7 @@ def lambda_handler(event, context):
             logger.info("Handling OPTIONS request")
             return {'statusCode': 200, 'headers': headers, 'body': ''}
         
-        if not GEMINI_API_KEY and not CLAUDE_API_KEY:
+        if not GEMINI_API_KEY and not CLAUDE_API_KEY and not DEEPSEEK_API_KEY:
             logger.error("No API keys configured")
             return {'statusCode': 500, 'headers': headers, 'body': json.dumps({'error': 'No API keys configured on server'})}
         
@@ -170,6 +174,8 @@ def handle_ai_proxy(endpoint_name, body, user_id, headers):
             return handle_gemini_request(endpoint_name, body, user_id, headers, model)
         elif model_provider == 'claude':
             return handle_claude_request(endpoint_name, body, user_id, headers, model)
+        elif model_provider == 'deepseek':
+            return handle_deepseek_request(endpoint_name, body, user_id, headers, model)
         else:
             return {
                 'statusCode': 400,
@@ -202,6 +208,14 @@ def handle_gemini_request(endpoint_name, body, user_id, headers, model):
     try:
         # Remove model from body before sending to Gemini
         gemini_body = {k: v for k, v in body.items() if k != 'model'}
+        
+        # Validate max_tokens for Gemini (max 8192 for most models)
+        if 'generationConfig' in gemini_body and 'maxOutputTokens' in gemini_body['generationConfig']:
+            original_max_tokens = gemini_body['generationConfig']['maxOutputTokens']
+            max_tokens = max(1, min(original_max_tokens, 8192))  # Clamp to valid range
+            if original_max_tokens != max_tokens:
+                logger.warning(f"Gemini max_tokens clamped from {original_max_tokens} to {max_tokens} (valid range: 1-8192)")
+                gemini_body['generationConfig']['maxOutputTokens'] = max_tokens
         
         # Ensure 'generateContent' is used as the method in the URL path
         # Note: If the user intended custom endpoints to map to other API methods (e.g., embedContent),
@@ -319,6 +333,143 @@ def handle_claude_request(endpoint_name, body, user_id, headers, model):
             'body': json.dumps({'error': 'Failed to connect to Claude API'})
         }
 
+def handle_deepseek_request(endpoint_name, body, user_id, headers, model):
+    """Handle DeepSeek API requests"""
+    if not DEEPSEEK_API_KEY:
+        return {
+            'statusCode': 500,
+            'headers': headers,
+            'body': json.dumps({'error': 'DeepSeek API key not configured'})
+        }
+    
+    try:
+        deepseek_body = convert_gemini_to_deepseek_format(body, model)
+        
+        deepseek_response = requests.post(
+            DEEPSEEK_API_BASE_URL,
+            headers={
+                'Content-Type': 'application/json',
+                'Authorization': f'Bearer {DEEPSEEK_API_KEY}'
+            },
+            json=deepseek_body,
+            timeout=REQUEST_TIMEOUT
+        )
+        
+        logger.info(f"DeepSeek API response status: {deepseek_response.status_code}")
+        
+        # Log response details for debugging
+        if deepseek_response.status_code != 200:
+            logger.error(f"DeepSeek API error response: {deepseek_response.text}")
+        
+        response_body = deepseek_response.json()
+        
+        # Convert DeepSeek response back to Gemini format
+        gemini_format_response = convert_deepseek_to_gemini_format(response_body)
+        
+        # Extract token usage from the *original* DeepSeek response for tracking
+        tokens_used = 0
+        if 'usage' in response_body:
+            tokens_used = response_body['usage'].get('prompt_tokens', 0) + response_body['usage'].get('completion_tokens', 0)
+        
+        track_usage(user_id, f"{endpoint_name}-{model}", tokens_used)
+        
+        return {
+            'statusCode': deepseek_response.status_code,
+            'headers': headers,
+            'body': json.dumps(gemini_format_response)
+        }
+        
+    except requests.exceptions.Timeout:
+        logger.error(f"Request timeout after {REQUEST_TIMEOUT}s - DeepSeek API is slow")
+        return {
+            'statusCode': 504,
+            'headers': headers,
+            'body': json.dumps({'error': 'Request timeout'})
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"DeepSeek request network error: {str(e)}")
+        return {
+            'statusCode': 502,
+            'headers': headers,
+            'body': json.dumps({'error': 'Failed to connect to DeepSeek API'})
+        }
+
+def convert_gemini_to_deepseek_format(gemini_body, model):
+    """Convert Gemini API format to DeepSeek API format"""
+    messages = []
+    if 'contents' in gemini_body:
+        # Convert Gemini contents to DeepSeek messages format
+        for content in gemini_body['contents']:
+            role = 'user' if content.get('role', 'user') == 'user' else 'assistant'
+            # DeepSeek supports text content
+            if 'parts' in content:
+                for part in content['parts']:
+                    if 'text' in part:
+                        messages.append({
+                            'role': role,
+                            'content': part['text']
+                        })
+    
+    # Extract generation configuration
+    generation_config = gemini_body.get('generationConfig', {})
+    
+    # Ensure max_tokens is within DeepSeek's valid range [1, 8192]
+    original_max_tokens = generation_config.get('maxOutputTokens', 2048)
+    max_tokens = max(1, min(original_max_tokens, 8192))  # Clamp to valid range
+    
+    if original_max_tokens != max_tokens:
+        logger.warning(f"DeepSeek max_tokens clamped from {original_max_tokens} to {max_tokens} (valid range: 1-8192)")
+    
+    deepseek_body = {
+        'model': model,
+        'messages': messages,
+        # DeepSeek max_tokens parameter (validated range)
+        'max_tokens': max_tokens,
+        # DeepSeek temperature parameter
+        'temperature': generation_config.get('temperature', 0.7),
+        # DeepSeek stream parameter (set to false for non-streaming)
+        'stream': False
+    }
+    
+    logger.info(f"DeepSeek request body: model={model}, max_tokens={max_tokens}, temperature={deepseek_body['temperature']}")
+    
+    return deepseek_body
+
+def convert_deepseek_to_gemini_format(deepseek_response):
+    """
+    Convert DeepSeek API response to Gemini API format.
+    """
+    # Extract response text
+    text_content = ''
+    if 'choices' in deepseek_response and deepseek_response['choices']:
+        text_content = deepseek_response['choices'][0].get('message', {}).get('content', '')
+        
+    # Determine finish reason based on DeepSeek's finish_reason
+    finish_reason = 'STOP'
+    if 'choices' in deepseek_response and deepseek_response['choices']:
+        choice = deepseek_response['choices'][0]
+        if choice.get('finish_reason') == 'length':
+            finish_reason = 'MAX_TOKENS'
+        elif choice.get('finish_reason') == 'stop':
+            finish_reason = 'STOP'
+        
+    # Extract token usage for consistency
+    tokens_used = 0
+    if 'usage' in deepseek_response:
+        tokens_used = deepseek_response['usage'].get('prompt_tokens', 0) + deepseek_response['usage'].get('completion_tokens', 0)
+    
+    return {
+        'candidates': [{
+            'content': {
+                'parts': [{'text': text_content}]
+            },
+            'finishReason': finish_reason
+        }],
+        'usageMetadata': {
+            'totalTokenCount': tokens_used
+        }
+    }
+
 def convert_gemini_to_claude_format(gemini_body, model):
     """Convert Gemini API format to Claude API format"""
     messages = []
@@ -338,14 +489,23 @@ def convert_gemini_to_claude_format(gemini_body, model):
     # Extract generation configuration
     generation_config = gemini_body.get('generationConfig', {})
     
+    # Ensure max_tokens is within Claude's valid range [1, 8192]
+    original_max_tokens = generation_config.get('maxOutputTokens', 4096)
+    max_tokens = max(1, min(original_max_tokens, 8192))  # Clamp to valid range
+    
+    if original_max_tokens != max_tokens:
+        logger.warning(f"Claude max_tokens clamped from {original_max_tokens} to {max_tokens} (valid range: 1-8192)")
+    
     claude_body = {
         'model': model,
         'messages': messages,
-        # Default Claude max_tokens is 4096. Mapping Gemini's maxOutputTokens.
-        'max_tokens': generation_config.get('maxOutputTokens', 4096),
+        # Claude max_tokens parameter (validated range)
+        'max_tokens': max_tokens,
         # Mapping Gemini's temperature
         'temperature': generation_config.get('temperature', 0.7)
     }
+    
+    logger.info(f"Claude request body: model={model}, max_tokens={max_tokens}, temperature={claude_body['temperature']}")
     
     return claude_body
 

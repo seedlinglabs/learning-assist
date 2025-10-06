@@ -292,10 +292,10 @@ def register_user(table, user_data):
         }
 
 def login_user(table, login_data):
-    """Authenticate user with email/password or phone-only (for parents)"""
+    """Authenticate user with email/password or phone/password (for parents)"""
     try:
-        # Check if this is phone-only login (for parent app)
-        if 'phone_number' in login_data and 'email' not in login_data and 'password' not in login_data:
+        # Check if this is phone-based login (for parent app)
+        if 'phone_number' in login_data and 'email' not in login_data:
             return phone_login_user(table, login_data)
         
         # Validate required fields for email/password login
@@ -306,7 +306,7 @@ def login_user(table, login_data):
                     'Content-Type': 'application/json',
                     'Access-Control-Allow-Origin': '*'
                 },
-                'body': json.dumps({'error': 'Email and password are required for standard login, or phone_number for parent login'})
+                'body': json.dumps({'error': 'Email and password are required for standard login, or phone_number and password for parent login'})
             }
         
         email = login_data['email'].lower().strip()
@@ -380,7 +380,7 @@ def login_user(table, login_data):
         }
 
 def phone_login_user(table, login_data):
-    """Authenticate user with phone number only (for parent app)"""
+    """Authenticate user with phone number and password (for parent app)"""
     try:
         # Validate required fields
         if 'phone_number' not in login_data:
@@ -391,6 +391,17 @@ def phone_login_user(table, login_data):
                     'Access-Control-Allow-Origin': '*'
                 },
                 'body': json.dumps({'error': 'Phone number is required'})
+            }
+        
+        # Check if password is provided for parent login
+        if 'password' not in login_data:
+            return {
+                'statusCode': 400,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                'body': json.dumps({'error': 'Password is required for parent login'})
             }
         
         phone_number = login_data['phone_number'].strip()
@@ -484,6 +495,22 @@ def phone_login_user(table, login_data):
                     'success': False,
                     'message': 'This account has been deactivated. Please contact your school administrator.',
                     'error': 'ACCOUNT_DEACTIVATED'
+                })
+            }
+        
+        # Verify password for parent login
+        password = login_data['password']
+        if not verify_password(password, user['password_hash'], user['salt']):
+            return {
+                'statusCode': 401,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                'body': json.dumps({
+                    'success': False,
+                    'message': 'Invalid phone number or password',
+                    'error': 'INVALID_CREDENTIALS'
                 })
             }
         

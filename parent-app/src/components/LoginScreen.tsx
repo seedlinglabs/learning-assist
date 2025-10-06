@@ -9,7 +9,7 @@ interface LoginScreenProps {
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, onRegisterClick }) => {
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [name, setName] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -21,7 +21,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, onRegisterCli
     try {
       const loginData: LoginRequest = {
         phone_number: phoneNumber,
-        name: name || 'Parent'
+        password: password
       };
 
       const response = await AuthService.loginWithPhone(loginData);
@@ -100,14 +100,15 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, onRegisterCli
               fontWeight: '600', 
               marginBottom: '8px' 
             }}>
-              Your Name (Optional)
+              Password
             </label>
             <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Enter your name"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter your password"
               className="input"
+              required
             />
           </div>
 
@@ -119,7 +120,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, onRegisterCli
 
           <button
             type="submit"
-            disabled={loading || !phoneNumber}
+            disabled={loading || !phoneNumber || !password}
             className="btn btn-primary"
           >
             {loading ? 'Signing In...' : 'Access Dashboard'}

@@ -58,7 +58,9 @@ class SecureGeminiService {
   getAvailableModels(): { id: string; name: string; provider: string }[] {
     return [
       { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'Google' },
-      { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', provider: 'Anthropic' }
+      { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', provider: 'Anthropic' },
+      { id: 'deepseek-chat', name: 'DeepSeek Chat', provider: 'DeepSeek' },
+      { id: 'deepseek-coder', name: 'DeepSeek Coder', provider: 'DeepSeek' }
     ];
   }
 
