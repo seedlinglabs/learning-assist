@@ -78,7 +78,7 @@ class ChapterPlannerService {
       }
 
       console.log('Generated response received, parsing with content extraction...');
-      return this.parseSuggestionsWithContent(generatedText, truncatedContent, chapterName);
+      return this.parseSuggestionsWithContent(generatedText, truncatedContent, chapterName, numberOfSplits);
       
     } catch (error) {
       console.error('Chapter analysis error:', error);
@@ -135,7 +135,7 @@ GUIDELINES:
   /**
    * Parse suggestions and extract actual content from original text
    */
-  private static parseSuggestionsWithContent(response: string, originalContent: string, chapterName?: string): TopicSuggestion[] {
+  private static parseSuggestionsWithContent(response: string, originalContent: string, chapterName: string | undefined, numberOfSplits: number): TopicSuggestion[] {
     try {
       // Extract JSON from response
       let jsonString = response.trim();
@@ -155,13 +155,28 @@ GUIDELINES:
       }
       
       jsonString = this.fixCommonJsonIssues(jsonString);
-      const parsed = JSON.parse(jsonString);
+      let parsed = JSON.parse(jsonString);
       
       if (!Array.isArray(parsed)) {
         throw new Error('Response is not an array');
       }
 
-      console.log(`[ChapterPlanner] Parsed ${parsed.length} session outlines`);
+      console.log(`[ChapterPlanner] Parsed ${parsed.length} session outlines (requested: ${numberOfSplits})`);
+
+      // Validate count matches requested splits
+      if (parsed.length !== numberOfSplits) {
+        console.warn(`[ChapterPlanner] AI returned ${parsed.length} topics but ${numberOfSplits} were requested. Adjusting...`);
+        
+        // If too many, take first N
+        if (parsed.length > numberOfSplits) {
+          parsed = parsed.slice(0, numberOfSplits);
+        }
+        // If too few, use manual splits as fallback
+        else if (parsed.length < numberOfSplits) {
+          console.log(`[ChapterPlanner] Falling back to manual splits to ensure ${numberOfSplits} topics`);
+          return this.createManualSplits(originalContent, numberOfSplits, chapterName);
+        }
+      }
 
       // Validate positions and extract actual content
       const suggestions = this.extractContentFromPositions(parsed, originalContent, chapterName);
@@ -173,8 +188,8 @@ GUIDELINES:
       console.error('[ChapterPlanner] Failed to parse suggestions with content:', error);
       console.error('[ChapterPlanner] Raw response:', response);
       
-      // Fallback: create equal splits manually
-      return this.createManualSplits(originalContent, 4, chapterName);
+      // Fallback: create equal splits manually using the requested number
+      return this.createManualSplits(originalContent, numberOfSplits, chapterName);
     }
   }
 
