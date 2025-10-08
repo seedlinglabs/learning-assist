@@ -1,6 +1,5 @@
 import { Topic } from '../types';
 import { topicsAPI } from './api';
-import { secureGeminiService } from './secureGeminiService';
 
 export interface TopicSuggestion {
   name: string;
@@ -31,7 +30,7 @@ class ChapterPlannerService {
   private static readonly GEMINI_PROXY_URL = process.env.REACT_APP_GEMINI_PROXY_URL || 'https://xvq11x0421.execute-api.us-west-2.amazonaws.com/pre-prod/gemini';
 
   /**
-   * Analyze textbook content and generate topic suggestions with actual content splits
+   * Analyze textbook content and generate topic suggestions
    */
   static async analyzeTextbookContent(
     content: string,
@@ -41,7 +40,7 @@ class ChapterPlannerService {
     numberOfSplits: number = 4
   ): Promise<TopicSuggestion[]> {
     try {
-      // Truncate content if it's too large
+      // Truncate content if it's too large (limit to ~30,000 characters to leave room for prompt)
       const maxContentLength = 100000;
       const truncatedContent = content.length > maxContentLength 
         ? content.substring(0, maxContentLength) + '\n\n[Content truncated for processing...]'
@@ -49,7 +48,7 @@ class ChapterPlannerService {
       
       console.log(`Content length: ${content.length}, Using: ${truncatedContent.length}`);
       
-      const prompt = this.buildOptimizedPrompt(truncatedContent, subject, classLevel, chapterName, numberOfSplits);
+      const prompt = this.buildChapterAnalysisPrompt(truncatedContent, subject, classLevel, chapterName, numberOfSplits);
       
       const payload = {
         contents: [{
@@ -58,15 +57,14 @@ class ChapterPlannerService {
           }]
         }],
         generationConfig: {
-          temperature: 0.3,
+          temperature: 0.4,
           topK: 20,
-          topP: 0.8,
+          topP: 0.85,
           maxOutputTokens: 8000,
         }
       };
 
-      console.log('Sending optimized prompt to Gemini...');
-      const response = await secureGeminiService.makeSecureRequest('analyze-chapter', payload);
+      const response = await this.makeSecureRequest('analyze-chapter', payload);
       
       if (!response.success) {
         throw new Error(response.error || 'Failed to analyze chapter content');
@@ -77,262 +75,13 @@ class ChapterPlannerService {
         throw new Error('No analysis generated');
       }
 
-      console.log('Generated response received, parsing with content extraction...');
-      return this.parseSuggestionsWithContent(generatedText, truncatedContent, chapterName, numberOfSplits);
+      console.log('Generated text:', generatedText);
+      return this.parseTopicSuggestions(generatedText);
       
     } catch (error) {
       console.error('Chapter analysis error:', error);
       throw new Error(error instanceof Error ? error.message : 'Failed to analyze chapter content');
     }
-  }
-
-  /**
-   * OPTIMIZED PROMPT for content splitting
-   */
-  private static buildOptimizedPrompt(
-    content: string,
-    subject: string,
-    classLevel: string,
-    chapterName?: string,
-    numberOfSplits: number = 4
-  ): string {
-    const chapterContext = chapterName ? `Chapter: ${chapterName}\n` : '';
-    
-    return `You are an expert educational planner. Analyze this ${subject} content for ${classLevel} and split it into exactly ${numberOfSplits} logical teaching sessions.
-
-${chapterContext}
-CONTENT TO SPLIT:
-${content}
-
-INSTRUCTIONS:
-- Split the content into exactly ${numberOfSplits} sequential parts
-- Each session should be 35-45 minutes
-- Identify natural breakpoints in the content
-- Each session should have clear learning objectives
-- Maintain logical flow between sessions
-
-OUTPUT FORMAT - Return ONLY valid JSON array:
-[
-  {
-    "name": "Session 1: [Specific Topic Name]",
-    "startPosition": 0,
-    "endPosition": 1500,
-    "estimatedMinutes": 40,
-    "learningObjectives": ["Objective 1", "Objective 2", "Objective 3"],
-    "partNumber": 1
-  }
-]
-
-GUIDELINES:
-- startPosition: character position where this session's content begins
-- endPosition: character position where this session's content ends
-- Sessions should cover the entire content (first startPosition: 0, last endPosition: ${content.length})
-- Positions should be sequential and non-overlapping
-- Choose natural breakpoints at paragraph boundaries where possible
-- Return ONLY JSON, no additional text`;
-  }
-
-  /**
-   * Parse suggestions and extract actual content from original text
-   */
-  private static parseSuggestionsWithContent(response: string, originalContent: string, chapterName: string | undefined, numberOfSplits: number): TopicSuggestion[] {
-    try {
-      // Extract JSON from response
-      let jsonString = response.trim();
-      jsonString = jsonString.replace(/```json\s*/g, '').replace(/```\s*/g, '');
-      
-      let jsonMatch = jsonString.match(/\[[\s\S]*?\]/);
-      if (!jsonMatch) {
-        const firstBracket = jsonString.indexOf('[');
-        const lastBracket = jsonString.lastIndexOf(']');
-        if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
-          jsonString = jsonString.substring(firstBracket, lastBracket + 1);
-        } else {
-          throw new Error('No valid JSON array found in response');
-        }
-      } else {
-        jsonString = jsonMatch[0];
-      }
-      
-      jsonString = this.fixCommonJsonIssues(jsonString);
-      let parsed = JSON.parse(jsonString);
-      
-      if (!Array.isArray(parsed)) {
-        throw new Error('Response is not an array');
-      }
-
-      console.log(`[ChapterPlanner] Parsed ${parsed.length} session outlines (requested: ${numberOfSplits})`);
-
-      // Validate count matches requested splits
-      if (parsed.length !== numberOfSplits) {
-        console.warn(`[ChapterPlanner] AI returned ${parsed.length} topics but ${numberOfSplits} were requested. Adjusting...`);
-        
-        // If too many, take first N
-        if (parsed.length > numberOfSplits) {
-          parsed = parsed.slice(0, numberOfSplits);
-        }
-        // If too few, use manual splits as fallback
-        else if (parsed.length < numberOfSplits) {
-          console.log(`[ChapterPlanner] Falling back to manual splits to ensure ${numberOfSplits} topics`);
-          return this.createManualSplits(originalContent, numberOfSplits, chapterName);
-        }
-      }
-
-      // Validate positions and extract actual content
-      const suggestions = this.extractContentFromPositions(parsed, originalContent, chapterName);
-      
-      console.log(`[ChapterPlanner] Successfully extracted content for ${suggestions.length} sessions`);
-      return suggestions;
-
-    } catch (error) {
-      console.error('[ChapterPlanner] Failed to parse suggestions with content:', error);
-      console.error('[ChapterPlanner] Raw response:', response);
-      
-      // Fallback: create equal splits manually using the requested number
-      return this.createManualSplits(originalContent, numberOfSplits, chapterName);
-    }
-  }
-
-  /**
-   * Extract actual content based on position markers
-   */
-  private static extractContentFromPositions(parsedData: any[], originalContent: string, chapterName?: string): TopicSuggestion[] {
-    const suggestions: TopicSuggestion[] = [];
-    let lastEndPosition = 0;
-
-    for (let i = 0; i < parsedData.length; i++) {
-      const item = parsedData[i];
-      
-      // Use different possible property names for positions
-      const startPos = item.startPosition || item.startChar || item.start || lastEndPosition;
-      let endPos = item.endPosition || item.endChar || item.end;
-      
-      // Validate and adjust positions
-      const validatedStart = Math.max(0, Math.min(startPos, originalContent.length));
-      
-      // If no end position provided or invalid, calculate based on content
-      if (!endPos || endPos <= validatedStart || endPos > originalContent.length) {
-        if (i === parsedData.length - 1) {
-          // Last session should go to the end
-          endPos = originalContent.length;
-        } else {
-          // Calculate approximate split
-          const remainingContent = originalContent.length - validatedStart;
-          const sessionsLeft = parsedData.length - i;
-          endPos = Math.min(originalContent.length, validatedStart + Math.ceil(remainingContent / sessionsLeft));
-        }
-      }
-
-      const validatedEnd = Math.min(originalContent.length, Math.max(endPos, validatedStart + 100)); // Ensure minimum content length
-      
-      // Extract content from original text
-      let extractedContent = originalContent.substring(validatedStart, validatedEnd).trim();
-      
-      // If content is too short, try to extend to next paragraph
-      if (extractedContent.length < 200 && validatedEnd < originalContent.length) {
-        const extendedEnd = this.findNextParagraphBreak(originalContent, validatedEnd);
-        extractedContent = originalContent.substring(validatedStart, extendedEnd).trim();
-      }
-
-      // Ensure we have meaningful content
-      if (!extractedContent || extractedContent.length < 50) {
-        extractedContent = this.createFallbackContent(item.name || `Session ${i + 1}`, originalContent);
-      }
-
-      // Add chapter name prefix if provided
-      const chapterPrefix = chapterName ? `${chapterName} - ` : '';
-      const topicName = item.name || `Session ${i + 1}: Content Part ${i + 1}`;
-      const fullName = `${chapterPrefix}${topicName}`;
-
-      suggestions.push({
-        name: fullName,
-        content: extractedContent,
-        estimatedMinutes: Math.min(60, Math.max(30, item.estimatedMinutes || 40)),
-        learningObjectives: Array.isArray(item.learningObjectives) && item.learningObjectives.length > 0
-          ? item.learningObjectives.slice(0, 3)
-          : [
-              'Understand key concepts presented',
-              'Apply knowledge to examples', 
-              'Demonstrate comprehension through activities'
-            ],
-        partNumber: item.partNumber || i + 1
-      });
-
-      lastEndPosition = validatedEnd;
-    }
-
-    return suggestions;
-  }
-
-  /**
-   * Find the next reasonable paragraph break
-   */
-  private static findNextParagraphBreak(content: string, startPosition: number): number {
-    const nextDoubleNewline = content.indexOf('\n\n', startPosition);
-    const nextSingleNewline = content.indexOf('\n', startPosition);
-    
-    if (nextDoubleNewline !== -1) {
-      return nextDoubleNewline + 2;
-    } else if (nextSingleNewline !== -1) {
-      return nextSingleNewline + 1;
-    } else {
-      return Math.min(content.length, startPosition + 2000); // Max extension
-    }
-  }
-
-  /**
-   * Create fallback content when extraction fails
-   */
-  private static createFallbackContent(sessionName: string, originalContent: string): string {
-    // Take a sample from the original content
-    const sampleLength = Math.min(500, originalContent.length);
-    const sampleStart = Math.floor(Math.random() * Math.max(0, originalContent.length - sampleLength));
-    const sampleContent = originalContent.substring(sampleStart, sampleStart + sampleLength);
-    
-    return `Content for ${sessionName}:\n\n${sampleContent}...`;
-  }
-
-  /**
-   * Manual fallback splitting if AI parsing fails
-   */
-  private static createManualSplits(content: string, numberOfSplits: number, chapterName?: string): TopicSuggestion[] {
-    const suggestions: TopicSuggestion[] = [];
-    const splitSize = Math.ceil(content.length / numberOfSplits);
-    
-    for (let i = 0; i < numberOfSplits; i++) {
-      const start = i * splitSize;
-      let end = (i + 1) * splitSize;
-      
-      // Adjust end to paragraph boundary if possible
-      if (i < numberOfSplits - 1) {
-        const paragraphBreak = content.indexOf('\n\n', end);
-        if (paragraphBreak !== -1 && paragraphBreak < end + splitSize / 2) {
-          end = paragraphBreak + 2;
-        }
-      } else {
-        end = content.length;
-      }
-      
-      const sessionContent = content.substring(start, end).trim();
-      
-      // Add chapter name prefix if provided
-      const chapterPrefix = chapterName ? `${chapterName} - ` : '';
-      const sessionName = `${chapterPrefix}Session ${i + 1}: Part ${i + 1}`;
-      
-      suggestions.push({
-        name: sessionName,
-        content: sessionContent || `Content section ${i + 1} of the chapter`,
-        estimatedMinutes: 40,
-        learningObjectives: [
-          'Understand the key concepts in this section',
-          'Apply learning to practical examples',
-          'Demonstrate comprehension through activities'
-        ],
-        partNumber: i + 1
-      });
-    }
-    
-    return suggestions;
   }
 
   /**
@@ -350,7 +99,7 @@ GUIDELINES:
       try {
         const topicData = {
           name: suggestion.name,
-          description: suggestion.content, // This now contains the actual split content
+          description: suggestion.content,
           subject_id: subjectId,
           class_id: classId,
           school_id: schoolId,
@@ -367,10 +116,119 @@ GUIDELINES:
         createdTopics.push(createdTopic);
       } catch (error) {
         console.error(`Failed to create topic: ${suggestion.name}`, error);
+        // Continue with other topics even if one fails
       }
     }
 
     return createdTopics;
+  }
+
+  /**
+   * Build the prompt for chapter analysis
+   */
+  private static buildChapterAnalysisPrompt(
+    content: string,
+    subject: string,
+    classLevel: string,
+    chapterName?: string,
+    numberOfSplits: number = 4
+  ): string {
+    const chapterTitle = chapterName || 'Chapter';
+    
+    return `Split this ${subject} textbook content for ${classLevel} into exactly ${numberOfSplits} teaching sessions (30-45 min each).
+
+${chapterTitle}
+
+CONTENT:
+${content}
+
+Return ONLY a JSON array with exactly ${numberOfSplits} objects:
+[
+  {
+    "name": "${chapterTitle} - Part 1: [Topic Name]",
+    "content": "[Extract relevant portion of textbook content]",
+    "estimatedMinutes": 40,
+    "learningObjectives": ["Objective 1", "Objective 2", "Objective 3"],
+    "partNumber": 1
+  }
+]
+
+Requirements:
+- EXACTLY ${numberOfSplits} topics (no more, no less)
+- Sequential part numbers: 1 to ${numberOfSplits}
+- Split at natural conceptual boundaries
+- Each topic: 200-500 words from the content
+- 3 specific learning objectives per topic
+- Distribute content evenly across all ${numberOfSplits} topics
+- Return ONLY valid JSON, no markdown, no explanations`;
+  }
+
+  /**
+   * Parse topic suggestions from AI response
+   */
+  private static parseTopicSuggestions(response: string): TopicSuggestion[] {
+    try {
+      // Clean the response to extract JSON
+      let jsonString = response.trim();
+      
+      // Remove any markdown code blocks (```json ... ```)
+      jsonString = jsonString.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+      
+      // Prefer a non-greedy JSON array match to avoid trailing artifacts
+      let jsonMatch = jsonString.match(/\[[\s\S]*?\]/);
+      
+      // If non-greedy fails, fallback to first-to-last bracket slice
+      if (!jsonMatch) {
+        const firstBracket = jsonString.indexOf('[');
+        const lastBracket = jsonString.lastIndexOf(']');
+        if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
+          jsonString = jsonString.substring(firstBracket, lastBracket + 1);
+        } else {
+          throw new Error('No valid JSON array found in response');
+        }
+      } else {
+        jsonString = jsonMatch[0];
+      }
+      
+      // Try to fix common JSON issues
+      jsonString = this.fixCommonJsonIssues(jsonString);
+      
+      const suggestions = JSON.parse(jsonString);
+      
+      // Validate the structure
+      if (!Array.isArray(suggestions)) {
+        throw new Error('Response is not an array');
+      }
+
+      return suggestions.map((suggestion, index) => ({
+        name: suggestion.name || `Topic ${index + 1}`,
+        content: suggestion.content || '',
+        estimatedMinutes: suggestion.estimatedMinutes || 35,
+        learningObjectives: Array.isArray(suggestion.learningObjectives) 
+          ? suggestion.learningObjectives 
+          : ['Students will learn the key concepts of this topic'],
+        partNumber: suggestion.partNumber || index + 1
+      }));
+
+    } catch (error) {
+      console.error('Failed to parse topic suggestions:', error);
+      console.error('Raw response:', response);
+      
+      // Try alternative parsing methods
+      const fallbackSuggestions = this.tryAlternativeParsing(response);
+      if (fallbackSuggestions.length > 0) {
+        return fallbackSuggestions;
+      }
+      
+      // Final fallback: create a single topic with the full content
+      return [{
+        name: 'Chapter Content - Complete Topic',
+        content: 'Full chapter content (parsing failed)',
+        estimatedMinutes: 45,
+        learningObjectives: ['Students will learn the key concepts of this chapter'],
+        partNumber: 1
+      }];
+    }
   }
 
   /**
@@ -391,21 +249,100 @@ GUIDELINES:
     // Fix single quotes to double quotes
     jsonString = jsonString.replace(/'/g, '"');
 
-    // Remove any residual markdown
+    // Remove any residual markdown fences
     jsonString = jsonString.replace(/```json\s*/g, '').replace(/```\s*/g, '');
     
-    // Remove any non-JSON content
+    // Remove any non-JSON content before the first [
     const firstBracket = jsonString.indexOf('[');
     if (firstBracket > 0) {
       jsonString = jsonString.substring(firstBracket);
     }
     
+    // Remove any non-JSON content after the last ]
     const lastBracket = jsonString.lastIndexOf(']');
     if (lastBracket > 0 && lastBracket < jsonString.length - 1) {
       jsonString = jsonString.substring(0, lastBracket + 1);
     }
     
     return jsonString.trim();
+  }
+
+  /**
+   * Try alternative parsing methods for malformed JSON
+   */
+  private static tryAlternativeParsing(response: string): TopicSuggestion[] {
+    try {
+      // Try to extract topic information using regex patterns
+      const topicPattern = /"name"\s*:\s*"([^"]+)"[\s\S]*?"content"\s*:\s*"([^"]+)"[\s\S]*?"estimatedMinutes"\s*:\s*(\d+)/g;
+      const suggestions: TopicSuggestion[] = [];
+      let match;
+      let partNumber = 1;
+
+      while ((match = topicPattern.exec(response)) !== null) {
+        const name = match[1];
+        const content = match[2];
+        const estimatedMinutes = parseInt(match[3]) || 35;
+
+        suggestions.push({
+          name: name || `Topic ${partNumber}`,
+          content: content || '',
+          estimatedMinutes,
+          learningObjectives: ['Students will learn the key concepts of this topic'],
+          partNumber
+        });
+        partNumber++;
+      }
+
+      if (suggestions.length > 0) {
+        console.log('Successfully parsed using alternative method:', suggestions.length, 'topics');
+        return suggestions;
+      }
+    } catch (error) {
+      console.error('Alternative parsing also failed:', error);
+    }
+
+    return [];
+  }
+
+  /**
+   * Make secure request to Gemini API
+   */
+  private static async makeSecureRequest(endpoint: string, payload: any): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+      const authToken = localStorage.getItem('authToken');
+      
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+
+      const response = await fetch(`${this.GEMINI_PROXY_URL}/${endpoint}`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      return {
+        success: true,
+        data
+      };
+
+    } catch (error) {
+      console.error(`Chapter Planner API error (${endpoint}):`, error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      };
+    }
   }
 }
 
