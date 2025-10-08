@@ -41,16 +41,15 @@ class ChapterPlannerService {
     numberOfSplits: number = 4
   ): Promise<TopicSuggestion[]> {
     try {
-      // OPTIMIZATION: Reduced content limit from 100K to 30K for faster processing
-      const maxContentLength = 30000;
+      // Truncate content if it's too large (limit to ~30,000 characters to leave room for prompt)
+      const maxContentLength = 100000;
       const truncatedContent = content.length > maxContentLength 
         ? content.substring(0, maxContentLength) + '\n\n[Content truncated for processing...]'
         : content;
       
-      console.log(`[ChapterPlanner] Content length: ${content.length}, Using: ${truncatedContent.length}`);
+      console.log(`Content length: ${content.length}, Using: ${truncatedContent.length}`);
       
-      // Use optimized prompt
-      const prompt = this.buildOptimizedPrompt(truncatedContent, subject, classLevel, chapterName, numberOfSplits);
+      const prompt = this.buildChapterAnalysisPrompt(truncatedContent, subject, classLevel, chapterName, numberOfSplits);
       
       const payload = {
         contents: [{
@@ -62,14 +61,11 @@ class ChapterPlannerService {
           temperature: 0.7,
           topK: 40,
           topP: 0.95,
-          maxOutputTokens: 5000, // OPTIMIZATION: Reduced from 30000 to 5000
+          maxOutputTokens: 30000,
         }
       };
 
-      const startTime = Date.now();
       const response = await secureGeminiService.makeSecureRequest('analyze-chapter', payload);
-      const duration = Date.now() - startTime;
-      console.log(`[ChapterPlanner] API call completed in ${duration}ms`);
       
       if (!response.success) {
         throw new Error(response.error || 'Failed to analyze chapter content');
@@ -80,11 +76,11 @@ class ChapterPlannerService {
         throw new Error('No analysis generated');
       }
 
-      console.log('[ChapterPlanner] Parsing optimized response...');
-      return this.parseOptimizedSuggestions(generatedText, content);
+      console.log('Generated text:', generatedText);
+      return this.parseTopicSuggestions(generatedText);
       
     } catch (error) {
-      console.error('[ChapterPlanner] Analysis error:', error);
+      console.error('Chapter analysis error:', error);
       throw new Error(error instanceof Error ? error.message : 'Failed to analyze chapter content');
     }
   }
@@ -194,8 +190,7 @@ Requirements:
   }
 
   /**
-   * Build the original verbose prompt for chapter analysis (LEGACY - DEPRECATED)
-   * KEPT FOR FALLBACK ONLY
+   * Build the prompt for chapter analysis
    */
   private static buildChapterAnalysisPrompt(
     content: string,
