@@ -41,15 +41,16 @@ class ChapterPlannerService {
     numberOfSplits: number = 4
   ): Promise<TopicSuggestion[]> {
     try {
-      // Truncate content if it's too large (limit to ~30,000 characters to leave room for prompt)
-      const maxContentLength = 100000;
+      // OPTIMIZATION: Reduced content limit from 100K to 30K for faster processing
+      const maxContentLength = 30000;
       const truncatedContent = content.length > maxContentLength 
         ? content.substring(0, maxContentLength) + '\n\n[Content truncated for processing...]'
         : content;
       
-      console.log(`Content length: ${content.length}, Using: ${truncatedContent.length}`);
+      console.log(`[ChapterPlanner] Content length: ${content.length}, Using: ${truncatedContent.length}`);
       
-      const prompt = this.buildChapterAnalysisPrompt(truncatedContent, subject, classLevel, chapterName, numberOfSplits);
+      // Use optimized prompt
+      const prompt = this.buildOptimizedPrompt(truncatedContent, subject, classLevel, chapterName, numberOfSplits);
       
       const payload = {
         contents: [{
@@ -61,11 +62,14 @@ class ChapterPlannerService {
           temperature: 0.7,
           topK: 40,
           topP: 0.95,
-          maxOutputTokens: 30000,
+          maxOutputTokens: 5000, // OPTIMIZATION: Reduced from 30000 to 5000
         }
       };
 
+      const startTime = Date.now();
       const response = await secureGeminiService.makeSecureRequest('analyze-chapter', payload);
+      const duration = Date.now() - startTime;
+      console.log(`[ChapterPlanner] API call completed in ${duration}ms`);
       
       if (!response.success) {
         throw new Error(response.error || 'Failed to analyze chapter content');
@@ -76,11 +80,11 @@ class ChapterPlannerService {
         throw new Error('No analysis generated');
       }
 
-      console.log('Generated text:', generatedText);
-      return this.parseTopicSuggestions(generatedText);
+      console.log('[ChapterPlanner] Parsing optimized response...');
+      return this.parseOptimizedSuggestions(generatedText, content);
       
     } catch (error) {
-      console.error('Chapter analysis error:', error);
+      console.error('[ChapterPlanner] Analysis error:', error);
       throw new Error(error instanceof Error ? error.message : 'Failed to analyze chapter content');
     }
   }
@@ -125,7 +129,73 @@ class ChapterPlannerService {
   }
 
   /**
-   * Build the prompt for chapter analysis
+   * Build optimized prompt for chapter analysis (QUICK WIN VERSION)
+   * Uses position-based content references instead of copying content
+   */
+  private static buildOptimizedPrompt(
+    content: string,
+    subject: string,
+    classLevel: string,
+    chapterName?: string,
+    numberOfSplits: number = 4
+  ): string {
+    const chapterContext = chapterName ? `Chapter: ${chapterName}\n` : '';
+    
+    if (numberOfSplits === 0) {
+      return `Analyze this ${subject} textbook content for ${classLevel} and determine the optimal number of teaching topics (3-8 topics, each 30-45 minutes).
+
+${chapterContext}CONTENT (${content.length} characters):
+${content}
+
+Return ONLY JSON array with optimal number of topic objects (3-8):
+[{
+  "name": "Part 1: [Specific Focus Area]",
+  "startChar": 0,
+  "endChar": 5000,
+  "estimatedMinutes": 35,
+  "learningObjectives": ["Objective 1", "Objective 2", "Objective 3"],
+  "partNumber": 1
+}]
+
+Requirements:
+- Choose 3-8 topics based on content complexity and length
+- Use startChar/endChar positions to reference content sections (don't copy content)
+- Sequential part numbers (1, 2, 3...)
+- 30-45 minutes per topic
+- 3-5 specific learning objectives per topic
+- Natural conceptual boundaries between topics
+- Ensure full content coverage (last endChar should be ${content.length})`;
+    }
+
+    return `Split this ${subject} textbook content for ${classLevel} into exactly ${numberOfSplits} teaching topics.
+
+${chapterContext}CONTENT (${content.length} characters):
+${content}
+
+Return ONLY JSON array with exactly ${numberOfSplits} topic objects:
+[{
+  "name": "Part 1: [Specific Focus Area]",
+  "startChar": 0,
+  "endChar": 5000,
+  "estimatedMinutes": 35,
+  "learningObjectives": ["Objective 1", "Objective 2", "Objective 3"],
+  "partNumber": 1
+}]
+
+Requirements:
+- Exactly ${numberOfSplits} topics
+- Use startChar/endChar positions to reference content sections (don't copy content)
+- Sequential part numbers (1-${numberOfSplits})
+- 30-45 minutes per topic
+- 3-5 specific learning objectives per topic
+- Distribute content evenly across all topics
+- Natural conceptual boundaries
+- Ensure full content coverage (last endChar should be ${content.length})`;
+  }
+
+  /**
+   * Build the original verbose prompt for chapter analysis (LEGACY - DEPRECATED)
+   * KEPT FOR FALLBACK ONLY
    */
   private static buildChapterAnalysisPrompt(
     content: string,
@@ -272,7 +342,65 @@ CONTENT REQUIREMENTS:
   }
 
   /**
-   * Parse topic suggestions from AI response
+   * Parse optimized topic suggestions with position-based content references
+   */
+  private static parseOptimizedSuggestions(response: string, originalContent: string): TopicSuggestion[] {
+    try {
+      // Extract JSON from response
+      let jsonString = response.trim();
+      jsonString = jsonString.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+      
+      let jsonMatch = jsonString.match(/\[[\s\S]*?\]/);
+      if (!jsonMatch) {
+        const firstBracket = jsonString.indexOf('[');
+        const lastBracket = jsonString.lastIndexOf(']');
+        if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
+          jsonString = jsonString.substring(firstBracket, lastBracket + 1);
+        } else {
+          throw new Error('No valid JSON array found in response');
+        }
+      } else {
+        jsonString = jsonMatch[0];
+      }
+      
+      jsonString = this.fixCommonJsonIssues(jsonString);
+      const parsed = JSON.parse(jsonString);
+      
+      if (!Array.isArray(parsed)) {
+        throw new Error('Response is not an array');
+      }
+
+      console.log(`[ChapterPlanner] Parsed ${parsed.length} topics with position references`);
+      
+      // Convert position-based references to actual content
+      return parsed.map((item: any, index: number) => {
+        const startChar = item.startChar || 0;
+        const endChar = item.endChar || originalContent.length;
+        const extractedContent = originalContent.substring(startChar, endChar);
+        
+        return {
+          name: item.name || `Topic ${index + 1}`,
+          content: extractedContent,
+          estimatedMinutes: item.estimatedMinutes || 35,
+          learningObjectives: Array.isArray(item.learningObjectives) 
+            ? item.learningObjectives 
+            : ['Students will learn the key concepts of this topic'],
+          partNumber: item.partNumber || index + 1
+        };
+      });
+
+    } catch (error) {
+      console.error('[ChapterPlanner] Failed to parse optimized suggestions:', error);
+      console.error('[ChapterPlanner] Raw response:', response);
+      
+      // Fallback to legacy parser
+      console.log('[ChapterPlanner] Attempting fallback to legacy parser...');
+      return this.parseTopicSuggestions(response);
+    }
+  }
+
+  /**
+   * Parse topic suggestions from AI response (LEGACY PARSER)
    */
   private static parseTopicSuggestions(response: string): TopicSuggestion[] {
     try {
