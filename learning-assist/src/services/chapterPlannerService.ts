@@ -196,80 +196,11 @@ Requirements:
     content: string,
     subject: string,
     classLevel: string,
-    chapterName?: string,
-    numberOfSplits: number = 4
+    chapterName: string | undefined,
+    numberOfSplits: number
   ): string {
     const chapterContext = chapterName ? `Chapter: ${chapterName}` : 'Chapter content';
     
-    // Handle AI auto-selection when numberOfSplits is 0
-    if (numberOfSplits === 0) {
-      return `You are an expert curriculum designer and educational content specialist. Analyze the following textbook content and determine the optimal number of logical, teachable topics that can be delivered in 30-45 minutes each. Choose the number of topics that best fits the content complexity and length.
-
-${chapterContext}
-Subject: ${subject}
-Class Level: ${classLevel}
-
-TEXTBOOK CONTENT:
-${content}
-
-ANALYSIS REQUIREMENTS:
-1. Determine the optimal number of topics based on content length and complexity
-2. Each topic should be deliverable in 30-45 minutes
-3. Maintain logical flow and learning progression
-4. Include clear, measurable learning objectives
-5. Name topics descriptively with part numbers
-6. Estimate realistic time requirements
-7. Ensure content flows naturally from one topic to the next
-8. Consider age-appropriate attention spans and complexity
-9. Distribute content evenly across all topics
-10. Choose 3-8 topics based on content complexity (shorter content = fewer topics, longer content = more topics)
-
-TOPIC SPLITTING GUIDELINES:
-- Split at natural conceptual boundaries
-- Group related concepts together
-- Ensure each topic has a clear focus
-- Maintain prerequisite relationships
-- Include hands-on activities where appropriate
-- Balance theory with practical application
-
-RESPONSE FORMAT:
-Return ONLY a valid JSON array with the optimal number of topic objects, no additional text, markdown, or explanations. The JSON must be properly formatted with correct syntax:
-
-[
-  {
-    "name": "Chapter X: [Descriptive Topic Name] - Part 1: [Specific Focus]",
-    "content": "[Relevant portion of textbook content for this topic]",
-    "estimatedMinutes": 35,
-    "learningObjectives": [
-      "Students will be able to [specific objective]",
-      "Students will understand [concept]",
-      "Students will demonstrate [skill]"
-    ],
-    "partNumber": 1
-  }
-]
-
-CRITICAL JSON REQUIREMENTS:
-- Return ONLY the JSON array with the optimal number of topic objects, no markdown code blocks, no explanations
-- Use double quotes for all strings and property names
-- Escape any quotes within string values with backslashes
-- No trailing commas after the last item in arrays or objects
-- Ensure all brackets and braces are properly closed
-- Each string value must be on a single line (no line breaks within strings)
-- Property names must be exactly: "name", "content", "estimatedMinutes", "learningObjectives", "partNumber"
-
-CONTENT REQUIREMENTS:
-- Choose 3-8 topics based on content complexity and length
-- Each topic's content should be substantial but focused (200-500 words)
-- Learning objectives should be specific and measurable
-- Time estimates should be realistic for the class level (30-45 minutes)
-- Part numbers should be sequential starting from 1
-- Content should be extracted directly from the provided textbook material
-- Topic names should be descriptive and indicate the chapter and part number
-- Distribute the textbook content evenly across all topics`;
-    }
-    
-    // Regular prompt for specified number of splits
     return `You are an expert curriculum designer and educational content specialist. Analyze the following textbook content and split it into exactly ${numberOfSplits} logical, teachable topics that can be delivered in 30-45 minutes each.
 
 ${chapterContext}
