@@ -78,6 +78,14 @@ Same as existing Gemini/Claude requests, just specify the model:
 ### Response Format
 Returns the same Gemini-compatible format as other providers.
 
+### Force DeepSeek Mode
+**Current Configuration: DeepSeek Chat is forced for ALL requests**
+
+The Lambda function is configured to override any model selection and always use `deepseek-chat`:
+- All requests (regardless of model parameter) will use DeepSeek Chat
+- Logs will show: "Model override: requested 'X' but forcing 'deepseek-chat'"
+- This ensures consistent model usage across all API calls
+
 ## Supported Endpoints
 All existing endpoints work with DeepSeek:
 - `generate-content`

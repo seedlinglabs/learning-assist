@@ -1,5 +1,6 @@
 import { Topic } from '../types';
 import { topicsAPI } from './api';
+import { secureGeminiService } from './secureGeminiService';
 
 export interface TopicSuggestion {
   name: string;
@@ -64,7 +65,7 @@ class ChapterPlannerService {
         }
       };
 
-      const response = await this.makeSecureRequest('analyze-chapter', payload);
+      const response = await secureGeminiService.makeSecureRequest('analyze-chapter', payload);
       
       if (!response.success) {
         throw new Error(response.error || 'Failed to analyze chapter content');
@@ -411,46 +412,6 @@ CONTENT REQUIREMENTS:
     return [];
   }
 
-  /**
-   * Make secure request to Gemini API
-   */
-  private static async makeSecureRequest(endpoint: string, payload: any): Promise<{ success: boolean; data?: any; error?: string }> {
-    try {
-      const authToken = localStorage.getItem('authToken');
-      
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      
-      if (authToken) {
-        headers['Authorization'] = `Bearer ${authToken}`;
-      }
-
-      const response = await fetch(`${this.GEMINI_PROXY_URL}/${endpoint}`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payload),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${response.status}`);
-      }
-
-      const data = await response.json();
-      return {
-        success: true,
-        data
-      };
-
-    } catch (error) {
-      console.error(`Chapter Planner API error (${endpoint}):`, error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred'
-      };
-    }
-  }
 }
 
 export { ChapterPlannerService };

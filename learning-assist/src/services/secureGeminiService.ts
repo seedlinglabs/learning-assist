@@ -48,6 +48,7 @@ class SecureGeminiService {
   private selectedModel: string = 'deepseek-chat';
 
   setModel(model: string) {
+    console.log(`[SecureGeminiService] Model changed from "${this.selectedModel}" to "${model}"`);
     this.selectedModel = model;
   }
 
@@ -64,7 +65,7 @@ class SecureGeminiService {
     ];
   }
 
-  private async makeSecureRequest(endpoint: string, payload: any): Promise<GeminiResponse> {
+  async makeSecureRequest(endpoint: string, payload: any): Promise<GeminiResponse> {
     try {
       
       // Get auth token if available (for usage tracking)
@@ -83,6 +84,9 @@ class SecureGeminiService {
         ...payload,
         model: this.selectedModel
       };
+
+      console.log(`[SecureGeminiService] Making request to ${endpoint} with model: ${this.selectedModel}`);
+      console.log(`[SecureGeminiService] Payload includes model:`, payloadWithModel.model);
 
       const response = await fetch(`${GEMINI_PROXY_URL}/${endpoint}`, {
         method: 'POST',

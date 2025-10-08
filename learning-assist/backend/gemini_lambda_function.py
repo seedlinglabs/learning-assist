@@ -156,7 +156,13 @@ def handle_ai_proxy(endpoint_name, body, user_id, headers):
         }
     
     logger.info(f"OriginalBody: {body}")
-    model = body.get('model', 'gemini-2.5-pro')
+    
+    # Force DeepSeek Chat for all requests
+    requested_model = body.get('model', 'gemini-2.5-pro')
+    model = 'deepseek-chat'  # Override to always use DeepSeek
+    
+    if requested_model != model:
+        logger.info(f"Model override: requested '{requested_model}' but forcing '{model}'")
     
     if model not in SUPPORTED_MODELS:
         return {
