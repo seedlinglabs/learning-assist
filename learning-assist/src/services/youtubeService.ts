@@ -183,35 +183,45 @@ class YouTubeService {
     // Extract key concepts for better matching
     const keywords = this.extractKeywords(topicName);
     
-    // Build optimized search query
+    // Extract grade number from classLevel (e.g., "Class 6" → "6", "Grade 3" → "3")
+    const gradeMatch = classLevel.match(/(\d+)/);
+    const gradeNumber = gradeMatch ? gradeMatch[1] : '';
+    
+    // Build specific educational query with grade context
     let query = keywords;
     if (subject) {
       query += ` ${subject}`;
     }
     
-    // Add educational context without class-specific language
-    query += ' explained';
+    // Add grade-specific educational context
+    if (gradeNumber) {
+      query += ` grade ${gradeNumber}`;
+    }
+    
+    // Add educational qualifier
+    query += ' education';
 
-    console.log(`[YouTube] Searching for: "${query}" (from topic: "${topicName}")`);
+    console.log(`[YouTube] Searching for: "${query}" (from topic: "${topicName}", grade: ${gradeNumber})`);
 
     // Determine appropriate duration based on class level
     let duration: 'short' | 'medium' | 'long' = 'medium';
-    if (classLevel.includes('1') || classLevel.includes('2') || classLevel.includes('3')) {
-      duration = 'short'; // Shorter videos for younger students
-    } else if (classLevel.includes('9') || classLevel.includes('10') || classLevel.includes('11') || classLevel.includes('12')) {
-      duration = 'long'; // Longer videos for older students
+    const grade = parseInt(gradeNumber) || 0;
+    if (grade >= 1 && grade <= 3) {
+      duration = 'short'; // 0-4 min videos for younger students
+    } else if (grade >= 9 && grade <= 12) {
+      duration = 'long'; // 10-20 min videos for older students
     }
 
     // Fetch more results then filter to best 2
     const results = await this.searchEducationalVideos({
       query,
-      maxResults: 10, // Increased from 2 to get better matches
+      maxResults: 10, // Fetch 10 to get better pool
       order: 'relevance',
       duration
     });
 
     // Filter and rank results by quality
-    const rankedVideos = this.rankVideosByQuality(results.videos, keywords);
+    const rankedVideos = this.rankVideosByQuality(results.videos, keywords, gradeNumber);
     
     return {
       videos: rankedVideos.slice(0, 2), // Return top 2
@@ -222,7 +232,7 @@ class YouTubeService {
   /**
    * Rank videos by quality indicators
    */
-  private rankVideosByQuality(videos: YouTubeVideo[], keywords: string): YouTubeVideo[] {
+  private rankVideosByQuality(videos: YouTubeVideo[], keywords: string, gradeNumber?: string): YouTubeVideo[] {
     return videos
       .map(video => {
         let score = 0;
@@ -230,30 +240,56 @@ class YouTubeService {
         const lowerDesc = video.description.toLowerCase();
         const keywordList = keywords.toLowerCase().split(' ');
         
-        // Score based on keyword matches in title (high weight)
+        // Score based on keyword matches in title (very high weight - exact match is key)
         keywordList.forEach(keyword => {
-          if (lowerTitle.includes(keyword)) score += 10;
+          if (keyword.length > 0 && lowerTitle.includes(keyword)) score += 15;
         });
         
         // Score based on keyword matches in description (medium weight)
         keywordList.forEach(keyword => {
-          if (lowerDesc.includes(keyword)) score += 3;
+          if (keyword.length > 0 && lowerDesc.includes(keyword)) score += 5;
         });
         
-        // Prefer trusted educational channels (high weight)
+        // Prefer videos with grade level mentioned (high weight for grade-specific content)
+        if (gradeNumber) {
+          const gradePatterns = [
+            `grade ${gradeNumber}`,
+            `class ${gradeNumber}`,
+            `${gradeNumber}th grade`,
+            `level ${gradeNumber}`
+          ];
+          if (gradePatterns.some(pattern => lowerTitle.includes(pattern) || lowerDesc.includes(pattern))) {
+            score += 20; // Strong preference for grade-specific content
+          }
+        }
+        
+        // Prefer trusted educational channels (very high weight)
         const trustedChannels = [
           'Crash Course', 'Khan Academy', 'TED-Ed', 'National Geographic',
           'SciShow', 'Peekaboo Kidz', 'Learning Junction', 'Smile and Learn',
-          'Free School', 'Brain Pump', 'Bill Nye', 'Sesame Street'
+          'Free School', 'Brain Pump', 'Bill Nye', 'Sesame Street',
+          'Math Antics', 'Professor Dave', 'Bozeman Science'
         ];
         if (trustedChannels.some(channel => video.channelTitle.includes(channel))) {
-          score += 15;
+          score += 25; // Increased from 15
         }
         
-        // Prefer videos with "explained", "tutorial", "lesson" in title
-        if (/(explained|tutorial|lesson|learn|introduction)/i.test(lowerTitle)) {
-          score += 5;
+        // Prefer videos with educational keywords in title
+        if (/(explained|tutorial|lesson|learn|introduction|education|teaching)/i.test(lowerTitle)) {
+          score += 8;
         }
+        
+        // Bonus for "for kids" or "for students" (grade-appropriate)
+        if (/(for kids|for students|for children)/i.test(lowerTitle)) {
+          score += 10;
+        }
+        
+        // Penalty for non-educational indicators
+        if (/(funny|prank|challenge|reaction|vlog)/i.test(lowerTitle)) {
+          score -= 50; // Strong penalty
+        }
+        
+        console.log(`[YouTube] Video: "${video.title}" | Channel: ${video.channelTitle} | Score: ${score}`);
         
         return { video, score };
       })
