@@ -20,7 +20,13 @@ type TabType = 'details' | 'lesson-plan' | 'teaching-guide' | 'group-discussion'
 const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted }) => {
   const { updateTopic, deleteTopic, loading, error, clearError, currentPath } = useApp();
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<TabType>('details');
+  
+  // Use a more persistent approach for activeTab - store it per topic ID
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    // Try to get the last active tab for this topic from localStorage
+    const savedTab = localStorage.getItem(`activeTab_${topic.id}`);
+    return (savedTab as TabType) || 'details';
+  });
   const [generatingAI, setGeneratingAI] = useState(false);
   const [findingVideos, setFindingVideos] = useState(false);
   const [aiGenerationStatus, setAiGenerationStatus] = useState<string>('');
@@ -139,6 +145,21 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     
   }, [topic, isGeneratingContent]);
 
+  // Remove the problematic useEffect that was causing tab switching
+
+  // Save activeTab to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem(`activeTab_${topic.id}`, activeTab);
+  }, [activeTab, topic.id]);
+
+  // Restore activeTab when topic changes (in case component re-mounts)
+  useEffect(() => {
+    const savedTab = localStorage.getItem(`activeTab_${topic.id}`);
+    if (savedTab && savedTab !== activeTab) {
+      setActiveTab(savedTab as TabType);
+    }
+  }, [topic.id]);
+
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {
       year: 'numeric',
@@ -203,7 +224,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
           lessonPlan: editingLessonPlan,
           generatedAt: new Date()
         }
-      });
+      }, true); // Skip refresh to prevent tab navigation
       setIsEditingLessonPlan(false);
     } catch (error) {
       console.error('Failed to save lesson plan:', error);
@@ -231,7 +252,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
           teachingGuide: editingTeachingGuide,
           generatedAt: new Date()
         }
-      });
+      }, true); // Skip refresh to prevent tab navigation
       setIsEditingTeachingGuide(false);
     } catch (error) {
       console.error('Failed to save teaching guide:', error);
@@ -259,7 +280,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
           groupDiscussion: editingGroupDiscussion,
           generatedAt: new Date()
         }
-      });
+      }, true); // Skip refresh to prevent tab navigation
       setIsEditingGroupDiscussion(false);
     } catch (error) {
       console.error('Failed to save group discussion:', error);
@@ -287,7 +308,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
           assessmentQuestions: editingAssessmentQuestions,
           generatedAt: new Date()
         }
-      });
+      }, true); // Skip refresh to prevent tab navigation
       setIsEditingAssessmentQuestions(false);
     } catch (error) {
       console.error('Failed to save assessment questions:', error);
@@ -315,7 +336,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
           worksheets: editingWorksheets,
           generatedAt: new Date()
         }
-      });
+      }, true); // Skip refresh to prevent tab navigation
       setIsEditingWorksheets(false);
     } catch (error) {
       console.error('Failed to save worksheets:', error);
@@ -843,7 +864,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
         description: topic.description,
         documentLinks: updatedDocumentLinks,
         aiContent: topic.aiContent,
-      });
+      }, true); // Skip refresh for video updates
       
       setNewVideo({ title: '', url: '', description: '' });
       setIsAddingVideo(false);
@@ -888,7 +909,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
         description: topic.description,
         documentLinks: updatedDocumentLinks,
         aiContent: topic.aiContent,
-      });
+      }, true); // Skip refresh for video updates
       
       setNewVideo({ title: '', url: '', description: '' });
       setIsAddingVideo(false);
@@ -908,7 +929,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
           description: topic.description,
           documentLinks: updatedDocumentLinks,
           aiContent: topic.aiContent,
-        });
+        }, true); // Skip refresh for video updates
       } catch (error) {
         console.error('Failed to delete video:', error);
       }
@@ -929,7 +950,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
           description: topic.description,
           documentLinks: topic.documentLinks,
           aiContent: updatedAIContent,
-        });
+        }, true); // Skip refresh for video updates
       } catch (error) {
         console.error('Failed to delete AI video:', error);
       }
@@ -984,7 +1005,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
   React.useEffect(() => {
   }, [topic]);
 
-  const tabs = [
+  const tabs = React.useMemo(() => [
     { id: 'details', label: 'Topic Details', icon: FileText },
     { id: 'lesson-plan', label: 'Lesson Plan', icon: GraduationCap, disabled: !topic.aiContent?.lessonPlan },
     { id: 'teaching-guide', label: 'Teaching Guide', icon: User, disabled: !topic.aiContent?.teachingGuide && !teachingGuide },
@@ -992,7 +1013,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     { id: 'assessment', label: 'Assessment', icon: ClipboardList, disabled: !topic.aiContent?.assessmentQuestions && !assessmentQuestions },
     { id: 'worksheets', label: 'Worksheets', icon: BookOpen, disabled: !topic.aiContent?.worksheets && !worksheets },
     { id: 'videos', label: 'Videos', icon: Youtube, disabled: !topic.aiContent?.videos || topic.aiContent.videos.length === 0 },
-  ];
+  ], [topic.aiContent, teachingGuide, groupDiscussion, assessmentQuestions, worksheets]);
 
   // Simple, safe view-only formatting for headings, bold, and bullets
   const formatSimpleMarkdown = (text: string): string => {
