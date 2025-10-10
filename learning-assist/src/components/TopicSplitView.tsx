@@ -58,6 +58,13 @@ const TopicSplitView: React.FC = () => {
     }
   }, [sortedTopics, isCreatingNewTopic, selectedTopicId]);
 
+  // Update selectedTopic when currentPath.topic changes (for updates)
+  useEffect(() => {
+    if (currentPath.topic && currentPath.topic.id === selectedTopicId) {
+      setSelectedTopic(currentPath.topic);
+    }
+  }, [currentPath.topic, selectedTopicId]);
+
   if (!school || !cls || !subject) {
     return null;
   }
@@ -127,6 +134,7 @@ const TopicSplitView: React.FC = () => {
           />
         ) : selectedTopic ? (
           <TopicTabbedView
+            key={selectedTopic.id}
             topic={selectedTopic}
             onTopicDeleted={handleTopicDeleted}
           />
