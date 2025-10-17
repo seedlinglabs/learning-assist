@@ -41,6 +41,8 @@ export interface Topic {
   aiContent?: AIContent; // Consolidated AI-generated content
   createdAt: Date;
   updatedAt: Date;
+  completionStatus?: 'completed' | 'in_progress' | 'not_started'; // Add completion status
+  completedSections?: string[]; // Track which sections are completed
 }
 
 export interface Subject {

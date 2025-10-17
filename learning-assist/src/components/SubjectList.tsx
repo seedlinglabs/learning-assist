@@ -56,19 +56,6 @@ const SubjectList: React.FC = () => {
               <ChevronRight size={20} className="card-arrow" />
             </div>
             
-            <div className="subject-actions">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleChapterPlannerClick(subject);
-                }}
-                className="btn btn-primary btn-sm chapter-planner-btn"
-                title="Use AI to split textbook content into topics"
-              >
-                <Sparkles size={14} />
-                Chapter Planner
-              </button>
-            </div>
           </div>
         ))}
       </div>

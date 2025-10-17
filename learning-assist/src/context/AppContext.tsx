@@ -184,6 +184,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         description: updates.description,
         documentLinks: updates.documentLinks || [],
         aiContent: updates.aiContent,
+        completionStatus: updates.completionStatus,
+        completedSections: updates.completedSections,
       };
 
       console.log('PUT Topic Payload:', updateRequest);

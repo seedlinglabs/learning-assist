@@ -177,6 +177,19 @@ class AcademicRecordsServiceClass {
   ): string {
     return `${schoolId}#${academicYear}#${grade}#${section}#${subjectId}`;
   }
+
+  /**
+   * Get all records for a specific topic
+   */
+  async getRecordsByTopic(topicId: string): Promise<AcademicRecord[]> {
+    try {
+      const response = await this.makeRequest<AcademicRecord[]>(`/records/topic/${topicId}`);
+      return response;
+    } catch (error) {
+      console.error('Error fetching records by topic:', error);
+      throw error;
+    }
+  }
 }
 
 export const AcademicRecordsService = new AcademicRecordsServiceClass();

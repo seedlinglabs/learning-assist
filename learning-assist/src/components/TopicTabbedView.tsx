@@ -1110,6 +1110,45 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     return html.join('\n');
   };
 
+  const [topicCompletionStatus, setTopicCompletionStatus] = useState<{
+    status: 'completed' | 'in_progress' | 'not_started';
+    completedSections: string[];
+  }>({ status: 'not_started', completedSections: [] });
+
+  useEffect(() => {
+    const loadCompletionStatus = async () => {
+      try {
+        const records = await AcademicRecordsService.getRecordsByTopic(topic.id);
+        const completedRecords = records.filter(record => record.status === 'completed');
+        
+        if (completedRecords.length === 0) {
+          setTopicCompletionStatus({ status: 'not_started', completedSections: [] });
+          return;
+        }
+        
+        const completedSections = completedRecords.map(record => record.section);
+        const allSections = ['A', 'B', 'C', 'D', 'E', 'F'];
+        
+        let status: 'completed' | 'in_progress' | 'not_started' = 'not_started';
+        if (completedSections.length === allSections.length) {
+          status = 'completed';
+        } else if (completedSections.length > 0) {
+          status = 'in_progress';
+        }
+        
+        setTopicCompletionStatus({
+          status,
+          completedSections: Array.from(new Set(completedSections))
+        });
+      } catch (err) {
+        console.error('Error loading completion status:', err);
+        setTopicCompletionStatus({ status: 'not_started', completedSections: [] });
+      }
+    };
+    
+    loadCompletionStatus();
+  }, [topic.id]);
+
   return (
     <div className="topic-tabbed-view">
       <div className="topic-detail-header">
