@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import TopicSidebar from './TopicSidebar';
 import TopicTabbedView from './TopicTabbedView';
@@ -6,38 +6,67 @@ import { Topic } from '../types';
 import '../styles/TopicSplitView.css';
 
 const TopicSplitView: React.FC = () => {
-  const { currentPath, loading, refreshTopics } = useApp();
+  const { currentPath, loading, refreshTopics, setCurrentPath } = useApp();
   const { subject } = currentPath;
-  const [selectedTopic, setSelectedTopic] = useState<Topic | undefined>(undefined);
+  const [selectedTopicId, setSelectedTopicId] = useState<string | undefined>(undefined);
   const [isCreatingNewTopic, setIsCreatingNewTopic] = useState(false);
+
+  // Get topics from the current subject
+  const topics = subject?.topics || [];
+  
+  // Find the selected topic by ID to ensure it's always current
+  const selectedTopic = selectedTopicId ? topics.find(topic => topic.id === selectedTopicId) : undefined;
+
+  // Sync selectedTopicId with currentPath.topic when topics change
+  useEffect(() => {
+    if (currentPath.topic && topics.length > 0) {
+      const topicExists = topics.find(t => t.id === currentPath.topic?.id);
+      if (topicExists && selectedTopicId !== currentPath.topic.id) {
+        setSelectedTopicId(currentPath.topic.id);
+      }
+    }
+  }, [currentPath.topic, topics, selectedTopicId]);
+
+  // Update selectedTopic when currentPath.topic changes (for updates)
+  useEffect(() => {
+    if (currentPath.topic && currentPath.topic.id === selectedTopicId) {
+      // The selectedTopic is already computed from selectedTopicId and topics
+      // This effect ensures the component re-renders when currentPath.topic updates
+    }
+  }, [currentPath.topic, selectedTopicId]);
 
   if (!subject) return null;
 
-  // Get topics from the current subject
-  const topics = subject.topics || [];
-
   const handleTopicSelect = (topic: Topic) => {
-    setSelectedTopic(topic);
+    setSelectedTopicId(topic.id);
     setIsCreatingNewTopic(false);
+    // Also update the currentPath to include the selected topic
+    setCurrentPath({ ...currentPath, topic });
   };
 
   const handleNewTopicClick = () => {
     setIsCreatingNewTopic(true);
-    setSelectedTopic(undefined);
+    setSelectedTopicId(undefined);
+    // Clear topic from currentPath when creating new topic
+    setCurrentPath({ ...currentPath, topic: undefined });
   };
 
   const handleTopicsCreated = async (newTopics: Topic[]) => {
     await refreshTopics();
     // Select the first new topic if any were created
     if (newTopics.length > 0) {
-      setSelectedTopic(newTopics[0]);
+      setSelectedTopicId(newTopics[0].id);
+      // Update currentPath with the new topic
+      setCurrentPath({ ...currentPath, topic: newTopics[0] });
     }
     setIsCreatingNewTopic(false);
   };
 
   const handleTopicDeleted = () => {
-    setSelectedTopic(undefined);
+    setSelectedTopicId(undefined);
     setIsCreatingNewTopic(false);
+    // Clear topic from currentPath when topic is deleted
+    setCurrentPath({ ...currentPath, topic: undefined });
   };
 
   return (
@@ -62,6 +91,7 @@ const TopicSplitView: React.FC = () => {
       <div className="split-main">
         {selectedTopic ? (
           <TopicTabbedView
+            key={selectedTopic.id}
             topic={selectedTopic}
             onTopicDeleted={handleTopicDeleted}
           />

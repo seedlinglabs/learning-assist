@@ -63,6 +63,13 @@ class AcademicRecordsServiceClass {
   ): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
     
+    console.log('AcademicRecordsService.makeRequest:', {
+      url,
+      method: options.method || 'GET',
+      headers: this.getHeaders(),
+      body: options.body
+    });
+    
     const response = await fetch(url, {
       ...options,
       headers: {
@@ -71,22 +78,37 @@ class AcademicRecordsServiceClass {
       }
     });
 
+    console.log('AcademicRecordsService.makeRequest response:', {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok
+    });
+
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      console.error('AcademicRecordsService.makeRequest error:', errorData);
       throw new Error(errorData.error || `HTTP ${response.status}`);
     }
 
-    return response.json();
+    const result = await response.json();
+    console.log('AcademicRecordsService.makeRequest result:', result);
+    return result;
   }
 
   /**
    * Create a new academic record
    */
   async createRecord(data: CreateAcademicRecordRequest): Promise<AcademicRecord> {
-    return this.makeRequest<AcademicRecord>('/academic-records', {
+    console.log('AcademicRecordsService.createRecord called with:', data);
+    console.log('API URL:', `${API_BASE_URL}/academic-records`);
+    
+    const result = await this.makeRequest<AcademicRecord>('/academic-records', {
       method: 'POST',
       body: JSON.stringify(data)
     });
+    
+    console.log('AcademicRecordsService.createRecord result:', result);
+    return result;
   }
 
   /**
@@ -183,7 +205,11 @@ class AcademicRecordsServiceClass {
    */
   async getRecordsByTopic(topicId: string): Promise<AcademicRecord[]> {
     try {
+      console.log('AcademicRecordsService.getRecordsByTopic called with topicId:', topicId);
+      console.log('API URL:', `${API_BASE_URL}/records/topic/${topicId}`);
+      
       const response = await this.makeRequest<AcademicRecord[]>(`/records/topic/${topicId}`);
+      console.log('AcademicRecordsService.getRecordsByTopic result:', response);
       return response;
     } catch (error) {
       console.error('Error fetching records by topic:', error);

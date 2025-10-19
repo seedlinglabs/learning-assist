@@ -13,7 +13,7 @@ interface AppContextType {
   setSearchQuery: (query: string) => void;
   searchResults: SearchResult[];
   addTopic: (subjectId: string, topic: Omit<Topic, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
-  updateTopic: (topicId: string, updates: Partial<Topic>) => Promise<void>;
+  updateTopic: (topicId: string, updates: Partial<Topic>, skipRefresh?: boolean) => Promise<void>;
   deleteTopic: (topicId: string) => Promise<void>;
   openNotebookLM: (url: string) => void;
   performSearch: (query: string) => SearchResult[];
@@ -174,7 +174,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     }
   };
 
-  const updateTopic = async (topicId: string, updates: Partial<Topic>) => {
+  const updateTopic = async (topicId: string, updates: Partial<Topic>, skipRefresh: boolean = false) => {
     try {
       setLoading(true);
       setError(null);
@@ -192,8 +192,26 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
       const updatedTopic = await topicsAPI.update(topicId, updateRequest);
 
-      // Refresh topics from API to ensure consistency
-      await refreshTopics();
+      // Update the topic in local state immediately for better UX
+      const nextSchools = schoolsData.map(school => ({
+        ...school,
+        classes: school.classes.map(cls => ({
+          ...cls,
+          subjects: cls.subjects.map(subject => ({
+            ...subject,
+            topics: subject.topics.map(topic => 
+              topic.id === topicId ? { ...topic, ...updates } : topic
+            )
+          }))
+        }))
+      }));
+      setSchoolsData(nextSchools);
+      reseatCurrentPath(nextSchools);
+
+      // Only refresh from API if not skipping (for AI content updates)
+      if (!skipRefresh) {
+        await refreshTopics();
+      }
     } catch (err) {
       const errorMessage = err instanceof ApiError ? err.message : 'Failed to update topic';
       setError(errorMessage);
@@ -342,21 +360,26 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     const schoolId = currentPath.school.id;
     const classId = currentPath.class?.id;
     const subjectId = currentPath.subject?.id;
+    const topicId = currentPath.topic?.id;
 
     const nextSchool = nextSchools.find(s => s.id === schoolId);
     if (!nextSchool) return;
 
     let nextClass: Class | undefined = undefined;
     let nextSubject: Subject | undefined = undefined;
+    let nextTopic: Topic | undefined = undefined;
 
     if (classId) {
       nextClass = nextSchool.classes.find(c => c.id === classId);
       if (nextClass && subjectId) {
         nextSubject = nextClass.subjects.find(sub => sub.id === subjectId);
+        if (nextSubject && topicId) {
+          nextTopic = nextSubject.topics.find(topic => topic.id === topicId);
+        }
       }
     }
 
-    setCurrentPath({ school: nextSchool, class: nextClass, subject: nextSubject, topic: currentPath.topic });
+    setCurrentPath({ school: nextSchool, class: nextClass, subject: nextSubject, topic: nextTopic });
   };
 
   // Refresh topics for current subject

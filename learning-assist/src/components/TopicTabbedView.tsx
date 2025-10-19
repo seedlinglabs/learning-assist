@@ -20,7 +20,13 @@ type TabType = 'details' | 'lesson-plan' | 'teaching-guide' | 'group-discussion'
 const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted }) => {
   const { updateTopic, deleteTopic, loading, error, clearError, currentPath } = useApp();
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<TabType>('details');
+  
+  // Use a more persistent approach for activeTab - store it per topic ID
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    // Try to get the last active tab for this topic from localStorage
+    const savedTab = localStorage.getItem(`activeTab_${topic.id}`);
+    return (savedTab as TabType) || 'details';
+  });
   const [generatingAI, setGeneratingAI] = useState(false);
   const [findingVideos, setFindingVideos] = useState(false);
   const [aiGenerationStatus, setAiGenerationStatus] = useState<string>('');
@@ -138,6 +144,19 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     }
     
   }, [topic, isGeneratingContent]);
+
+  // Save activeTab to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem(`activeTab_${topic.id}`, activeTab);
+  }, [activeTab, topic.id]);
+
+  // Restore activeTab when topic changes (in case component re-mounts)
+  useEffect(() => {
+    const savedTab = localStorage.getItem(`activeTab_${topic.id}`);
+    if (savedTab && savedTab !== activeTab) {
+      setActiveTab(savedTab as TabType);
+    }
+  }, [topic.id]);
 
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {
@@ -698,6 +717,9 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     }
 
     try {
+      // Store current active tab to maintain it after save
+      const currentTab = activeTab;
+      
       // Use enhanced lesson plan if available, otherwise use original
       const lessonPlanToSave = enhancedLessonPlan || topic.aiContent?.lessonPlan;
       
@@ -709,10 +731,13 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
           ...topic.aiContent,
           lessonPlan: lessonPlanToSave
         },
-      });
+      }, true); // Skip refresh to prevent tab navigation
       
       // Clear the enhanced lesson plan after saving
       setEnhancedLessonPlan(null);
+      
+      // Ensure we stay on the same tab after saving
+      setActiveTab(currentTab);
     } catch (error) {
       console.error('Failed to update topic:', error);
     }
@@ -756,9 +781,22 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
       const subjectName = currentPath.subject?.name || '';
 
       // Create/update academic records for each selected section
+      console.log('Creating academic records for sections:', selectedSections);
+      console.log('API payload:', {
+        school_id: schoolId,
+        academic_year: academicYear,
+        grade: grade,
+        subject_id: subjectId,
+        subject_name: subjectName,
+        topic_id: topic.id,
+        topic_name: topic.name,
+        teacher_id: user?.user_id,
+        teacher_name: user?.name
+      });
+
       for (const section of selectedSections) {
         try {
-          await AcademicRecordsService.createRecord({
+          const recordData = {
             school_id: schoolId,
             academic_year: academicYear,
             grade: grade,
@@ -769,14 +807,34 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
             topic_name: topic.name,
             teacher_id: user?.user_id,
             teacher_name: user?.name,
-            status: 'completed',
+            status: 'completed' as const,
             notes: `Marked complete by ${user?.name} on ${new Date().toLocaleDateString()}`
-          });
+          };
+          
+          console.log(`Creating record for section ${section}:`, recordData);
+          const result = await AcademicRecordsService.createRecord(recordData);
+          console.log(`Successfully created record for section ${section}:`, result);
         } catch (err) {
           console.error(`Error marking section ${section} complete:`, err);
           // Continue with other sections even if one fails
         }
       }
+
+      // Update local completion status after creating academic records
+      const currentCompletedSections = topicCompletionStatus.completedSections;
+      const newCompletedSections = Array.from(new Set([...currentCompletedSections, ...selectedSections]));
+      
+      let newStatus: 'completed' | 'in_progress' | 'not_started' = 'not_started';
+      if (newCompletedSections.length === availableSections.length) {
+        newStatus = 'completed';
+      } else if (newCompletedSections.length > 0) {
+        newStatus = 'in_progress';
+      }
+
+      setTopicCompletionStatus({
+        status: newStatus,
+        completedSections: newCompletedSections
+      });
 
       // Success
       setShowMarkCompleteModal(false);
@@ -984,7 +1042,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
   React.useEffect(() => {
   }, [topic]);
 
-  const tabs = [
+  const tabs = React.useMemo(() => [
     { id: 'details', label: 'Topic Details', icon: FileText },
     { id: 'lesson-plan', label: 'Lesson Plan', icon: GraduationCap, disabled: !topic.aiContent?.lessonPlan },
     { id: 'teaching-guide', label: 'Teaching Guide', icon: User, disabled: !topic.aiContent?.teachingGuide && !teachingGuide },
@@ -992,7 +1050,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     { id: 'assessment', label: 'Assessment', icon: ClipboardList, disabled: !topic.aiContent?.assessmentQuestions && !assessmentQuestions },
     { id: 'worksheets', label: 'Worksheets', icon: BookOpen, disabled: !topic.aiContent?.worksheets && !worksheets },
     { id: 'videos', label: 'Videos', icon: Youtube, disabled: !topic.aiContent?.videos || topic.aiContent.videos.length === 0 },
-  ];
+  ], [topic.aiContent, teachingGuide, groupDiscussion, assessmentQuestions, worksheets]);
 
   // Simple, safe view-only formatting for headings, bold, and bullets
   const formatSimpleMarkdown = (text: string): string => {
@@ -1115,39 +1173,45 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     completedSections: string[];
   }>({ status: 'not_started', completedSections: [] });
 
-  useEffect(() => {
-    const loadCompletionStatus = async () => {
-      try {
-        const records = await AcademicRecordsService.getRecordsByTopic(topic.id);
-        const completedRecords = records.filter(record => record.status === 'completed');
-        
-        if (completedRecords.length === 0) {
-          setTopicCompletionStatus({ status: 'not_started', completedSections: [] });
-          return;
-        }
-        
-        const completedSections = completedRecords.map(record => record.section);
-        const allSections = ['A', 'B', 'C', 'D', 'E', 'F'];
-        
-        let status: 'completed' | 'in_progress' | 'not_started' = 'not_started';
-        if (completedSections.length === allSections.length) {
-          status = 'completed';
-        } else if (completedSections.length > 0) {
-          status = 'in_progress';
-        }
-        
-        setTopicCompletionStatus({
-          status,
-          completedSections: Array.from(new Set(completedSections))
-        });
-      } catch (err) {
-        console.error('Error loading completion status:', err);
+useEffect(() => {
+  const loadCompletionStatus = async () => {
+    try {
+      console.log('Loading completion status for topic:', topic.id);
+      const records = await AcademicRecordsService.getRecordsByTopic(topic.id);
+      console.log('Retrieved academic records:', records);
+      
+      const completedRecords = records.filter(record => record.status === 'completed');
+      console.log('Completed records:', completedRecords);
+      
+      if (completedRecords.length === 0) {
+        console.log('No completed records found, setting status to not_started');
         setTopicCompletionStatus({ status: 'not_started', completedSections: [] });
+        return;
       }
-    };
-    
-    loadCompletionStatus();
-  }, [topic.id]);
+      
+      const completedSections = completedRecords.map(record => record.section);
+      const allSections = ['A', 'B', 'C', 'D', 'E', 'F'];
+      
+      let status: 'completed' | 'in_progress' | 'not_started' = 'not_started';
+      if (completedSections.length === allSections.length) {
+        status = 'completed';
+      } else if (completedSections.length > 0) {
+        status = 'in_progress';
+      }
+      
+      console.log('Setting completion status:', { status, completedSections });
+      setTopicCompletionStatus({
+        status,
+        completedSections: Array.from(new Set(completedSections))
+      });
+    } catch (err) {
+      console.error('Error loading completion status:', err);
+      setTopicCompletionStatus({ status: 'not_started', completedSections: [] });
+    }
+  };
+  
+  loadCompletionStatus();
+}, [topic.id]);
 
   return (
     <div className="topic-tabbed-view">
