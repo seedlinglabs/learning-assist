@@ -11,7 +11,7 @@ interface NewTopicPanelProps {
   subjectId: string;
   subjectName: string;
   onCancel: () => void;
-  onTopicCreated: () => void;
+  onTopicCreated: (newTopic: any) => void;
 }
 
 const NewTopicPanel: React.FC<NewTopicPanelProps> = ({ 
@@ -75,12 +75,12 @@ const NewTopicPanel: React.FC<NewTopicPanelProps> = ({
     }
 
     try {
-      await addTopic(subjectId, {
+      const newTopic = await addTopic(subjectId, {
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
         documentLinks: formData.documentLinks.length > 0 ? formData.documentLinks : undefined,
       });
-      onTopicCreated();
+      onTopicCreated(newTopic);
     } catch (error) {
       console.error('Failed to create topic:', error);
     }

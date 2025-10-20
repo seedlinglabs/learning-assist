@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import TopicSidebar from './TopicSidebar';
 import TopicTabbedView from './TopicTabbedView';
+import NewTopicPanel from './NewTopicPanel';
 import { Topic } from '../types';
 import '../styles/TopicSplitView.css';
 
@@ -26,6 +27,15 @@ const TopicSplitView: React.FC = () => {
       }
     }
   }, [currentPath.topic, topics, selectedTopicId]);
+
+  // Auto-select first topic if no topic is selected and topics are available
+  useEffect(() => {
+    if (!selectedTopicId && !isCreatingNewTopic && topics.length > 0) {
+      const firstTopic = topics[0];
+      setSelectedTopicId(firstTopic.id);
+      setCurrentPath({ ...currentPath, topic: firstTopic });
+    }
+  }, [topics, selectedTopicId, isCreatingNewTopic, currentPath, setCurrentPath]);
 
   // Update selectedTopic when currentPath.topic changes (for updates)
   useEffect(() => {
@@ -62,6 +72,15 @@ const TopicSplitView: React.FC = () => {
     setIsCreatingNewTopic(false);
   };
 
+  const handleNewTopicCreated = (newTopic: Topic) => {
+    // Set the newly created topic as selected
+    setSelectedTopicId(newTopic.id);
+    // Update currentPath with the new topic
+    setCurrentPath({ ...currentPath, topic: newTopic });
+    // Close the new topic panel
+    setIsCreatingNewTopic(false);
+  };
+
   const handleTopicDeleted = () => {
     setSelectedTopicId(undefined);
     setIsCreatingNewTopic(false);
@@ -89,21 +108,23 @@ const TopicSplitView: React.FC = () => {
       </div>
       
       <div className="split-main">
-        {selectedTopic ? (
+        {isCreatingNewTopic ? (
+          <NewTopicPanel
+            subjectId={subject.id}
+            subjectName={subject.name}
+            onCancel={() => setIsCreatingNewTopic(false)}
+            onTopicCreated={handleNewTopicCreated}
+          />
+        ) : selectedTopic ? (
           <TopicTabbedView
             key={selectedTopic.id}
             topic={selectedTopic}
             onTopicDeleted={handleTopicDeleted}
           />
-        ) : isCreatingNewTopic ? (
-          <div className="empty-main-content">
-            <h3>Creating New Topic</h3>
-            <p>Use the form in the sidebar to create a new topic.</p>
-          </div>
         ) : (
           <div className="empty-main-content">
-            <h3>Select a Topic</h3>
-            <p>Choose a topic from the sidebar to view its details, or create a new one.</p>
+            <h3>No Topics Available</h3>
+            <p>Create your first topic to get started.</p>
           </div>
         )}
       </div>

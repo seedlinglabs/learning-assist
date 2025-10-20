@@ -15,7 +15,7 @@ NC='\033[0m' # No Color
 # Default values
 DEFAULT_BUCKET_NAME="aischool.seedlinglabs.com"
 DEFAULT_REGION="us-west-2"
-DEFAULT_PROFILE="default"
+DEFAULT_PROFILE="AdministratorAccess-143320675925"
 
 # Parse command line arguments
 BUCKET_NAME=""

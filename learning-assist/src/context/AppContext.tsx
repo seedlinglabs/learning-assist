@@ -12,7 +12,7 @@ interface AppContextType {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   searchResults: SearchResult[];
-  addTopic: (subjectId: string, topic: Omit<Topic, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  addTopic: (subjectId: string, topic: Omit<Topic, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Topic>;
   updateTopic: (topicId: string, updates: Partial<Topic>, skipRefresh?: boolean) => Promise<void>;
   deleteTopic: (topicId: string) => Promise<void>;
   openNotebookLM: (url: string) => void;
@@ -165,6 +165,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
       // Refresh topics from API to ensure consistency
       await refreshTopics();
+      
+      // Return the created topic
+      return newTopic;
     } catch (err) {
       const errorMessage = err instanceof ApiError ? err.message : 'Failed to add topic';
       setError(errorMessage);
