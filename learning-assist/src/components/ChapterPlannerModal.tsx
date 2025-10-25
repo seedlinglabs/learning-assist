@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { X, Upload, Sparkles, CheckCircle, Clock, Target } from 'lucide-react';
-import { PDFUpload } from './PDFUpload';
+import { MultiPDFUpload } from './MultiPDFUpload';
 import { ChapterPlannerService } from '../services/chapterPlannerService';
 import { Topic, Subject, Class, School } from '../types';
 import './ChapterPlannerModal.css';
+import '../styles/MultiPDFUpload.css';
 
 interface TopicSuggestion {
   name: string;
@@ -41,14 +42,24 @@ const ChapterPlannerModal: React.FC<ChapterPlannerModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [showLecturePopup, setShowLecturePopup] = useState(false);
+  const [uploadedFileCount, setUploadedFileCount] = useState<number>(0);
 
-  const handlePDFTextExtracted = (extractedText: string, fileName: string) => {
-    setTextbookContent(extractedText);
+  const handleFilesProcessed = (combinedText: string, files: any[]) => {
+    setTextbookContent(combinedText);
+    setUploadedFileCount(files.filter(f => f.status === 'success').length);
     setPdfError(null);
-    // Auto-generate chapter name from filename if not provided
-    if (!chapterName) {
-      const nameFromFile = fileName.replace('.pdf', '').replace(/[_-]/g, ' ');
-      setChapterName(nameFromFile);
+    
+    // Auto-generate chapter name from first successful file if not provided
+    if (!chapterName && files.length > 0) {
+      const firstSuccessfulFile = files.find(f => f.status === 'success');
+      if (firstSuccessfulFile) {
+        const nameFromFile = firstSuccessfulFile.file.name
+          .replace('.pdf', '')
+          .replace(/[_-]/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        setChapterName(nameFromFile);
+      }
     }
   };
 
@@ -211,10 +222,11 @@ const ChapterPlannerModal: React.FC<ChapterPlannerModalProps> = ({
       </div>
 
       <div className="pdf-upload-section">
-        <PDFUpload
-          onTextExtracted={handlePDFTextExtracted}
+        <MultiPDFUpload
+          onFilesProcessed={handleFilesProcessed}
           onError={handlePDFError}
           disabled={false}
+          maxFiles={5}
         />
         {pdfError && (
           <div className="error-message">
@@ -224,15 +236,31 @@ const ChapterPlannerModal: React.FC<ChapterPlannerModalProps> = ({
         )}
       </div>
 
+      {/* Manual text input fallback */}
+      <div className="manual-input-section">
+        <h4>Or Paste Text Manually</h4>
+        <p className="form-help-text">
+          If PDF extraction fails (scanned images, corrupted files), you can paste the chapter text directly:
+        </p>
+        <textarea
+          value={textbookContent}
+          onChange={(e) => setTextbookContent(e.target.value)}
+          placeholder="Paste textbook chapter content here..."
+          rows={8}
+          className="manual-text-input"
+        />
+      </div>
+
       {textbookContent && (
         <div className="content-preview">
-          <h4>Content Preview</h4>
+          <h4>Content Preview {uploadedFileCount > 0 && `(${uploadedFileCount} file${uploadedFileCount > 1 ? 's' : ''})`}</h4>
           <div className="content-preview-text">
             {textbookContent.substring(0, 500)}
             {textbookContent.length > 500 && '...'}
           </div>
           <p className="content-stats">
             Total characters: {textbookContent.length.toLocaleString()}
+            {uploadedFileCount > 1 && ` from ${uploadedFileCount} PDFs`}
           </p>
         </div>
       )}

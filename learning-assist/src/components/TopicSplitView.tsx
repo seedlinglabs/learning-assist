@@ -1,142 +1,130 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Topic } from '../types';
 import TopicSidebar from './TopicSidebar';
 import TopicTabbedView from './TopicTabbedView';
 import NewTopicPanel from './NewTopicPanel';
+import { Topic } from '../types';
 import '../styles/TopicSplitView.css';
 
 const TopicSplitView: React.FC = () => {
-  const { currentPath, refreshTopics, loading, selectedTopicId, setSelectedTopicId } = useApp();
-  const { school, class: cls, subject } = currentPath;
-  const [selectedTopic, setSelectedTopic] = useState<Topic | undefined>();
+  const { currentPath, loading, refreshTopics, setCurrentPath } = useApp();
+  const { subject } = currentPath;
+  const [selectedTopicId, setSelectedTopicId] = useState<string | undefined>(undefined);
   const [isCreatingNewTopic, setIsCreatingNewTopic] = useState(false);
 
-  // Sort topics alphabetically by name
-  const sortedTopics = [...(subject?.topics || [])].sort((a, b) => 
-    a.name.toLowerCase().localeCompare(b.name.toLowerCase())
-  );
+  // Get topics from the current subject
+  const topics = subject?.topics || [];
+  
+  // Find the selected topic by ID to ensure it's always current
+  const selectedTopic = selectedTopicId ? topics.find(topic => topic.id === selectedTopicId) : undefined;
 
-  // Handle topic selection and updates when topics change
+  // Sync selectedTopicId with currentPath.topic when topics change
   useEffect(() => {
-    if (isCreatingNewTopic) return; // Don't auto-select when creating new topic
-
-    if (sortedTopics.length === 0) {
-      setSelectedTopic(undefined);
-      setSelectedTopicId(null);
-      return;
-    }
-
-    // If we have a selected topic ID from context, try to find and select it
-    if (selectedTopicId) {
-      const topicFromContext = sortedTopics.find(t => t.id === selectedTopicId);
-      if (topicFromContext) {
-        setSelectedTopic(topicFromContext);
-        return;
+    if (currentPath.topic && topics.length > 0) {
+      const topicExists = topics.find(t => t.id === currentPath.topic?.id);
+      if (topicExists && selectedTopicId !== currentPath.topic.id) {
+        setSelectedTopicId(currentPath.topic.id);
       }
     }
+  }, [currentPath.topic, topics, selectedTopicId]);
 
-    // If no topic selected or context topic not found, auto-select first one
-    if (!selectedTopic) {
-      const firstTopic = sortedTopics[0];
-      setSelectedTopic(firstTopic);
+  // Auto-select first topic if no topic is selected and topics are available
+  useEffect(() => {
+    if (!selectedTopicId && !isCreatingNewTopic && topics.length > 0) {
+      const firstTopic = topics[0];
       setSelectedTopicId(firstTopic.id);
-      return;
+      setCurrentPath({ ...currentPath, topic: firstTopic });
     }
+  }, [topics, selectedTopicId, isCreatingNewTopic, currentPath, setCurrentPath]);
 
-    // Check if currently selected topic still exists and update it
-    const updatedTopic = sortedTopics.find(t => t.id === selectedTopic.id);
-    if (updatedTopic) {
-      // Topic exists, update with latest data
-      setSelectedTopic(updatedTopic);
-      setSelectedTopicId(updatedTopic.id);
-    } else {
-      // Topic was deleted, select first available
-      const firstTopic = sortedTopics[0];
-      setSelectedTopic(firstTopic);
-      setSelectedTopicId(firstTopic.id);
+  // Update selectedTopic when currentPath.topic changes (for updates)
+  useEffect(() => {
+    if (currentPath.topic && currentPath.topic.id === selectedTopicId) {
+      // The selectedTopic is already computed from selectedTopicId and topics
+      // This effect ensures the component re-renders when currentPath.topic updates
     }
-  }, [sortedTopics, isCreatingNewTopic, selectedTopicId]);
+  }, [currentPath.topic, selectedTopicId]);
 
-  if (!school || !cls || !subject) {
-    return null;
-  }
+  if (!subject) return null;
 
-  const handleTopicDeleted = () => {
-    setSelectedTopic(undefined);
-    setSelectedTopicId(null);
+  const handleTopicSelect = (topic: Topic) => {
+    setSelectedTopicId(topic.id);
+    setIsCreatingNewTopic(false);
+    // Also update the currentPath to include the selected topic
+    setCurrentPath({ ...currentPath, topic });
   };
 
   const handleNewTopicClick = () => {
-    setSelectedTopic(undefined);
-    setSelectedTopicId(null);
     setIsCreatingNewTopic(true);
+    setSelectedTopicId(undefined);
+    // Clear topic from currentPath when creating new topic
+    setCurrentPath({ ...currentPath, topic: undefined });
   };
 
-  const handleNewTopicCancel = () => {
-    setIsCreatingNewTopic(false);
-    // Auto-select first topic if available
-    if (sortedTopics.length > 0) {
-      const firstTopic = sortedTopics[0];
-      setSelectedTopic(firstTopic);
-      setSelectedTopicId(firstTopic.id);
-    }
-  };
-
-  const handleTopicCreated = () => {
-    setIsCreatingNewTopic(false);
-    // The newly created topic will be auto-selected by the useEffect
-  };
-
-  const handleTopicSelect = (topic: Topic) => {
-    setIsCreatingNewTopic(false);
-    setSelectedTopic(topic);
-    setSelectedTopicId(topic.id);
-  };
-
-  const handleTopicsCreated = async (topics: Topic[]) => {
-    // Refresh topics to show the newly created ones
+  const handleTopicsCreated = async (newTopics: Topic[]) => {
     await refreshTopics();
+    // Select the first new topic if any were created
+    if (newTopics.length > 0) {
+      setSelectedTopicId(newTopics[0].id);
+      // Update currentPath with the new topic
+      setCurrentPath({ ...currentPath, topic: newTopics[0] });
+    }
+    setIsCreatingNewTopic(false);
+  };
+
+  const handleNewTopicCreated = (newTopic: Topic) => {
+    // Set the newly created topic as selected
+    setSelectedTopicId(newTopic.id);
+    // Update currentPath with the new topic
+    setCurrentPath({ ...currentPath, topic: newTopic });
+    // Close the new topic panel
+    setIsCreatingNewTopic(false);
+  };
+
+  const handleTopicDeleted = () => {
+    setSelectedTopicId(undefined);
+    setIsCreatingNewTopic(false);
+    // Clear topic from currentPath when topic is deleted
+    setCurrentPath({ ...currentPath, topic: undefined });
   };
 
   return (
     <div className="topic-split-view">
       <div className="split-sidebar">
         <TopicSidebar
-          topics={sortedTopics}
-          selectedTopic={isCreatingNewTopic ? undefined : selectedTopic}
+          topics={topics}
+          selectedTopic={selectedTopic}
           onTopicSelect={handleTopicSelect}
           onNewTopicClick={handleNewTopicClick}
           subjectId={subject.id}
           subjectName={subject.name}
           isCreatingNewTopic={isCreatingNewTopic}
           subject={subject}
-          class={cls}
-          school={school}
+          class={currentPath.class}
+          school={currentPath.school}
           onTopicsCreated={handleTopicsCreated}
           loading={loading}
         />
       </div>
+      
       <div className="split-main">
         {isCreatingNewTopic ? (
           <NewTopicPanel
             subjectId={subject.id}
             subjectName={subject.name}
-            onCancel={handleNewTopicCancel}
-            onTopicCreated={handleTopicCreated}
+            onCancel={() => setIsCreatingNewTopic(false)}
+            onTopicCreated={handleNewTopicCreated}
           />
         ) : selectedTopic ? (
           <TopicTabbedView
+            key={selectedTopic.id}
             topic={selectedTopic}
             onTopicDeleted={handleTopicDeleted}
           />
         ) : (
-          <div className="no-topic-selected">
-            <div className="empty-state-large">
-              <div className="empty-icon">📚</div>
-              <h3>Select a topic to view details</h3>
-              <p>Choose a topic from the sidebar to view and edit its content, documents, and AI-generated lesson plan.</p>
-            </div>
+          <div className="empty-main-content">
+            <h3>No Topics Available</h3>
+            <p>Create your first topic to get started.</p>
           </div>
         )}
       </div>

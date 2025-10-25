@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { FileText, Plus, Search, Calendar, Sparkles, ChevronDown, ChevronRight } from 'lucide-react';
+import { FileText, Plus, Search, Calendar, Sparkles, ChevronDown, ChevronRight, CheckCircle } from 'lucide-react';
 import { Topic } from '../types';
 import ChapterPlannerModal from './ChapterPlannerModal';
 
@@ -191,6 +191,19 @@ const TopicSidebar: React.FC<TopicSidebarProps> = ({
                           <div className="topic-item-header">
                             <FileText size={16} />
                             <span className="topic-name">{label}</span>
+                            {/* Add completion status indicator */}
+                            {topic.completionStatus === 'completed' && (
+                              <div className="completion-badge">
+                                <CheckCircle size={14} />
+                                <span>Completed</span>
+                              </div>
+                            )}
+                            {topic.completionStatus === 'in_progress' && (
+                              <div className="completion-badge in-progress">
+                                <div className="progress-dot"></div>
+                                <span>In Progress</span>
+                              </div>
+                            )}
                           </div>
                           {topic.description && (
                             <p className="topic-preview">
@@ -203,6 +216,13 @@ const TopicSidebar: React.FC<TopicSidebarProps> = ({
                           {topic.aiContent && topic.aiContent.lessonPlan && (
                             <div className="topic-summary-badge">
                               ✨ Has AI Content
+                            </div>
+                          )}
+                          {/* Show completed sections if any */}
+                          {topic.completedSections && topic.completedSections.length > 0 && (
+                            <div className="completed-sections">
+                              <span className="sections-label">Completed: </span>
+                              <span className="sections-list">{topic.completedSections.join(', ')}</span>
                             </div>
                           )}
                           <div className="topic-item-meta">

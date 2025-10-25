@@ -46,6 +46,8 @@ export interface GeminiResponse {
 
 class SecureGeminiService {
   private selectedModel: string = 'gemini-2.5-pro';
+  private readonly MAX_RETRIES = 3;
+  private readonly RETRY_DELAY_MS = 1000; // 1 second base delay
 
   setModel(model: string) {
     this.selectedModel = model;
@@ -63,72 +65,94 @@ class SecureGeminiService {
   }
 
   private async makeSecureRequest(endpoint: string, payload: any): Promise<GeminiResponse> {
-    try {
-      
-      // Get auth token if available (for usage tracking)
-      const authToken = localStorage.getItem('authToken');
-      
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      
-      if (authToken) {
-        headers['Authorization'] = `Bearer ${authToken}`;
-      }
-
-      // Add model to payload
-      const payloadWithModel = {
-        ...payload,
-        model: this.selectedModel
-      };
-
-      const response = await fetch(`${GEMINI_PROXY_URL}/${endpoint}`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payloadWithModel),
-      });
-      
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+    let lastError: Error | null = null;
+    
+    for (let attempt = 1; attempt <= this.MAX_RETRIES; attempt++) {
+      try {
+        console.log(`Secure Gemini API attempt ${attempt}/${this.MAX_RETRIES} for endpoint: ${endpoint}`);
         
-        if (response.status === 429) {
-          return {
-            success: false,
-            error: 'Daily rate limit exceeded. Please try again tomorrow.',
-            usage: errorData.current_usage ? {
-              daily_requests: errorData.current_usage,
-              limit: 100
-            } : undefined
-          };
+        // Get auth token if available (for usage tracking)
+        const authToken = localStorage.getItem('authToken');
+        
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+        
+        if (authToken) {
+          headers['Authorization'] = `Bearer ${authToken}`;
+        }
+
+        // Add model to payload
+        const payloadWithModel = {
+          ...payload,
+          model: this.selectedModel
+        };
+
+        const response = await fetch(`${GEMINI_PROXY_URL}/${endpoint}`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(payloadWithModel),
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          
+          if (response.status === 429) {
+            return {
+              success: false,
+              error: 'Daily rate limit exceeded. Please try again tomorrow.',
+              usage: errorData.current_usage ? {
+                daily_requests: errorData.current_usage,
+                limit: 100
+              } : undefined
+            };
+          }
+          
+          // Handle API key errors specifically - don't retry these
+          if (response.status === 400 && errorData.error?.message?.includes('API key not valid')) {
+            return {
+              success: false,
+              error: 'AI service is temporarily unavailable. Please contact support or try again later.',
+              details: 'The AI service requires configuration. This is a development environment issue.'
+            };
+          }
+          
+          // For other HTTP errors, throw to trigger retry
+          throw new Error(errorData.error || `HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log(`Secure Gemini API success on attempt ${attempt} for endpoint: ${endpoint}`);
+        return {
+          success: true,
+          data
+        };
+
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error('Unknown error occurred');
+        console.error(`Secure Gemini API error (${endpoint}) attempt ${attempt}/${this.MAX_RETRIES}:`, lastError);
+        
+        // If this is the last attempt, don't wait
+        if (attempt === this.MAX_RETRIES) {
+          break;
         }
         
-        // Handle API key errors specifically
-        if (response.status === 400 && errorData.error?.message?.includes('API key not valid')) {
-          return {
-            success: false,
-            error: 'AI service is temporarily unavailable. Please contact support or try again later.',
-            details: 'The AI service requires configuration. This is a development environment issue.'
-          };
-        }
+        // Calculate exponential backoff delay: 1s, 2s, 4s
+        const delay = this.RETRY_DELAY_MS * Math.pow(2, attempt - 1);
+        console.log(`Retrying in ${delay}ms...`);
         
-        throw new Error(errorData.error || `HTTP ${response.status}`);
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
-
-      const data = await response.json();
-      return {
-        success: true,
-        data
-      };
-
-    } catch (error) {
-      console.error(`Secure Gemini API error (${endpoint}):`, error);
-      console.error(`DEBUG makeSecureRequest: Error details:`, error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred'
-      };
     }
+    
+    // All retries failed
+    console.error(`Secure Gemini API failed after ${this.MAX_RETRIES} attempts for endpoint: ${endpoint}`);
+    return {
+      success: false,
+      error: lastError?.message || 'Unknown error occurred',
+      details: `Failed after ${this.MAX_RETRIES} attempts. Last error: ${lastError?.message}`
+    };
   }
 
   async generateTopicContent(
@@ -718,7 +742,7 @@ TEACHING GUIDE STRUCTURE (PRESCRIPTIVE PLAN, PLAIN TEXT – NO JSON/CODE BLOCKS)
 **LESSON DELIVERY (35 minutes)**
 - Main topics to cover (3–5 bullets)
 - Suggested videos (2–4 high-quality links with brief rationale)
-- Group discussion prompts (2–3, with expected student angles)
+- Group discussion prompts (2-3, with expected student angles)
 - Engagement strategies (think-pair-share, cold/warm calls, mini-whiteboards, etc.)
 - Teacher script cues (brief, for transitions and emphasis)
 - When to check for understanding and what to ask

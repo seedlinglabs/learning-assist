@@ -5,6 +5,16 @@ from datetime import datetime
 from decimal import Decimal
 from botocore.exceptions import ClientError
 import time
+import base64
+from io import BytesIO
+
+# Try to import PyPDF2 for server-side PDF extraction
+try:
+    import PyPDF2
+    HAS_PYPDF2 = True
+except ImportError:
+    HAS_PYPDF2 = False
+    print("Warning: PyPDF2 not available. Server-side PDF extraction disabled.")
 
 # Initialize DynamoDB client
 dynamodb = boto3.resource('dynamodb')
@@ -74,6 +84,81 @@ def create_table_if_not_exists():
             return table
         else:
             raise e
+
+def extract_pdf_text(pdf_base64_data):
+    """
+    Extract text from PDF file using PyPDF2
+    Handles base64-encoded PDF data from frontend
+    """
+    if not HAS_PYPDF2:
+        return {
+            'success': False,
+            'error': 'Server-side PDF extraction not available. PyPDF2 not installed.'
+        }
+    
+    try:
+        # Decode base64 PDF data
+        pdf_bytes = base64.b64decode(pdf_base64_data)
+        pdf_file = BytesIO(pdf_bytes)
+        
+        # Read PDF
+        pdf_reader = PyPDF2.PdfReader(pdf_file)
+        page_count = len(pdf_reader.pages)
+        
+        print(f"Extracting text from PDF with {page_count} pages")
+        
+        full_text = ''
+        for page_num in range(page_count):
+            try:
+                page = pdf_reader.pages[page_num]
+                page_text = page.extract_text()
+                full_text += page_text + '\n\n'
+                
+                # Log progress for large files
+                if page_count > 50 and (page_num + 1) % 10 == 0:
+                    print(f"Processed {page_num + 1}/{page_count} pages")
+                    
+            except Exception as page_error:
+                print(f"Error extracting page {page_num}: {str(page_error)}")
+                # Continue with other pages
+                continue
+        
+        # Check if we got meaningful text
+        if len(full_text.strip()) < 100:
+            return {
+                'success': False,
+                'error': 'PDF appears to be scanned images (no searchable text). Please use OCR software or manual text input.'
+            }
+        
+        print(f"Successfully extracted {len(full_text)} characters")
+        
+        return {
+            'success': True,
+            'text': full_text.strip(),
+            'pageCount': page_count,
+            'method': 'server_pypdf2'
+        }
+        
+    except Exception as e:
+        error_msg = str(e)
+        print(f"PDF extraction error: {error_msg}")
+        
+        # Provide helpful error messages
+        if 'password' in error_msg.lower():
+            return {
+                'success': False,
+                'error': 'PDF is password-protected. Please remove the password and try again.'
+            }
+        elif 'encrypted' in error_msg.lower():
+            return {
+                'success': False,
+                'error': 'PDF is encrypted. Please use an unencrypted version.'
+            }
+        else:
+            return {
+                'success': False,
+                'error': f'PDF extraction failed: {error_msg}'
+            }
 
 def lambda_handler(event, context):
     """Main Lambda handler"""
@@ -155,6 +240,29 @@ def lambda_handler(event, context):
             topic_id = path.split('/topics/')[-1]
             print(f"DEBUG: DELETE request for topic_id: {topic_id}")
             return delete_topic(table, topic_id)
+        
+        elif path == '/extract-pdf' and http_method == 'POST':
+            # Server-side PDF text extraction
+            pdf_data = body.get('pdfData')
+            if not pdf_data:
+                return {
+                    'statusCode': 400,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': json.dumps({'error': 'No PDF data provided'})
+                }
+            
+            result = extract_pdf_text(pdf_data)
+            return {
+                'statusCode': 200 if result.get('success') else 400,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                'body': json.dumps(result)
+            }
         
         else:
             print(f"DEBUG: No route matched - Method: {http_method}, Path: {path}")

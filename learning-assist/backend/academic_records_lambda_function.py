@@ -388,6 +388,32 @@ def list_records_by_class(school_id: str, academic_year: str, grade: str, sectio
         }
 
 
+def query_by_topic_id(topic_id: str) -> Dict[str, Any]:
+    """Query all records for a specific topic"""
+    try:
+        table = dynamodb.Table(TABLE_NAME)
+        
+        # Scan with filter (topic_id is the sort key, so we need to scan)
+        response = table.scan(
+            FilterExpression='topic_id = :topic_id',
+            ExpressionAttributeValues={
+                ':topic_id': topic_id
+            }
+        )
+        
+        return {
+            'statusCode': 200,
+            'body': json.dumps(response['Items'], cls=DecimalEncoder)
+        }
+        
+    except Exception as e:
+        print(f"Error querying by topic: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': str(e)})
+        }
+
+
 def lambda_handler(event, context):
     """Main Lambda handler"""
     print(f"Event: {json.dumps(event)}")
@@ -452,6 +478,24 @@ def lambda_handler(event, context):
                 response = {
                     'statusCode': 405,
                     'body': json.dumps({'error': 'Method not allowed'})
+                }
+        
+        elif path.startswith('/records/topic/'):
+            # Handle GET /records/topic/{topicId}
+            path_parts = path.split('/')
+            if len(path_parts) >= 4:
+                topic_id = path_parts[3]
+                if http_method == 'GET':
+                    response = query_by_topic_id(topic_id)
+                else:
+                    response = {
+                        'statusCode': 405,
+                        'body': json.dumps({'error': 'Method not allowed'})
+                    }
+            else:
+                response = {
+                    'statusCode': 400,
+                    'body': json.dumps({'error': 'Invalid path format'})
                 }
         
         elif path.startswith('/academic-records/'):

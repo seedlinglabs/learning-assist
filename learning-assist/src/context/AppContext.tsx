@@ -12,8 +12,8 @@ interface AppContextType {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   searchResults: SearchResult[];
-  addTopic: (subjectId: string, topic: Omit<Topic, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
-  updateTopic: (topicId: string, updates: Partial<Topic>) => Promise<void>;
+  addTopic: (subjectId: string, topic: Omit<Topic, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Topic>;
+  updateTopic: (topicId: string, updates: Partial<Topic>, skipRefresh?: boolean) => Promise<void>;
   deleteTopic: (topicId: string) => Promise<void>;
   openNotebookLM: (url: string) => void;
   performSearch: (query: string) => SearchResult[];
@@ -165,6 +165,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
       // Refresh topics from API to ensure consistency
       await refreshTopics();
+      
+      // Return the created topic
+      return newTopic;
     } catch (err) {
       const errorMessage = err instanceof ApiError ? err.message : 'Failed to add topic';
       setError(errorMessage);
@@ -174,7 +177,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     }
   };
 
-  const updateTopic = async (topicId: string, updates: Partial<Topic>) => {
+  const updateTopic = async (topicId: string, updates: Partial<Topic>, skipRefresh: boolean = false) => {
     try {
       setLoading(true);
       setError(null);
@@ -184,14 +187,34 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         description: updates.description,
         documentLinks: updates.documentLinks || [],
         aiContent: updates.aiContent,
+        completionStatus: updates.completionStatus,
+        completedSections: updates.completedSections,
       };
 
       console.log('PUT Topic Payload:', updateRequest);
 
       const updatedTopic = await topicsAPI.update(topicId, updateRequest);
 
-      // Refresh topics from API to ensure consistency
-      await refreshTopics();
+      // Update the topic in local state immediately for better UX
+      const nextSchools = schoolsData.map(school => ({
+        ...school,
+        classes: school.classes.map(cls => ({
+          ...cls,
+          subjects: cls.subjects.map(subject => ({
+            ...subject,
+            topics: subject.topics.map(topic => 
+              topic.id === topicId ? { ...topic, ...updates } : topic
+            )
+          }))
+        }))
+      }));
+      setSchoolsData(nextSchools);
+      reseatCurrentPath(nextSchools);
+
+      // Only refresh from API if not skipping (for AI content updates)
+      if (!skipRefresh) {
+        await refreshTopics();
+      }
     } catch (err) {
       const errorMessage = err instanceof ApiError ? err.message : 'Failed to update topic';
       setError(errorMessage);
@@ -206,12 +229,71 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       setLoading(true);
       setError(null);
 
+      // Call API to delete
       await topicsAPI.delete(topicId);
 
-      // Refresh topics from API to ensure consistency
-      await refreshTopics();
+      // Immediately remove from local state for better UX
+      const nextSchools = schoolsData.map(school => ({
+        ...school,
+        classes: school.classes.map(cls => ({
+          ...cls,
+          subjects: cls.subjects.map(subject => ({
+            ...subject,
+            topics: subject.topics?.filter(topic => topic.id !== topicId) || []
+          }))
+        }))
+      }));
+      
+      setSchoolsData(nextSchools);
+      
+      // Clear topic from currentPath if it's the deleted one
+      if (currentPath.topic?.id === topicId) {
+        setCurrentPath({ 
+          school: currentPath.school,
+          class: currentPath.class,
+          subject: currentPath.subject,
+          topic: undefined 
+        });
+      }
+      
+      reseatCurrentPath(nextSchools);
+
     } catch (err) {
       const errorMessage = err instanceof ApiError ? err.message : 'Failed to delete topic';
+      
+      // Don't throw error if topic not found - it's already deleted
+      if (errorMessage.includes('not found') || errorMessage.includes('404')) {
+        console.warn('Topic already deleted, removing from local state');
+        
+        // Still remove from local state
+        const nextSchools = schoolsData.map(school => ({
+          ...school,
+          classes: school.classes.map(cls => ({
+            ...cls,
+            subjects: cls.subjects.map(subject => ({
+              ...subject,
+              topics: subject.topics?.filter(topic => topic.id !== topicId) || []
+            }))
+          }))
+        }));
+        
+        setSchoolsData(nextSchools);
+        
+        if (currentPath.topic?.id === topicId) {
+          setCurrentPath({ 
+            school: currentPath.school,
+            class: currentPath.class,
+            subject: currentPath.subject,
+            topic: undefined 
+          });
+        }
+        
+        reseatCurrentPath(nextSchools);
+        
+        // Don't throw error, just clear it
+        return;
+      }
+      
       setError(errorMessage);
       throw err;
     } finally {
@@ -340,21 +422,26 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     const schoolId = currentPath.school.id;
     const classId = currentPath.class?.id;
     const subjectId = currentPath.subject?.id;
+    const topicId = currentPath.topic?.id;
 
     const nextSchool = nextSchools.find(s => s.id === schoolId);
     if (!nextSchool) return;
 
     let nextClass: Class | undefined = undefined;
     let nextSubject: Subject | undefined = undefined;
+    let nextTopic: Topic | undefined = undefined;
 
     if (classId) {
       nextClass = nextSchool.classes.find(c => c.id === classId);
       if (nextClass && subjectId) {
         nextSubject = nextClass.subjects.find(sub => sub.id === subjectId);
+        if (nextSubject && topicId) {
+          nextTopic = nextSubject.topics.find(topic => topic.id === topicId);
+        }
       }
     }
 
-    setCurrentPath({ school: nextSchool, class: nextClass, subject: nextSubject, topic: currentPath.topic });
+    setCurrentPath({ school: nextSchool, class: nextClass, subject: nextSubject, topic: nextTopic });
   };
 
   // Refresh topics for current subject
