@@ -229,12 +229,71 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       setLoading(true);
       setError(null);
 
+      // Call API to delete
       await topicsAPI.delete(topicId);
 
-      // Refresh topics from API to ensure consistency
-      await refreshTopics();
+      // Immediately remove from local state for better UX
+      const nextSchools = schoolsData.map(school => ({
+        ...school,
+        classes: school.classes.map(cls => ({
+          ...cls,
+          subjects: cls.subjects.map(subject => ({
+            ...subject,
+            topics: subject.topics?.filter(topic => topic.id !== topicId) || []
+          }))
+        }))
+      }));
+      
+      setSchoolsData(nextSchools);
+      
+      // Clear topic from currentPath if it's the deleted one
+      if (currentPath.topic?.id === topicId) {
+        setCurrentPath({ 
+          school: currentPath.school,
+          class: currentPath.class,
+          subject: currentPath.subject,
+          topic: undefined 
+        });
+      }
+      
+      reseatCurrentPath(nextSchools);
+
     } catch (err) {
       const errorMessage = err instanceof ApiError ? err.message : 'Failed to delete topic';
+      
+      // Don't throw error if topic not found - it's already deleted
+      if (errorMessage.includes('not found') || errorMessage.includes('404')) {
+        console.warn('Topic already deleted, removing from local state');
+        
+        // Still remove from local state
+        const nextSchools = schoolsData.map(school => ({
+          ...school,
+          classes: school.classes.map(cls => ({
+            ...cls,
+            subjects: cls.subjects.map(subject => ({
+              ...subject,
+              topics: subject.topics?.filter(topic => topic.id !== topicId) || []
+            }))
+          }))
+        }));
+        
+        setSchoolsData(nextSchools);
+        
+        if (currentPath.topic?.id === topicId) {
+          setCurrentPath({ 
+            school: currentPath.school,
+            class: currentPath.class,
+            subject: currentPath.subject,
+            topic: undefined 
+          });
+        }
+        
+        reseatCurrentPath(nextSchools);
+        
+        // Don't throw error, just clear it
+        return;
+      }
+      
       setError(errorMessage);
       throw err;
     } finally {

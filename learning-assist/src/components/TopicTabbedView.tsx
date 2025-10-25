@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Calendar, ExternalLink, Trash2, Save, Sparkles, GraduationCap, Search, Youtube, User, Users, ClipboardList, BookOpen, Plus, Edit3, X, Loader2, CheckCircle } from 'lucide-react';
+import { FileText, Calendar, ExternalLink, Trash2, Save, Sparkles, GraduationCap, Search, Youtube, User, Users, ClipboardList, BookOpen, Plus, Edit3, X, Loader2, CheckCircle, Download, FileDown, AlertTriangle } from 'lucide-react';
 import { Topic, DocumentLink } from '../types';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
@@ -8,6 +8,8 @@ import { youtubeService } from '../services/youtubeService';
 import DocumentDiscoveryModal from './DocumentDiscoveryModal';
 import { PDFUpload } from './PDFUpload';
 import { AcademicRecordsService } from '../services/academicRecordsService';
+import YouTubePlayer from './YouTubePlayer';
+import { exportToPDF, exportToWord, isYouTubeURL, sanitizeFilename, extractYouTubeID } from '../utils/exportHelpers';
  
 
 interface TopicTabbedViewProps {
@@ -69,6 +71,12 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     url: '',
     description: ''
   });
+  const [videoUrlError, setVideoUrlError] = useState<string | null>(null);
+  const [playingVideo, setPlayingVideo] = useState<{ id: string; title: string } | null>(null);
+  
+  // Export states
+  const [exportingAssessment, setExportingAssessment] = useState(false);
+  const [exportingWorksheets, setExportingWorksheets] = useState(false);
   const [formData, setFormData] = useState({
     name: topic.name,
     description: topic.description || '',
@@ -848,12 +856,23 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
   };
 
   const handleDelete = async () => {
-    if (window.confirm('Are you sure you want to delete this topic?')) {
+    if (window.confirm(`Are you sure you want to delete "${topic.name}"? This action cannot be undone.`)) {
       try {
         await deleteTopic(topic.id);
         onTopicDeleted();
       } catch (error) {
         console.error('Failed to delete topic:', error);
+        // Show user-friendly error message
+        if (error instanceof Error) {
+          if (error.message.includes('not found')) {
+            alert('This topic has already been deleted or does not exist.');
+            onTopicDeleted(); // Still navigate away from the deleted topic
+          } else {
+            alert(`Failed to delete topic: ${error.message}`);
+          }
+        } else {
+          alert('Failed to delete topic. Please try again.');
+        }
       }
     }
   };
@@ -887,6 +906,14 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
       alert('Please enter a valid URL');
       return;
     }
+
+    // Validate YouTube URL
+    if (!isYouTubeURL(newVideo.url)) {
+      setVideoUrlError('Only YouTube links are allowed. Please provide a YouTube video URL (youtube.com or youtu.be) to ensure free, no-sign-up access for all users.');
+      return;
+    }
+
+    setVideoUrlError(null);
 
     const videoLink: DocumentLink = {
       name: newVideo.title.trim(),
@@ -933,6 +960,14 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
       alert('Please enter a valid URL');
       return;
     }
+
+    // Validate YouTube URL
+    if (!isYouTubeURL(newVideo.url)) {
+      setVideoUrlError('Only YouTube links are allowed. Please provide a YouTube video URL (youtube.com or youtu.be) to ensure free, no-sign-up access for all users.');
+      return;
+    }
+
+    setVideoUrlError(null);
 
     const updatedDocumentLinks = topic.documentLinks?.map(link => 
       link.url === editingVideoId 
@@ -998,6 +1033,92 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     setNewVideo({ title: '', url: '', description: '' });
     setIsAddingVideo(false);
     setEditingVideoId(null);
+    setVideoUrlError(null);
+  };
+
+  // Export handlers
+  const handleExportAssessmentPDF = async () => {
+    if (!topic.aiContent?.assessmentQuestions && !assessmentQuestions) return;
+    
+    try {
+      setExportingAssessment(true);
+      const content = formatSimpleMarkdown(topic.aiContent?.assessmentQuestions || assessmentQuestions || '');
+      const filename = sanitizeFilename(topic.name, 'assessment');
+      
+      await exportToPDF({
+        content,
+        filename,
+        title: `${topic.name} - Assessment Questions`
+      });
+    } catch (error) {
+      console.error('Export to PDF failed:', error);
+      alert('Failed to export to PDF. Please try again.');
+    } finally {
+      setExportingAssessment(false);
+    }
+  };
+
+  const handleExportAssessmentWord = async () => {
+    if (!topic.aiContent?.assessmentQuestions && !assessmentQuestions) return;
+    
+    try {
+      setExportingAssessment(true);
+      const content = formatSimpleMarkdown(topic.aiContent?.assessmentQuestions || assessmentQuestions || '');
+      const filename = sanitizeFilename(topic.name, 'assessment');
+      
+      await exportToWord({
+        content,
+        filename,
+        title: `${topic.name} - Assessment Questions`
+      });
+    } catch (error) {
+      console.error('Export to Word failed:', error);
+      alert('Failed to export to Word. Please try again.');
+    } finally {
+      setExportingAssessment(false);
+    }
+  };
+
+  const handleExportWorksheetsPDF = async () => {
+    if (!topic.aiContent?.worksheets && !worksheets) return;
+    
+    try {
+      setExportingWorksheets(true);
+      const content = formatSimpleMarkdown(topic.aiContent?.worksheets || worksheets || '');
+      const filename = sanitizeFilename(topic.name, 'worksheets');
+      
+      await exportToPDF({
+        content,
+        filename,
+        title: `${topic.name} - Worksheets`
+      });
+    } catch (error) {
+      console.error('Export to PDF failed:', error);
+      alert('Failed to export to PDF. Please try again.');
+    } finally {
+      setExportingWorksheets(false);
+    }
+  };
+
+  const handleExportWorksheetsWord = async () => {
+    if (!topic.aiContent?.worksheets && !worksheets) return;
+    
+    try {
+      setExportingWorksheets(true);
+      const content = formatSimpleMarkdown(topic.aiContent?.worksheets || worksheets || '');
+      const filename = sanitizeFilename(topic.name, 'worksheets');
+      
+      await exportToWord({
+        content,
+        filename,
+        title: `${topic.name} - Worksheets`
+      });
+    } catch (error) {
+      console.error('Export to Word failed:', error);
+      alert('Failed to export to Word. Please try again.');
+    } finally {
+      setExportingWorksheets(false);
+    }
   };
 
   const getVideoThumbnail = (url: string): string => {
@@ -1546,7 +1667,29 @@ useEffect(() => {
                   <button onClick={handleCancelEditingAssessmentQuestions} className="btn btn-secondary btn-sm">Cancel</button>
                 </>
               ) : (
-                <button onClick={handleStartEditingAssessmentQuestions} className="btn btn-secondary btn-sm">Edit</button>
+                <>
+                  <button onClick={handleStartEditingAssessmentQuestions} className="btn btn-secondary btn-sm">Edit</button>
+                  <div className="export-buttons">
+                    <button 
+                      onClick={handleExportAssessmentPDF} 
+                      className="btn btn-outline btn-sm"
+                      disabled={exportingAssessment}
+                      title="Export as PDF"
+                    >
+                      <Download size={16} />
+                      {exportingAssessment ? 'Exporting...' : 'PDF'}
+                    </button>
+                    <button 
+                      onClick={handleExportAssessmentWord} 
+                      className="btn btn-outline btn-sm"
+                      disabled={exportingAssessment}
+                      title="Export as Word"
+                    >
+                      <FileDown size={16} />
+                      {exportingAssessment ? 'Exporting...' : 'Word'}
+                    </button>
+                  </div>
+                </>
               )}
             </div>
             {isEditingAssessmentQuestions ? (
@@ -1584,7 +1727,29 @@ useEffect(() => {
                   <button onClick={handleCancelEditingWorksheets} className="btn btn-secondary btn-sm">Cancel</button>
                 </>
               ) : (
-                <button onClick={handleStartEditingWorksheets} className="btn btn-secondary btn-sm">Edit</button>
+                <>
+                  <button onClick={handleStartEditingWorksheets} className="btn btn-secondary btn-sm">Edit</button>
+                  <div className="export-buttons">
+                    <button 
+                      onClick={handleExportWorksheetsPDF} 
+                      className="btn btn-outline btn-sm"
+                      disabled={exportingWorksheets}
+                      title="Export as PDF"
+                    >
+                      <Download size={16} />
+                      {exportingWorksheets ? 'Exporting...' : 'PDF'}
+                    </button>
+                    <button 
+                      onClick={handleExportWorksheetsWord} 
+                      className="btn btn-outline btn-sm"
+                      disabled={exportingWorksheets}
+                      title="Export as Word"
+                    >
+                      <FileDown size={16} />
+                      {exportingWorksheets ? 'Exporting...' : 'Word'}
+                    </button>
+                  </div>
+                </>
               )}
             </div>
             {isEditingWorksheets ? (
@@ -1648,15 +1813,27 @@ useEffect(() => {
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="video-url">Video URL *</label>
+                  <label htmlFor="video-url">Video URL * (YouTube only)</label>
                   <input
                     id="video-url"
                     type="url"
                     value={newVideo.url}
-                    onChange={(e) => setNewVideo(prev => ({ ...prev, url: e.target.value }))}
-                    placeholder="https://youtube.com/watch?v=..."
-                    className="form-input"
+                    onChange={(e) => {
+                      setNewVideo(prev => ({ ...prev, url: e.target.value }));
+                      setVideoUrlError(null);
+                    }}
+                    placeholder="https://youtube.com/watch?v=... or https://youtu.be/..."
+                    className={`form-input ${videoUrlError ? 'input-error' : ''}`}
                   />
+                  {videoUrlError && (
+                    <div className="form-error-message">
+                      <AlertTriangle size={14} />
+                      <span>{videoUrlError}</span>
+                    </div>
+                  )}
+                  <small className="form-help-text">
+                    ℹ️ Only YouTube links allowed to ensure free, no-sign-up access
+                  </small>
                 </div>
 
                 <div className="form-actions">
@@ -1679,110 +1856,161 @@ useEffect(() => {
             )}
 
             {/* Combined Videos Grid */}
-            {((topic.documentLinks && topic.documentLinks.length > 0) || 
-              (topic.aiContent?.videos && topic.aiContent.videos.length > 0)) && (
-              <div className="videos-section">
-                <div className="videos-grid">
-                  {/* Teacher Custom Videos */}
-                  {topic.documentLinks && topic.documentLinks.map((video, index) => (
-                    <div key={`custom-${index}`} className="video-card custom-video-card">
-                      <a
-                        href={video.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="video-link"
-                      >
-                        <div className="video-thumbnail">
-                          {getVideoThumbnail(video.url) ? (
-                            <img 
-                              src={getVideoThumbnail(video.url)} 
-                              alt={video.name}
-                              className="thumbnail-image"
-                            />
-                          ) : (
-                            <div className="video-icon">
-                              <Youtube size={24} />
-                            </div>
-                          )}
-                          <div className="play-overlay">
-                            <Youtube size={24} />
-                          </div>
-                        </div>
-                        <div className="video-info">
-                          <h4 className="video-title">{video.name}</h4>
-                          <p className="video-channel">Teacher Added</p>
-                          <div className="video-actions">
-                            <button
-                              onClick={(e) => {
-                                e.preventDefault();
-                                handleEditVideo(video.url);
-                              }}
-                              className="btn btn-sm btn-outline"
-                              title="Edit video"
-                            >
-                              <Edit3 size={16} />
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.preventDefault();
-                                handleDeleteVideo(video.url);
-                              }}
-                              className="btn btn-sm btn-danger"
-                              title="Delete video"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </div>
-                      </a>
-                    </div>
-                  ))}
-
-                  {/* AI-Generated Videos */}
-                  {topic.aiContent?.videos && topic.aiContent.videos.map((video, index) => (
-                    <div key={video.id} className="video-card ai-video-card">
-                      <a
-                        href={video.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="video-link"
-                      >
-                        <div className="video-thumbnail">
-                          <img 
-                            src={video.thumbnail} 
-                            alt={video.title}
-                            className="thumbnail-image"
-                          />
-                          <div className="play-overlay">
-                            <Youtube size={24} />
-                          </div>
-                        </div>
-                        <div className="video-info">
-                          <h4 className="video-title">{video.title}</h4>
-                          <p className="video-channel">{video.channelTitle}</p>
-                          <p className="video-duration">{video.duration}</p>
-                          <p className="video-description">
-                            {video.description.substring(0, 100)}...
-                          </p>
-                        </div>
-                      </a>
-                      <div className="video-actions">
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handleDeleteAIVideo(video.id);
-                          }}
-                          className="btn btn-sm btn-danger"
-                          title="Delete AI video"
-                        >
-                          <Trash2 size={16} />
+            {(() => {
+              // Filter teacher videos to only show YouTube links
+              const youtubeTeacherVideos = (topic.documentLinks || []).filter(video => isYouTubeURL(video.url));
+              const nonYoutubeTeacherVideos = (topic.documentLinks || []).filter(video => !isYouTubeURL(video.url));
+              const aiVideos = topic.aiContent?.videos || [];
+              
+              const hasVideos = youtubeTeacherVideos.length > 0 || aiVideos.length > 0;
+              
+              return (
+                <>
+                  {nonYoutubeTeacherVideos.length > 0 && (
+                    <div className="non-youtube-warning">
+                      <AlertTriangle size={16} />
+                      <span>
+                        {nonYoutubeTeacherVideos.length} video{nonYoutubeTeacherVideos.length > 1 ? 's' : ''} hidden 
+                        (requires sign-up). Only YouTube links are displayed. 
+                        <button onClick={() => setIsAddingVideo(true)} className="btn-link">
+                          Edit videos
                         </button>
+                      </span>
+                    </div>
+                  )}
+                  
+                  {hasVideos && (
+                    <div className="videos-section">
+                      <div className="videos-grid">
+                        {/* Teacher YouTube Videos with Embedded Player */}
+                        {youtubeTeacherVideos.map((video, index) => {
+                          const videoId = extractYouTubeID(video.url);
+                          if (!videoId) return null;
+                          
+                          return (
+                            <div key={`custom-${index}`} className="video-card custom-video-card">
+                              <div 
+                                className="video-player-preview"
+                                onClick={() => setPlayingVideo({ id: videoId, title: video.name })}
+                              >
+                                <div className="video-thumbnail">
+                                  <img 
+                                    src={`https://img.youtube.com/vi/${videoId}/mqdefault.jpg`}
+                                    alt={video.name}
+                                    className="thumbnail-image"
+                                  />
+                                  <div className="play-overlay">
+                                    <div className="play-button">
+                                      <Youtube size={32} />
+                                      <span>Play</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="video-info">
+                                  <h4 className="video-title">{video.name}</h4>
+                                  <p className="video-channel">
+                                    <span className="badge badge-teacher">Teacher Added</span>
+                                  </p>
+                                  <div className="video-actions">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleEditVideo(video.url);
+                                      }}
+                                      className="btn btn-sm btn-outline"
+                                      title="Edit video"
+                                    >
+                                      <Edit3 size={16} />
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteVideo(video.url);
+                                      }}
+                                      className="btn btn-sm btn-danger"
+                                      title="Delete video"
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
+                                    <a
+                                      href={video.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="btn btn-sm btn-ghost"
+                                      title="Open in YouTube"
+                                    >
+                                      <ExternalLink size={16} />
+                                    </a>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                        {/* AI-Generated Videos with Embedded Player */}
+                        {aiVideos.map((video) => (
+                          <div key={video.id} className="video-card ai-video-card">
+                            <div 
+                              className="video-player-preview"
+                              onClick={() => setPlayingVideo({ id: video.id, title: video.title })}
+                            >
+                              <div className="video-thumbnail">
+                                <img 
+                                  src={video.thumbnail} 
+                                  alt={video.title}
+                                  className="thumbnail-image"
+                                />
+                                <div className="play-overlay">
+                                  <div className="play-button">
+                                    <Youtube size={32} />
+                                    <span>Play</span>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="video-info">
+                                <h4 className="video-title">{video.title}</h4>
+                                <p className="video-channel">
+                                  <span className="badge badge-ai">AI Recommended</span>
+                                  {video.channelTitle}
+                                </p>
+                                <p className="video-duration">{video.duration}</p>
+                                <p className="video-description">
+                                  {video.description.substring(0, 100)}...
+                                </p>
+                                <div className="video-actions">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteAIVideo(video.id);
+                                    }}
+                                    className="btn btn-sm btn-danger"
+                                    title="Delete AI video"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                  <a
+                                    href={video.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="btn btn-sm btn-ghost"
+                                    title="Open in YouTube"
+                                  >
+                                    <ExternalLink size={16} />
+                                  </a>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
+                  )}
+                </>
+              );
+            })()}
 
             {/* No videos message */}
             {(!topic.aiContent?.videos || topic.aiContent.videos.length === 0) && 
@@ -1982,6 +2210,15 @@ useEffect(() => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* YouTube Player Modal */}
+      {playingVideo && (
+        <YouTubePlayer
+          videoId={playingVideo.id}
+          title={playingVideo.title}
+          onClose={() => setPlayingVideo(null)}
+        />
       )}
     </div>
   );
