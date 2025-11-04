@@ -12,6 +12,7 @@ export interface PDFExtractionResult {
 }
 
 export class PDFExtractorService {
+
   /**
    * Extract text from a PDF file
    * @param file - The PDF file to extract text from
@@ -209,9 +210,9 @@ export class PDFExtractorService {
   /**
    * Validate PDF file before processing
    * @param file - File to validate
-   * @returns Validation result
+   * @returns Validation result with optional warning
    */
-  static validatePDFFile(file: File): { valid: boolean; error?: string } {
+  static validatePDFFile(file: File): { valid: boolean; error?: string; warning?: string } {
     // Check file type
     if (file.type !== 'application/pdf') {
       return {
@@ -220,12 +221,14 @@ export class PDFExtractorService {
       };
     }
 
-    // Check file size (max 50MB)
-    const maxSize = 50 * 1024 * 1024; // 50MB
+    // Strict size limit for chapter analysis: 10MB max, 5MB recommended
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    const recommendedSize = 5 * 1024 * 1024; // 5MB
+    
     if (file.size > maxSize) {
       return {
         valid: false,
-        error: 'File size must be less than 50MB'
+        error: `File size (${(file.size / (1024 * 1024)).toFixed(1)}MB) exceeds maximum of 10MB. Please upload a smaller PDF or split into chapters.`
       };
     }
 
@@ -234,6 +237,14 @@ export class PDFExtractorService {
       return {
         valid: false,
         error: 'File appears to be empty'
+      };
+    }
+
+    // Warn for large files
+    if (file.size > recommendedSize) {
+      return {
+        valid: true,
+        warning: `⚠️ File is ${(file.size / (1024 * 1024)).toFixed(1)}MB. Analysis may take 40-60 seconds. For faster results, upload PDFs under 5MB.`
       };
     }
 

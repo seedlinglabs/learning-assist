@@ -120,7 +120,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
       setWorksheets(null);
     }
     
-    // Initialize editing states with current content or clear if not available
+    // Initialize BOTH display AND editing states with current content
     if (topic.aiContent?.lessonPlan) {
       setEditingLessonPlan(topic.aiContent.lessonPlan);
     } else {
@@ -128,24 +128,31 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     }
     
     if (topic.aiContent?.teachingGuide) {
+      setTeachingGuide(topic.aiContent.teachingGuide);  // ← FIX: Initialize display state!
       setEditingTeachingGuide(topic.aiContent.teachingGuide);
     } else {
+      setTeachingGuide(null);
       setEditingTeachingGuide('');
     }
     
     if (topic.aiContent?.groupDiscussion) {
+      setGroupDiscussion(topic.aiContent.groupDiscussion);  // ← FIX: Initialize display state!
       setEditingGroupDiscussion(topic.aiContent.groupDiscussion);
     } else {
+      setGroupDiscussion(null);
       setEditingGroupDiscussion('');
     }
     
     if (topic.aiContent?.assessmentQuestions) {
+      setAssessmentQuestions(topic.aiContent.assessmentQuestions);  // ← FIX: Initialize display state!
       setEditingAssessmentQuestions(topic.aiContent.assessmentQuestions);
     } else {
+      setAssessmentQuestions(null);
       setEditingAssessmentQuestions('');
     }
     
     if (topic.aiContent?.worksheets) {
+      setWorksheets(topic.aiContent.worksheets);  // This one was already set above
       setEditingWorksheets(topic.aiContent.worksheets);
     } else {
       setEditingWorksheets('');
@@ -165,6 +172,184 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
       setActiveTab(savedTab as TabType);
     }
   }, [topic.id]);
+
+  // Auto-generate content when tab is clicked and content is missing
+  useEffect(() => {
+    const generateTabContent = async () => {
+      // Skip if already generating or if it's the details tab
+      if (generatingAI || isGeneratingContent || activeTab === 'details') {
+        return;
+      }
+
+      const classLevel = currentPath.class?.name || 'Class 1';
+      const documentUrls = formData.documentLinks.map(link => link.url);
+      const subject = currentPath.subject?.name || 'General';
+      const existingContent = topic.aiContent || {};
+
+      // Check if this tab's content is missing
+      let needsGeneration = false;
+      let contentType = '';
+
+      switch (activeTab) {
+        case 'lesson-plan':
+          needsGeneration = !existingContent.lessonPlan;
+          contentType = 'lesson plan';
+          break;
+        case 'teaching-guide':
+          needsGeneration = !existingContent.teachingGuide;
+          contentType = 'teaching guide';
+          break;
+        case 'group-discussion':
+          needsGeneration = !existingContent.groupDiscussion;
+          contentType = 'group discussion';
+          break;
+        case 'assessment':
+          needsGeneration = !existingContent.assessmentQuestions || existingContent.assessmentQuestions.length === 0;
+          contentType = 'assessment questions';
+          break;
+        case 'worksheets':
+          needsGeneration = !existingContent.worksheets || existingContent.worksheets.length === 0;
+          contentType = 'worksheets';
+          break;
+        case 'videos':
+          needsGeneration = !existingContent.videos || existingContent.videos.length === 0;
+          contentType = 'videos';
+          break;
+      }
+
+      if (!needsGeneration) {
+        return;
+      }
+
+      // Generate content for this tab only
+      console.log(`Auto-generating ${contentType} for tab: ${activeTab}`);
+      setGeneratingAI(true);
+      setIsGeneratingContent(true);
+      setAiError(null);
+      setAiGenerationStatus(`Generating ${contentType}... (30-60 seconds)`);
+
+      try {
+        let result: any = null;
+
+        switch (activeTab) {
+          case 'lesson-plan':
+            result = await secureGeminiService.generateTopicContent(
+              formData.name,
+              formData.description || '',
+              documentUrls,
+              classLevel,
+              subject
+            );
+            if (result.success && result.aiContent?.lessonPlan) {
+              setEditingLessonPlan(result.aiContent.lessonPlan);
+              await updateTopic(topic.id, {
+                ...topic,
+                aiContent: { ...existingContent, lessonPlan: result.aiContent.lessonPlan }
+              });
+            }
+            break;
+
+          case 'teaching-guide':
+            result = await secureGeminiService.generateTeachingGuide(
+              formData.name,
+              formData.description || '',
+              documentUrls,
+              classLevel,
+              subject
+            );
+            // SAVE PARTIAL PROGRESS: Even if incomplete, save what was generated
+            if (result.success && result.teachingGuide) {
+              setTeachingGuide(result.teachingGuide);
+              setEditingTeachingGuide(result.teachingGuide);
+              await updateTopic(topic.id, {
+                ...topic,
+                aiContent: { ...existingContent, teachingGuide: result.teachingGuide }
+              });
+              
+              // Show warning if partial
+              if (result.error) {
+                setAiError(`⚠️ Partial success: ${result.error}. Content saved with placeholders for failed sections.`);
+              }
+            }
+            break;
+
+          case 'group-discussion':
+            result = await secureGeminiService.generateGroupDiscussion(
+              formData.name,
+              formData.description || '',
+              documentUrls,
+              classLevel,
+              subject
+            );
+            // Save partial progress
+            if (result.success && result.groupDiscussion) {
+              setGroupDiscussion(result.groupDiscussion);
+              setEditingGroupDiscussion(result.groupDiscussion);
+              await updateTopic(topic.id, {
+                ...topic,
+                aiContent: { ...existingContent, groupDiscussion: result.groupDiscussion }
+              });
+              if (result.error) {
+                setAiError(`⚠️ ${result.error}`);
+              }
+            }
+            break;
+
+          case 'assessment':
+            result = await secureGeminiService.generateAssessmentQuestions(
+              formData.name,
+              formData.description || '',
+              documentUrls,
+              classLevel,
+              subject
+            );
+            if (result.success && result.assessmentQuestions) {
+              setAssessmentQuestions(result.assessmentQuestions);
+              setEditingAssessmentQuestions(result.assessmentQuestions);
+              await updateTopic(topic.id, {
+                ...topic,
+                aiContent: { ...existingContent, assessmentQuestions: result.assessmentQuestions }
+              });
+            }
+            break;
+
+          case 'worksheets':
+            result = await secureGeminiService.generateWorksheets(
+              formData.name,
+              formData.description || '',
+              documentUrls,
+              classLevel,
+              subject
+            );
+            if (result.success && result.worksheets) {
+              setEditingWorksheets(result.worksheets);
+              await updateTopic(topic.id, {
+                ...topic,
+                aiContent: { ...existingContent, worksheets: result.worksheets }
+              });
+            }
+            break;
+
+          case 'videos':
+            // Skip auto-generation for videos - they're from YouTube
+            break;
+        }
+
+        setAiGenerationStatus(`✅ ${contentType} generated successfully!`);
+        setTimeout(() => setAiGenerationStatus(''), 3000);
+
+      } catch (error: any) {
+        console.error(`Failed to generate ${contentType}:`, error);
+        setAiError(error.message || `Failed to generate ${contentType}`);
+      } finally {
+        setGeneratingAI(false);
+        setIsGeneratingContent(false);
+      }
+    };
+
+    generateTabContent();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, topic.id]); // Re-run when tab changes or topic changes
 
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {
@@ -471,22 +656,17 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
 
       // Step 2: Generate Teaching Guide (if needed)
       if (needsTeachingGuide) {
-        setAiGenerationStatus('Generating teaching guide...');
+        setAiGenerationStatus('Generating teaching guide... (this may take 1-2 minutes for complex topics)');
         
-        // Add timeout to teaching guide generation
-        const teachingGuidePromise = secureGeminiService.generateTeachingGuide(
+        // No timeout - let it complete naturally
+        // Each API call takes 30-60s, total for all content: 3-5 minutes
+        const teachingGuideResult = await secureGeminiService.generateTeachingGuide(
           formData.name,
           formData.description || '',
           documentUrls,
           classLevel,
           subject
         );
-        
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Teaching guide generation timeout after 180 seconds')), 180000)
-        );
-        
-        const teachingGuideResult = await Promise.race([teachingGuidePromise, timeoutPromise]) as any;
 
         if (teachingGuideResult.success && teachingGuideResult.teachingGuide) {
           // Update local state immediately for UI feedback
@@ -1165,11 +1345,13 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
 
   const tabs = React.useMemo(() => [
     { id: 'details', label: 'Topic Details', icon: FileText },
-    { id: 'lesson-plan', label: 'Lesson Plan', icon: GraduationCap, disabled: !topic.aiContent?.lessonPlan },
-    { id: 'teaching-guide', label: 'Teaching Guide', icon: User, disabled: !topic.aiContent?.teachingGuide && !teachingGuide },
-    { id: 'group-discussion', label: 'Group Discussion', icon: Users, disabled: !topic.aiContent?.groupDiscussion && !groupDiscussion },
-    { id: 'assessment', label: 'Assessment', icon: ClipboardList, disabled: !topic.aiContent?.assessmentQuestions && !assessmentQuestions },
-    { id: 'worksheets', label: 'Worksheets', icon: BookOpen, disabled: !topic.aiContent?.worksheets && !worksheets },
+    // ALWAYS show tabs if content exists in topic.aiContent (persisted data)
+    // Don't hide tabs based on local state - that can be cleared by errors
+    { id: 'lesson-plan', label: 'Lesson Plan', icon: GraduationCap, disabled: false }, // Always clickable - will auto-generate if missing
+    { id: 'teaching-guide', label: 'Teaching Guide', icon: User, disabled: false }, // Always clickable
+    { id: 'group-discussion', label: 'Group Discussion', icon: Users, disabled: false }, // Always clickable
+    { id: 'assessment', label: 'Assessment', icon: ClipboardList, disabled: false }, // Always clickable
+    { id: 'worksheets', label: 'Worksheets', icon: BookOpen, disabled: false }, // Always clickable
     { id: 'videos', label: 'Videos', icon: Youtube, disabled: !topic.aiContent?.videos || topic.aiContent.videos.length === 0 },
   ], [topic.aiContent, teachingGuide, groupDiscussion, assessmentQuestions, worksheets]);
 

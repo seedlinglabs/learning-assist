@@ -60,8 +60,9 @@ class ChapterPlannerService {
           temperature: 0.7,
           topK: 40,
           topP: 0.95,
-          maxOutputTokens: 30000,
-        }
+          maxOutputTokens: 8192,
+        },
+        model: 'deepseek-chat'  // Use DeepSeek for analyze-chapter with 80s timeout
       };
 
       const response = await this.makeSecureRequest('analyze-chapter', payload);
@@ -342,21 +343,35 @@ CONTENT REQUIREMENTS:
    * Fix common JSON issues in AI responses
    */
   private static fixCommonJsonIssues(jsonString: string): string {
+    // CRITICAL FIX: DeepSeek returns JSON that gets double-escaped by backend
+    // The cleanest way to unescape is to JSON.parse() if it's a quoted string
+    // If it starts with a quote, it's likely been stringified an extra time
+    const trimmed = jsonString.trim();
+    if ((trimmed.startsWith('"[') || trimmed.startsWith('"{')) && trimmed.endsWith('"')) {
+      try {
+        // Parse once to remove the outer quotes and unescape
+        jsonString = JSON.parse(trimmed);
+        console.log('Unescaped double-encoded JSON (parse once)');
+      } catch (e) {
+        console.log('Failed to parse as double-encoded, trying manual unescape');
+      }
+    }
+    
+    // If it still has backslash escapes, manually unescape
+    if (jsonString.includes('\\')) {
+      jsonString = jsonString
+        .replace(/\\"/g, '"')      // \\" → "
+        .replace(/\\n/g, '\n')     // \\n → newline
+        .replace(/\\t/g, '\t')     // \\t → tab
+        .replace(/\\r/g, '\r')     // \\r → carriage return
+        .replace(/\\\\/g, '\\');   // \\\\ → \\
+      console.log('Manual unescape of backslashes');
+    }
+    
     // Remove trailing commas before closing brackets/braces
     jsonString = jsonString.replace(/,(\s*[}\]])/g, '$1');
     
-    // Fix unescaped quotes in strings
-    jsonString = jsonString.replace(/"([^"]*)"([^"]*)"([^"]*)"/g, (match, p1, p2, p3) => {
-      return `"${p1}\\"${p2}\\"${p3}"`;
-    });
-    
-    // Fix missing quotes around property names
-    jsonString = jsonString.replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
-    
-    // Fix single quotes to double quotes
-    jsonString = jsonString.replace(/'/g, '"');
-
-    // Remove any residual markdown fences
+     // Remove any residual markdown fences
     jsonString = jsonString.replace(/```json\s*/g, '').replace(/```\s*/g, '');
     
     // Remove any non-JSON content before the first [

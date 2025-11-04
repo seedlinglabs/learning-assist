@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>Version Check - Learning Assist</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    .success { color: #22c55e; font-weight: bold; }
+    .error { color: #ef4444; font-weight: bold; }
+    .info { color: #3b82f6; }
+    pre { background: #f3f4f6; padding: 15px; border-radius: 8px; overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <h1>🔍 Deployment Version Check</h1>
+  
+  <h2>Expected Deployment:</h2>
+  <ul>
+    <li class="success">✅ Frontend: main.f2704eb4.js</li>
+    <li class="success">✅ Backend: 2025-10-30T05:39:11</li>
+    <li class="success">✅ API Gateway: 80-second timeout</li>
+  </ul>
+
+  <h2>Your Browser Status:</h2>
+  <div id="status">Checking...</div>
+
+  <h2>Cache Information:</h2>
+  <pre id="cache-info">Loading...</pre>
+
+  <h2>Instructions:</h2>
+  <div class="info">
+    <p>If you see the OLD version (main.14f23507.js):</p>
+    <ol>
+      <li><strong>Close ALL browser tabs</strong> for this site</li>
+      <li><strong>Clear browser cache</strong>:
+        <ul>
+          <li><strong>Chrome:</strong> Settings → Privacy → Clear browsing data → Cached images</li>
+          <li><strong>Safari:</strong> Safari → Settings → Privacy → Manage Website Data</li>
+          <li><strong>Firefox:</strong> Settings → Privacy → Clear Data → Cache</li>
+        </ul>
+      </li>
+      <li><strong>OR use Incognito/Private mode</strong> (guaranteed fresh)</li>
+      <li><strong>Reload</strong> this page to verify</li>
+    </ol>
+  </div>
+
+  <script>
+    // Check which JavaScript file is loaded
+    fetch('/static/js/main.f2704eb4.js', { method: 'HEAD' })
+      .then(response => {
+        if (response.ok) {
+          document.getElementById('status').innerHTML = 
+            '<span class="success">✅ NEW VERSION (main.f2704eb4.js) is available on server</span>';
+        } else {
+          document.getElementById('status').innerHTML = 
+            '<span class="error">❌ File not found on server - deployment issue</span>';
+        }
+      })
+      .catch(() => {
+        document.getElementById('status').innerHTML = 
+          '<span class="error">❌ Cannot reach server</span>';
+      });
+
+    // Display cache info
+    const cacheInfo = {
+      'Page Loaded': new Date().toLocaleString(),
+      'User Agent': navigator.userAgent.substring(0, 100) + '...',
+      'Cache Status': 'If you see main.14f23507.js in console, your cache is stale'
+    };
+    document.getElementById('cache-info').textContent = JSON.stringify(cacheInfo, null, 2);
+  </script>
+
+  <hr>
+  <p><a href="/">← Back to Application</a></p>
+</body>
+</html>
+

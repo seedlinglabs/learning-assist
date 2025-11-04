@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+// Cache-bust v2.0 - JSON parsing fix deployed 2025-10-30
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
