@@ -45,7 +45,7 @@ export interface GeminiResponse {
 }
 
 class SecureGeminiService {
-  private selectedModel: string = 'gemini-2.5-pro';
+  private selectedModel: string = 'deepseek-chat'; // DeepSeek is primary model
   private readonly MAX_RETRIES = 3;
   private readonly RETRY_DELAY_MS = 1000; // 1 second base delay
 
@@ -59,8 +59,9 @@ class SecureGeminiService {
 
   getAvailableModels(): { id: string; name: string; provider: string }[] {
     return [
-      { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'Google' },
-      { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', provider: 'Anthropic' }
+      { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', provider: 'Anthropic' },
+      { id: 'deepseek-chat', name: 'DeepSeek Chat', provider: 'DeepSeek' },
+      { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'Google' }
     ];
   }
 
@@ -175,7 +176,7 @@ class SecureGeminiService {
         temperature: 0.7,
         topK: 40,
         topP: 0.95,
-        maxOutputTokens: 30000,
+        maxOutputTokens: 8192,
       }
     };
 
@@ -218,36 +219,41 @@ class SecureGeminiService {
       }
 
       // Step 2: Generate teaching guidance for each concept
+      // INCREMENTAL APPROACH: Save progress as we go, don't fail if timeout occurs
       const conceptGuidances: string[] = [];
-      for (const concept of conceptsResult.concepts) {
-        const guidanceResult = await this.generateConceptGuidance(
-          concept, 
-          topicName, 
-          description, 
-          classLevel, 
-          subject
-        );
+      const failedConcepts: string[] = [];
+      
+      for (let i = 0; i < conceptsResult.concepts.length; i++) {
+        const concept = conceptsResult.concepts[i];
+        console.log(`Generating guidance for concept ${i+1}/${conceptsResult.concepts.length}: ${concept}`);
         
-        if (guidanceResult.success && guidanceResult.guidance) {
-          conceptGuidances.push(guidanceResult.guidance);
-        } else {
-          // If ANY concept fails, fail the entire process
-          return { 
-            success: false, 
-            error: `Failed to generate guidance for concept "${concept}": ${guidanceResult.error || 'Unknown error'}` 
-          };
+        try {
+          const guidanceResult = await this.generateConceptGuidance(
+            concept, 
+            topicName, 
+            description, 
+            classLevel, 
+            subject
+          );
+          
+          if (guidanceResult.success && guidanceResult.guidance) {
+            conceptGuidances.push(guidanceResult.guidance);
+            console.log(`✅ Generated concept ${i+1}/${conceptsResult.concepts.length}`);
+          } else {
+            console.warn(`⚠️ Failed concept ${i+1}: ${concept} - ${guidanceResult.error}`);
+            failedConcepts.push(concept);
+            // DON'T fail entirely - keep the concepts we DID generate!
+            conceptGuidances.push(`[Concept "${concept}" - Generation pending or failed]`);
+          }
+        } catch (error) {
+          console.error(`Error generating concept ${i+1}:`, error);
+          failedConcepts.push(concept);
+          // Keep placeholder so we can resume later
+          conceptGuidances.push(`[Concept "${concept}" - Generation pending]`);
         }
       }
 
-      // Ensure we have guidance for ALL concepts
-      if (conceptGuidances.length !== conceptsResult.concepts.length) {
-        return { 
-          success: false, 
-          error: `Incomplete guidance: expected ${conceptsResult.concepts.length} concepts, got ${conceptGuidances.length}` 
-        };
-      }
-
-      // Step 3: Combine into complete teaching guide
+      // Step 3: Combine what we have so far (even if incomplete)
       const completeGuide = this.combineConceptGuidances(
         topicName, 
         conceptsResult.concepts, 
@@ -256,7 +262,24 @@ class SecureGeminiService {
         subject
       );
 
-      return { success: true, teachingGuide: completeGuide };
+      // Return partial success if we generated SOME content
+      if (conceptGuidances.length > 0) {
+        const successMessage = failedConcepts.length > 0
+          ? `Generated ${conceptGuidances.length - failedConcepts.length}/${conceptsResult.concepts.length} concepts. Failed: ${failedConcepts.join(', ')}`
+          : 'Complete teaching guide generated';
+        
+        return { 
+          success: true, 
+          teachingGuide: completeGuide,
+          // Include partial success info
+          error: failedConcepts.length > 0 ? successMessage : undefined
+        };
+      }
+
+      return { 
+        success: false, 
+        error: 'Failed to generate any concept guidance' 
+      };
       
     } catch (error) {
       return { 
@@ -294,7 +317,7 @@ Return numbered list only:
         temperature: 0.3,
         topK: 20,
         topP: 0.8,
-        maxOutputTokens: 30000,
+        maxOutputTokens: 8192,
       }
     };
 
@@ -376,7 +399,7 @@ Keep it focused and practical. This is just for the "${concept}" part of the les
         temperature: 0.7,
         topK: 40,
         topP: 0.9,
-        maxOutputTokens: 30000,
+        maxOutputTokens: 8192,
       }
     };
 
@@ -466,7 +489,7 @@ ${guidance}
         temperature: 0.7,
         topK: 40,
         topP: 0.9,
-        maxOutputTokens: 30000,
+        maxOutputTokens: 8192,
       }
     };
 
@@ -532,7 +555,7 @@ ${guidance}
         temperature: 0.3,
         topK: 20,
         topP: 0.8,
-        maxOutputTokens: 30000,
+        maxOutputTokens: 8192,
       }
     };
 
@@ -631,7 +654,7 @@ ${guidance}
           temperature: 0.6,
           topK: 30,
           topP: 0.9,
-          maxOutputTokens: 30000,
+          maxOutputTokens: 8192,
         }
       };
 
@@ -1071,7 +1094,7 @@ Return only valid JSON in this format:
           temperature: 0.9,
           topK: 40,
           topP: 0.95,
-          maxOutputTokens: 30000,
+          maxOutputTokens: 8192,
         }
       };
 
@@ -1161,11 +1184,25 @@ Each worksheet should be CREATIVE and include:
 - Creative answer keys with explanations and extension ideas
 - Fun parent engagement activities that turn learning into play
 
+**SPECIAL REQUIREMENT FOR MATCH-THE-FOLLOWING:**
+When creating "Match the Following" activities, format them as a SIDE-BY-SIDE TABLE for easy reading:
+
+Column A (Terms)    |    Column B (Definitions)
+-------------------|-------------------------
+1. Term One        |    A. Definition for term
+2. Term Two        |    B. Definition for term
+3. Term Three      |    C. Definition for term
+4. Term Four       |    D. Definition for term
+
+This makes it much easier for teachers and students to work with!
+
 BE CREATIVE: Use storytelling, gamification, real-world scenarios, and imaginative elements. Make students excited to learn!
 
 Format the response as structured JSON. Make content highly engaging, creative, educational, and suitable for both classroom and homework use.
 
 ${documentUrls.length > 0 ? `Reference these documents: ${documentUrls.join(', ')}` : ''}
+
+**IMPORTANT:** All fields (type, question, answer, etc.) must have actual content. Never leave fields empty or undefined.
 
 Return only valid JSON in this format:
 {
@@ -1175,12 +1212,22 @@ Return only valid JSON in this format:
       "instructions": "Engaging, story-based instructions that capture student interest",
       "activities": [
         {
-          "type": "creative storytelling",
-          "question": "Imaginative question with creative elements and real-world connections",
-          "answer": "Expected answer with creative explanations"
+          "type": "fill_in_the_blanks",
+          "question": "Complete the following sentences:\n1. The _____ is the powerhouse of the cell.\n2. Plants make their food through _____.",
+          "answer": "1. mitochondria, 2. photosynthesis"
+        },
+        {
+          "type": "match_the_following",
+          "question": "Match the following terms with their definitions:\n\nColumn A (Terms)    |    Column B (Definitions)\n-------------------|-------------------------\n1. Photosynthesis  |    A. Process of water vapor turning to liquid\n2. Respiration     |    B. Process plants use to make food\n3. Condensation    |    C. Process of breaking down food for energy\n4. Evaporation     |    D. Process of liquid turning to water vapor",
+          "answer": "1-B, 2-C, 3-A, 4-D"
+        },
+        {
+          "type": "true_or_false",
+          "question": "Mark the following statements as True or False:\n1. The sun is a star. _____\n2. Water boils at 50°C. _____\n3. Mammals are warm-blooded. _____",
+          "answer": "1. True, 2. False, 3. True"
         }
       ],
-      "answerKey": "Creative answers with teaching tips and extension ideas",
+      "answerKey": "Detailed answer key with explanations for each activity and teaching tips",
       "parentTips": "Fun ways parents can engage with creative learning at home"
     }
   ]
@@ -1196,7 +1243,7 @@ Return only valid JSON in this format:
           temperature: 0.9,
           topK: 40,
           topP: 0.95,
-          maxOutputTokens: 30000,
+          maxOutputTokens: 8192,
         }
       };
 
@@ -1310,25 +1357,36 @@ Return only valid JSON in this format:
     
     if (data.worksheets && data.worksheets.length > 0) {
       data.worksheets.forEach((worksheet: any, index: number) => {
-        formatted += `## ${worksheet.title}\n\n`;
-        formatted += `**Instructions:** ${worksheet.instructions}\n\n`;
+        formatted += `## ${worksheet.title || `Worksheet ${index + 1}`}\n\n`;
+        formatted += `**Instructions:** ${worksheet.instructions || 'Complete the following activities.'}\n\n`;
         
         if (worksheet.activities && worksheet.activities.length > 0) {
           formatted += '### Activities\n\n';
           worksheet.activities.forEach((activity: any, actIndex: number) => {
-            formatted += `**Activity ${actIndex + 1}:** ${activity.type}\n`;
-            formatted += `${activity.question}\n`;
-            if (activity.answer) {
-              formatted += `*Answer: ${activity.answer}*\n\n`;
+            // Only display activity if it has valid content
+            if (activity && (activity.type || activity.question)) {
+              formatted += `**Activity ${actIndex + 1}:**`;
+              if (activity.type && activity.type !== 'undefined') {
+                formatted += ` ${activity.type}`;
+              }
+              formatted += '\n';
+              if (activity.question && activity.question !== 'undefined') {
+                formatted += `${activity.question}\n`;
+              }
+              if (activity.answer && activity.answer !== 'undefined') {
+                formatted += `*Answer: ${activity.answer}*\n\n`;
+              } else {
+                formatted += '\n';
+              }
             }
           });
         }
         
-        if (worksheet.answerKey) {
+        if (worksheet.answerKey && worksheet.answerKey !== 'undefined') {
           formatted += `### Answer Key\n${worksheet.answerKey}\n\n`;
         }
         
-        if (worksheet.parentTips) {
+        if (worksheet.parentTips && worksheet.parentTips !== 'undefined') {
           formatted += `### Parent Tips\n${worksheet.parentTips}\n\n`;
         }
         

@@ -49,6 +49,19 @@ const ChapterPlannerModal: React.FC<ChapterPlannerModalProps> = ({
     setUploadedFileCount(files.filter(f => f.status === 'success').length);
     setPdfError(null);
     
+    // Validate content size (50,000 characters ≈ 15-20 pages)
+    const MAX_CHARS = 50000;
+    const RECOMMENDED_CHARS = 20000;
+    
+    if (combinedText.length > MAX_CHARS) {
+      setPdfError(`Content is too large (${Math.round(combinedText.length / 1000)}k characters). Maximum is ${Math.round(MAX_CHARS / 1000)}k. Please upload smaller PDFs or fewer pages to ensure analysis completes within 80 seconds.`);
+      setTextbookContent(''); // Clear the content
+      return;
+    } else if (combinedText.length > RECOMMENDED_CHARS) {
+      setPdfError(`⚠️ Warning: Large content detected (${Math.round(combinedText.length / 1000)}k characters). Analysis may take 40-60 seconds. For faster results, consider uploading smaller PDFs.`);
+      // Don't clear - just warn
+    }
+    
     // Auto-generate chapter name from first successful file if not provided
     if (!chapterName && files.length > 0) {
       const firstSuccessfulFile = files.find(f => f.status === 'success');
@@ -76,6 +89,12 @@ const ChapterPlannerModal: React.FC<ChapterPlannerModalProps> = ({
     // Check if user hasn't specified number of lectures
     if (!splitInputValue.trim()) {
       setShowLecturePopup(true);
+      return;
+    }
+
+    // Validate number of splits doesn't exceed limits
+    if (numberOfSplits > 15) {
+      setError('Maximum 15 topics allowed. Requesting more than 15 topics takes too long (>80 seconds) and will timeout. Please reduce the number of lectures or upload a smaller PDF.');
       return;
     }
 
@@ -194,30 +213,35 @@ const ChapterPlannerModal: React.FC<ChapterPlannerModalProps> = ({
         </div>
 
         <div className="form-group">
-          <label htmlFor="numberOfSplits">Number of Lectures</label>
+          <label htmlFor="numberOfSplits">Number of Lectures (Max: 15)</label>
           <div className="split-number-container">
             <input
               id="numberOfSplits"
-              type="text"
+              type="number"
+              min="1"
+              max="15"
               value={splitInputValue}
               onChange={(e) => {
                 const inputValue = e.target.value;
                 setSplitInputValue(inputValue);
                 
-                // Update numberOfSplits with any positive number
+                // Update numberOfSplits with validation
                 const numValue = parseInt(inputValue);
                 if (!isNaN(numValue) && numValue > 0) {
-                  setNumberOfSplits(numValue);
+                  setNumberOfSplits(Math.min(numValue, 15)); // Cap at 15
                 } else if (inputValue === '') {
                   // If empty, use default
                   setNumberOfSplits(4);
                 }
               }}
-              placeholder="Enter number of lectures"
+              placeholder="1-15 lectures"
               className="form-input split-number-input"
             />
           </div>
-          <small className="form-help">How many parts should the chapter be split into</small>
+          <small className="form-help">
+            Split chapter into 1-15 parts (max 15 to stay within 80-second limit). 
+            Recommended: 4-8 lectures for best results.
+          </small>
         </div>
       </div>
 

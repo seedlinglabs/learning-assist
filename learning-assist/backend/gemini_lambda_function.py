@@ -1,5 +1,4 @@
 import json
-from math import log
 import os
 import boto3
 import requests
@@ -27,16 +26,19 @@ usage_table = dynamodb.Table('learning_assist_gemini_usage')
 # API configuration
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 CLAUDE_API_KEY = os.environ.get('CLAUDE_API_KEY')
+DEEPSEEK_API_KEY = os.environ.get('DEEPSEEK_API_KEY')
 GEMINI_API_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models'
 CLAUDE_API_BASE_URL = 'https://api.anthropic.com/v1/messages'
+DEEPSEEK_API_BASE_URL = 'https://api.deepseek.com/v1/chat/completions'
 
-# CRITICAL FIX: Set timeout to be less than the 80s API Gateway timeout.
+# Timeout set to 80 seconds for extended AI processing time
 REQUEST_TIMEOUT = 80
 
 # Supported models
 SUPPORTED_MODELS = {
     'gemini-2.5-pro': 'gemini',
-    'claude-3-5-sonnet-20241022': 'claude'
+    'claude-3-5-sonnet-20241022': 'claude',
+    'deepseek-chat': 'deepseek'
 }
 
 # --- Utility Functions ---
@@ -56,7 +58,7 @@ def lambda_handler(event, context):
             logger.info("Handling OPTIONS request")
             return {'statusCode': 200, 'headers': headers, 'body': ''}
         
-        if not GEMINI_API_KEY and not CLAUDE_API_KEY:
+        if not GEMINI_API_KEY and not CLAUDE_API_KEY and not DEEPSEEK_API_KEY:
             logger.error("No API keys configured")
             return {'statusCode': 500, 'headers': headers, 'body': json.dumps({'error': 'No API keys configured on server'})}
         
@@ -163,27 +165,83 @@ def handle_ai_proxy(endpoint_name, body, user_id, headers):
 
     logger.info(f"Model: {model}")
     model_provider = SUPPORTED_MODELS[model]
+    original_model = model  # Keep original for logging/tracking
     
     logger.info(f"Model provider: {model_provider}")
-    try:
-        if model_provider == 'gemini':
-            return handle_gemini_request(endpoint_name, body, user_id, headers, model)
-        elif model_provider == 'claude':
-            return handle_claude_request(endpoint_name, body, user_id, headers, model)
+    
+    # Provider-specific model IDs for fallback
+    PROVIDER_MODEL_IDS = {
+        'deepseek': 'deepseek-chat',
+        'claude': 'claude-3-5-sonnet-20241022',
+        'gemini': 'gemini-2.5-pro'
+    }
+    
+    # Short-circuit for DeepSeek: use full 80s timeout without fallbacks
+    if model_provider == 'deepseek':
+        logger.info(f"DeepSeek selected as primary - using full 80s timeout without fallback")
+        if DEEPSEEK_API_KEY and DEEPSEEK_API_KEY != 'YOUR_DEEPSEEK_API_KEY_HERE':
+            logger.info(f"Calling DeepSeek directly with model: deepseek-chat")
+            return handle_deepseek_request(endpoint_name, body, user_id, headers, 'deepseek-chat')
         else:
+            logger.error("DeepSeek API key not configured")
             return {
-                'statusCode': 400,
+                'statusCode': 500,
                 'headers': headers,
-                'body': json.dumps({'error': f'Unknown model provider: {model_provider}'})
+                'body': json.dumps({'error': 'DeepSeek API key not configured'})
             }
+    
+    # Define fallback order for other providers
+    fallback_order = []
+    if model_provider == 'claude':
+        fallback_order = ['claude', 'deepseek', 'gemini']
+    elif model_provider == 'gemini':
+        fallback_order = ['gemini', 'claude', 'deepseek']
+    
+    last_error = None
+    for provider in fallback_order:
+        try:
+            # Use provider-specific model ID
+            provider_model = PROVIDER_MODEL_IDS[provider]
+            logger.info(f"Trying provider: {provider} with model: {provider_model}")
             
-    except Exception as e:
-        logger.error(f"AI API error: {str(e)}", exc_info=True)
-        return {
-            'statusCode': 500,
-            'headers': headers,
-            'body': json.dumps({'error': 'Failed to generate content'})
-        }
+            if provider == 'gemini' and GEMINI_API_KEY:
+                result = handle_gemini_request(endpoint_name, body, user_id, headers, provider_model)
+                if result['statusCode'] == 200:
+                    logger.info(f"Success with {provider} (fallback from {original_model})")
+                    return result
+                last_error = result
+            elif provider == 'claude' and CLAUDE_API_KEY:
+                result = handle_claude_request(endpoint_name, body, user_id, headers, provider_model)
+                if result['statusCode'] == 200:
+                    logger.info(f"Success with {provider} (fallback from {original_model})")
+                    return result
+                last_error = result
+            elif provider == 'deepseek' and DEEPSEEK_API_KEY and DEEPSEEK_API_KEY != 'YOUR_DEEPSEEK_API_KEY_HERE':
+                result = handle_deepseek_request(endpoint_name, body, user_id, headers, provider_model)
+                if result['statusCode'] == 200:
+                    logger.info(f"Success with {provider} (fallback from {original_model})")
+                    return result
+                last_error = result
+            else:
+                logger.info(f"Skipping {provider} - no valid API key configured")
+        except Exception as e:
+            logger.error(f"Error with {provider}: {str(e)}", exc_info=True)
+            last_error = {
+                'statusCode': 500,
+                'headers': headers,
+                'body': json.dumps({'error': f'{provider} failed: {str(e)}'})
+            }
+            continue
+    
+    # If all models failed, return the last error
+    if last_error:
+        return last_error
+    
+    return {
+        'statusCode': 500,
+        'headers': headers,
+        'body': json.dumps({'error': 'All AI models failed or no valid API keys configured'})
+    }
 
 def handle_gemini_request(endpoint_name, body, user_id, headers, model):
     """Handle Gemini API requests"""
@@ -319,6 +377,73 @@ def handle_claude_request(endpoint_name, body, user_id, headers, model):
             'body': json.dumps({'error': 'Failed to connect to Claude API'})
         }
 
+def handle_deepseek_request(endpoint_name, body, user_id, headers, model):
+    """Handle DeepSeek API requests"""
+    if not DEEPSEEK_API_KEY:
+        return {
+            'statusCode': 500,
+            'headers': headers,
+            'body': json.dumps({'error': 'DeepSeek API key not configured'})
+        }
+    
+    try:
+        deepseek_body = convert_gemini_to_openai_format(body, model)
+        
+        deepseek_response = requests.post(
+            DEEPSEEK_API_BASE_URL,
+            headers={
+                'Content-Type': 'application/json',
+                'Authorization': f'Bearer {DEEPSEEK_API_KEY}'
+            },
+            json=deepseek_body,
+            timeout=REQUEST_TIMEOUT
+        )
+        
+        logger.info(f"DeepSeek API response status: {deepseek_response.status_code}")
+        
+        # Log response details for debugging
+        if deepseek_response.status_code != 200:
+            logger.error(f"DeepSeek API error response: {deepseek_response.text}")
+        
+        response_body = deepseek_response.json()
+        
+        # Convert DeepSeek response back to Gemini format
+        gemini_format_response = convert_openai_to_gemini_format(response_body)
+        
+        # DEBUG: Log the text content type for analyze-chapter
+        if endpoint_name == 'analyze-chapter' and 'candidates' in gemini_format_response:
+            text_sample = gemini_format_response['candidates'][0]['content']['parts'][0]['text'][:200]
+            logger.info(f"Response text sample (first 200 chars): {text_sample}")
+            logger.info(f"Response contains backslashes: {chr(92) in text_sample}")
+        
+        # Extract token usage from the response for tracking
+        tokens_used = 0
+        if 'usage' in response_body:
+            tokens_used = response_body['usage'].get('total_tokens', 0)
+        
+        track_usage(user_id, f"{endpoint_name}-{model}", tokens_used)
+        
+        return {
+            'statusCode': deepseek_response.status_code,
+            'headers': headers,
+            'body': json.dumps(gemini_format_response)
+        }
+        
+    except requests.exceptions.Timeout:
+        logger.error(f"Request timeout after {REQUEST_TIMEOUT}s - DeepSeek API is slow")
+        return {
+            'statusCode': 504,
+            'headers': headers,
+            'body': json.dumps({'error': 'Request timeout'})
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"DeepSeek request network error: {str(e)}")
+        return {
+            'statusCode': 502,
+            'headers': headers,
+            'body': json.dumps({'error': 'Failed to connect to DeepSeek API'})
+        }
+
 def convert_gemini_to_claude_format(gemini_body, model):
     """Convert Gemini API format to Claude API format"""
     messages = []
@@ -381,4 +506,62 @@ def convert_claude_to_gemini_format(claude_response):
         'usageMetadata': {
             'totalTokenCount': tokens_used
         }
-}
+    }
+
+def convert_gemini_to_openai_format(gemini_body, model):
+    """Convert Gemini API format to OpenAI/DeepSeek API format"""
+    messages = []
+    if 'contents' in gemini_body:
+        for content in gemini_body['contents']:
+            role = 'user' if content.get('role', 'user') == 'user' else 'assistant'
+            if 'parts' in content:
+                for part in content['parts']:
+                    if 'text' in part:
+                        messages.append({
+                            'role': role,
+                            'content': part['text']
+                        })
+    
+    # Extract generation configuration
+    generation_config = gemini_body.get('generationConfig', {})
+    
+    openai_body = {
+        'model': model,
+        'messages': messages,
+        'max_tokens': generation_config.get('maxOutputTokens', 4096),
+        'temperature': generation_config.get('temperature', 0.7)
+    }
+    
+    return openai_body
+
+def convert_openai_to_gemini_format(openai_response):
+    """Convert OpenAI/DeepSeek API response to Gemini API format"""
+    # Extract response text
+    text_content = ''
+    if 'choices' in openai_response and openai_response['choices']:
+        message = openai_response['choices'][0].get('message', {})
+        text_content = message.get('content', '')
+    
+    # Determine finish reason
+    finish_reason = 'STOP'
+    if 'choices' in openai_response and openai_response['choices']:
+        openai_finish = openai_response['choices'][0].get('finish_reason', '')
+        if openai_finish == 'length':
+            finish_reason = 'MAX_TOKENS'
+        
+    # Extract token usage
+    tokens_used = 0
+    if 'usage' in openai_response:
+        tokens_used = openai_response['usage'].get('total_tokens', 0)
+    
+    return {
+        'candidates': [{
+            'content': {
+                'parts': [{'text': text_content}]
+            },
+            'finishReason': finish_reason
+        }],
+        'usageMetadata': {
+            'totalTokenCount': tokens_used
+        }
+    }
