@@ -1789,3 +1789,112 @@ textarea:disabled {
   height: 100%;
   object-fit: cover;
 }
+
+.worksheet-options-card {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  background: #f9fafb;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.worksheet-options-card h4 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+  font-family: 'Times New Roman', Times, serif;
+}
+
+.worksheet-options-grid {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.worksheet-option-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.worksheet-option-group .option-label {
+  font-weight: 600;
+  color: #111827;
+  font-family: 'Times New Roman', Times, serif;
+}
+
+.question-count-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.question-count-controls input[type="range"] {
+  flex: 1;
+}
+
+.question-count-controls .number-input {
+  width: 80px;
+}
+
+.checkbox-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.checkbox-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: 'Times New Roman', Times, serif;
+}
+
+.checkbox-option.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.radio-group {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.radio-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: 'Times New Roman', Times, serif;
+}
+
+.marking-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+}
+
+.marking-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-family: 'Times New Roman', Times, serif;
+}
+
+.toggle-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: 'Times New Roman', Times, serif;
+}
+
+.worksheet-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}

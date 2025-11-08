@@ -3,6 +3,19 @@ export interface DocumentLink {
   url: string;
 }
 
+export type WorksheetQuestionType = 'mcq' | 'shortAnswer' | 'essay' | 'fillInTheBlanks' | 'trueFalse';
+
+export interface WorksheetGenerationOptions {
+  questionCount: number;
+  questionTypes: Record<WorksheetQuestionType, boolean>;
+  difficulty: 'easy' | 'medium' | 'hard';
+  markingScheme: {
+    pointsPerQuestion: number;
+    totalPoints: number;
+  };
+  autoGenerateAnswerKeys: boolean;
+}
+
 export interface AIContent {
   lessonPlan?: string;
   teachingGuide?: string;
@@ -13,6 +26,7 @@ export interface AIContent {
   videos?: YouTubeVideo[];
   generatedAt?: Date;
   classLevel?: string;
+  worksheetOptions?: WorksheetGenerationOptions;
 }
 
 export interface EducationalImage {

@@ -3,14 +3,49 @@ import { FileText, Calendar, ExternalLink, Trash2, Save, Sparkles, GraduationCap
 import { Topic, DocumentLink } from '../types';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
-import { secureGeminiService } from '../services/secureGeminiService';
+import secureGeminiService, { DEFAULT_WORKSHEET_GENERATION_OPTIONS } from '../services/secureGeminiService';
+import type { WorksheetGenerationOptions, WorksheetQuestionType } from '../types';
 import { youtubeService } from '../services/youtubeService';
 import DocumentDiscoveryModal from './DocumentDiscoveryModal';
 import { PDFUpload } from './PDFUpload';
 import { AcademicRecordsService } from '../services/academicRecordsService';
 import YouTubePlayer from './YouTubePlayer';
 import { exportToPDF, exportToWord, isYouTubeURL, sanitizeFilename, extractYouTubeID } from '../utils/exportHelpers';
- 
+import MarkdownRenderer, { renderMarkdownToHtml } from './MarkdownRenderer';
+
+type WorksheetDifficulty = WorksheetGenerationOptions['difficulty'];
+
+const QUESTION_TYPE_LABELS: Record<WorksheetQuestionType, string> = {
+  mcq: 'Multiple Choice',
+  shortAnswer: 'Short Answer',
+  essay: 'Essay',
+  fillInTheBlanks: 'Fill-in-the-Blanks',
+  trueFalse: 'True / False',
+};
+
+const normalizeWorksheetOptions = (
+  options?: Partial<WorksheetGenerationOptions>
+): WorksheetGenerationOptions => {
+  const result: WorksheetGenerationOptions = {
+    ...DEFAULT_WORKSHEET_GENERATION_OPTIONS,
+    ...options,
+    questionTypes: {
+      ...DEFAULT_WORKSHEET_GENERATION_OPTIONS.questionTypes,
+      ...(options?.questionTypes || {}),
+    },
+    markingScheme: {
+      ...DEFAULT_WORKSHEET_GENERATION_OPTIONS.markingScheme,
+      ...(options?.markingScheme || {}),
+    },
+  };
+
+  // Ensure numeric values stay within reasonable bounds
+  result.questionCount = Math.max(1, Math.min(60, result.questionCount || DEFAULT_WORKSHEET_GENERATION_OPTIONS.questionCount));
+  result.markingScheme.pointsPerQuestion = Math.max(0, result.markingScheme.pointsPerQuestion || DEFAULT_WORKSHEET_GENERATION_OPTIONS.markingScheme.pointsPerQuestion);
+  result.markingScheme.totalPoints = Math.max(0, result.markingScheme.totalPoints || DEFAULT_WORKSHEET_GENERATION_OPTIONS.markingScheme.totalPoints);
+
+  return result;
+};
 
 interface TopicTabbedViewProps {
   topic: Topic;
@@ -77,6 +112,90 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
   // Export states
   const [exportingAssessment, setExportingAssessment] = useState(false);
   const [exportingWorksheets, setExportingWorksheets] = useState(false);
+  const [worksheetOptions, setWorksheetOptions] = useState<WorksheetGenerationOptions>(() =>
+    normalizeWorksheetOptions(topic.aiContent?.worksheetOptions)
+  );
+  const [pendingWorksheetGeneration, setPendingWorksheetGeneration] = useState(false);
+  const [worksheetOptionsInitialized, setWorksheetOptionsInitialized] = useState(false);
+  const questionTypeSelectedCount = React.useMemo(
+    () => Object.values(worksheetOptions.questionTypes).filter(Boolean).length,
+    [worksheetOptions.questionTypes]
+  );
+  const hasWorksheetContent = Boolean(topic.aiContent?.worksheets || worksheets);
+  const worksheetContent = worksheets ?? topic.aiContent?.worksheets ?? '';
+
+  const updateWorksheetOptionsState = (
+    updater: (prev: WorksheetGenerationOptions) => WorksheetGenerationOptions
+  ) => {
+    setWorksheetOptions(prev => normalizeWorksheetOptions(updater(prev)));
+  };
+
+  const handleQuestionCountChange = (value: number) => {
+    updateWorksheetOptionsState(prev => ({
+      ...prev,
+      questionCount: value,
+    }));
+  };
+
+  const handleQuestionTypeToggle = (type: WorksheetQuestionType) => {
+    updateWorksheetOptionsState(prev => {
+      const currentlySelected = prev.questionTypes[type];
+      const selectedCount = Object.values(prev.questionTypes).filter(Boolean).length;
+      if (currentlySelected && selectedCount <= 1) {
+        return prev; // Keep at least one type selected
+      }
+      return {
+        ...prev,
+        questionTypes: {
+          ...prev.questionTypes,
+          [type]: !currentlySelected,
+        },
+      };
+    });
+  };
+
+  const handleDifficultyChange = (difficulty: WorksheetDifficulty) => {
+    updateWorksheetOptionsState(prev => ({
+      ...prev,
+      difficulty,
+    }));
+  };
+
+  const handleMarkingSchemeChange = (field: 'pointsPerQuestion' | 'totalPoints', value: number) => {
+    updateWorksheetOptionsState(prev => ({
+      ...prev,
+      markingScheme: {
+        ...prev.markingScheme,
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleAnswerKeyToggle = (value: boolean) => {
+    updateWorksheetOptionsState(prev => ({
+      ...prev,
+      autoGenerateAnswerKeys: value,
+    }));
+  };
+
+  const handleRequestWorksheetGeneration = () => {
+    if (generatingAI || isGeneratingContent) {
+      return;
+    }
+    if (questionTypeSelectedCount === 0) {
+      setAiError('Please select at least one question type for the worksheet.');
+      return;
+    }
+    const confirmed = window.confirm('Generate worksheets with the current customization settings?');
+    if (!confirmed) {
+      return;
+    }
+    setAiError(null);
+    setPendingWorksheetGeneration(true);
+    if (activeTab !== 'worksheets') {
+      setActiveTab('worksheets');
+    }
+  };
   const [formData, setFormData] = useState({
     name: topic.name,
     description: topic.description || '',
@@ -87,6 +206,8 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
 
   // Update form data when topic changes
   useEffect(() => {
+    setWorksheetOptionsInitialized(false);
+
     setFormData({
       name: topic.name,
       description: topic.description || '',
@@ -157,8 +278,80 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     } else {
       setEditingWorksheets('');
     }
+
+    const savedWorksheetOptions = topic.aiContent?.worksheetOptions;
+    setWorksheetOptions(normalizeWorksheetOptions(savedWorksheetOptions));
+    setWorksheetOptionsInitialized(true);
     
   }, [topic, isGeneratingContent]);
+
+  useEffect(() => {
+    if (!worksheetOptionsInitialized) {
+      return;
+    }
+    if (isGeneratingContent || generatingAI) {
+      return;
+    }
+
+    const savedOptions = topic.aiContent?.worksheetOptions;
+    const normalizedSaved = normalizeWorksheetOptions(savedOptions);
+    const normalizedCurrent = normalizeWorksheetOptions(worksheetOptions);
+
+    const optionsChanged = JSON.stringify(normalizedSaved) !== JSON.stringify(normalizedCurrent);
+    if (!optionsChanged) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      updateTopic(
+        topic.id,
+        {
+          aiContent: {
+            ...(topic.aiContent || {}),
+            worksheetOptions: normalizedCurrent,
+          },
+        },
+        true
+      ).catch(error => {
+        console.error('Failed to persist worksheet options:', error);
+      });
+    }, 600);
+
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [worksheetOptions, worksheetOptionsInitialized, topic.aiContent, topic.id, isGeneratingContent, generatingAI]);
+
+  useEffect(() => {
+    if (!worksheetOptionsInitialized) {
+      return;
+    }
+    if (isGeneratingContent || generatingAI) {
+      return;
+    }
+
+    const savedOptions = topic.aiContent?.worksheetOptions;
+    const normalizedSaved = normalizeWorksheetOptions(savedOptions);
+    const normalizedCurrent = normalizeWorksheetOptions(worksheetOptions);
+
+    const optionsChanged = JSON.stringify(normalizedSaved) !== JSON.stringify(normalizedCurrent);
+    if (!optionsChanged) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      updateTopic(topic.id, {
+        aiContent: {
+          ...(topic.aiContent || {}),
+          worksheetOptions: normalizedCurrent,
+        },
+      }, true).catch(error => {
+        console.error('Failed to persist worksheet options:', error);
+      });
+    }, 600);
+
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [worksheetOptions, worksheetOptionsInitialized, topic.aiContent, topic.id, isGeneratingContent, generatingAI]);
 
   // Save activeTab to localStorage whenever it changes
   useEffect(() => {
@@ -178,6 +371,9 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     const generateTabContent = async () => {
       // Skip if already generating or if it's the details tab
       if (generatingAI || isGeneratingContent || activeTab === 'details') {
+        return;
+      }
+      if (activeTab === 'worksheets' && !pendingWorksheetGeneration) {
         return;
       }
 
@@ -208,7 +404,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
           contentType = 'assessment questions';
           break;
         case 'worksheets':
-          needsGeneration = !existingContent.worksheets || existingContent.worksheets.length === 0;
+          needsGeneration = pendingWorksheetGeneration;
           contentType = 'worksheets';
           break;
         case 'videos':
@@ -319,13 +515,14 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
               formData.description || '',
               documentUrls,
               classLevel,
-              subject
+              subject,
+              worksheetOptions
             );
             if (result.success && result.worksheets) {
               setEditingWorksheets(result.worksheets);
               await updateTopic(topic.id, {
                 ...topic,
-                aiContent: { ...existingContent, worksheets: result.worksheets }
+                aiContent: { ...existingContent, worksheets: result.worksheets, worksheetOptions }
               });
             }
             break;
@@ -344,12 +541,15 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
       } finally {
         setGeneratingAI(false);
         setIsGeneratingContent(false);
+        if (pendingWorksheetGeneration) {
+          setPendingWorksheetGeneration(false);
+        }
       }
     };
 
     generateTabContent();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, topic.id]); // Re-run when tab changes or topic changes
+  }, [activeTab, topic.id, pendingWorksheetGeneration]); // Re-run when tab changes or topic changes
 
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {
@@ -525,6 +725,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
         aiContent: {
           ...topic.aiContent,
           worksheets: editingWorksheets,
+          worksheetOptions,
           generatedAt: new Date()
         }
       });
@@ -1222,7 +1423,8 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     
     try {
       setExportingAssessment(true);
-      const content = formatSimpleMarkdown(topic.aiContent?.assessmentQuestions || assessmentQuestions || '');
+      const htmlContent = renderMarkdownToHtml(topic.aiContent?.assessmentQuestions || assessmentQuestions || '');
+      const content = `<div class="ai-rendered">${htmlContent}</div>`;
       const filename = sanitizeFilename(topic.name, 'assessment');
       
       await exportToPDF({
@@ -1243,7 +1445,8 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     
     try {
       setExportingAssessment(true);
-      const content = formatSimpleMarkdown(topic.aiContent?.assessmentQuestions || assessmentQuestions || '');
+      const htmlContent = renderMarkdownToHtml(topic.aiContent?.assessmentQuestions || assessmentQuestions || '');
+      const content = `<div class="ai-rendered">${htmlContent}</div>`;
       const filename = sanitizeFilename(topic.name, 'assessment');
       
       await exportToWord({
@@ -1264,7 +1467,8 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     
     try {
       setExportingWorksheets(true);
-      const content = formatSimpleMarkdown(topic.aiContent?.worksheets || worksheets || '');
+      const htmlContent = renderMarkdownToHtml(topic.aiContent?.worksheets || worksheets || '');
+      const content = `<div class="ai-rendered">${htmlContent}</div>`;
       const filename = sanitizeFilename(topic.name, 'worksheets');
       
       await exportToPDF({
@@ -1285,7 +1489,8 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     
     try {
       setExportingWorksheets(true);
-      const content = formatSimpleMarkdown(topic.aiContent?.worksheets || worksheets || '');
+      const htmlContent = renderMarkdownToHtml(topic.aiContent?.worksheets || worksheets || '');
+      const content = `<div class="ai-rendered">${htmlContent}</div>`;
       const filename = sanitizeFilename(topic.name, 'worksheets');
       
       await exportToWord({
@@ -1354,122 +1559,6 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     { id: 'worksheets', label: 'Worksheets', icon: BookOpen, disabled: false }, // Always clickable
     { id: 'videos', label: 'Videos', icon: Youtube, disabled: !topic.aiContent?.videos || topic.aiContent.videos.length === 0 },
   ], [topic.aiContent, teachingGuide, groupDiscussion, assessmentQuestions, worksheets]);
-
-  // Simple, safe view-only formatting for headings, bold, and bullets
-  const formatSimpleMarkdown = (text: string): string => {
-    const escapeHtml = (s: string) =>
-      (s || '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
-
-    const lines = escapeHtml(text).split('\n');
-    const html: string[] = [];
-    let inList = false;
-
-    const isTableSeparator = (s: string) => /^(\s*\|)?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+(\|\s*)?$/.test(s);
-    const splitCells = (s: string) => {
-      const parts = s.split('|').map(c => c.trim());
-      if (parts.length && parts[0] === '') parts.shift();
-      if (parts.length && parts[parts.length - 1] === '') parts.pop();
-      return parts;
-    };
-
-    const flushList = () => {
-      if (inList) {
-        html.push('</ul>');
-        inList = false;
-      }
-    };
-
-    for (let idx = 0; idx < lines.length; idx++) {
-      const rawLine = lines[idx];
-      const line = rawLine.trimEnd();
-
-      if (line.trim() === '') {
-        flushList();
-        html.push('<br/>');
-        continue;
-      }
-
-      // Markdown table detection: header | header, followed by --- | --- line
-      if (line.includes('|') && idx + 1 < lines.length && isTableSeparator(lines[idx + 1].trim())) {
-        flushList();
-        const headerCells = splitCells(line).map(c => c.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'));
-        let j = idx + 2;
-        const rows: string[][] = [];
-        while (j < lines.length) {
-          const rowLine = lines[j].trimEnd();
-          if (!rowLine || !rowLine.includes('|')) break;
-          rows.push(splitCells(rowLine).map(c => c.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')));
-          j++;
-        }
-        // Build table HTML
-        const thead = `<thead><tr>${headerCells.map(c => `<th>${c}</th>`).join('')}</tr></thead>`;
-        const tbody = rows.length
-          ? `<tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody>`
-          : '';
-        html.push(`<table class="ai-table">${thead}${tbody}</table>`);
-        idx = j - 1; // advance outer loop
-        continue;
-      }
-
-      // Segment headings with time: e.g., "Segment 1 (5–15 min): What is Science?" or "Introduction (0–5 min):"
-      const seg = line.match(/^(.*?)(?:\s*\((\d+\s*[–-]\s*\d+\s*min)\)):\s*(.*)$/i);
-      if (seg) {
-        flushList();
-        const segTitle = (seg[1] || '').trim();
-        const time = (seg[2] || '').trim();
-        const trailing = (seg[3] || '').trim();
-        const titleHtml = trailing ? `${segTitle}: <small>${trailing}</small>` : segTitle;
-        html.push(`<h3>${titleHtml} <span class="time-badge">${time}</span></h3>`);
-        continue;
-      }
-
-      // Simple section headings ending with ':' (not bullets)
-      if (/^[^|].*:\s*$/.test(line) && !/^[-*]\s+/.test(line)) {
-        flushList();
-        const label = line.replace(/:\s*$/, '').trim();
-        if (/^(learning objectives|materials needed|40[-\u2013-]?minute lesson plan|homework\/extension|educational resources)$/i.test(label)) {
-          html.push(`<h2>${label}</h2>`);
-        } else {
-          html.push(`<h3>${label}</h3>`);
-        }
-        continue;
-      }
-
-      const m3 = line.match(/^###\s+(.*)$/);
-      const m2 = m3 ? null : line.match(/^##\s+(.*)$/);
-      const m1 = (m3 || m2) ? null : line.match(/^#\s+(.*)$/);
-      if (m3 || m2 || m1) {
-        flushList();
-        const content = (m3?.[1] || m2?.[1] || m1?.[1] || '').trim();
-        if (m3) html.push(`<h3>${content}</h3>`);
-        else if (m2) html.push(`<h2>${content}</h2>`);
-        else html.push(`<h1>${content}</h1>`);
-        continue;
-      }
-
-      const bullet = line.match(/^[-*]\s+(.*)$/);
-      if (bullet) {
-        if (!inList) {
-          html.push('<ul>');
-          inList = true;
-        }
-        let item = bullet[1];
-        item = item.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-        html.push(`<li>${item}</li>`);
-        continue;
-      }
-
-      flushList();
-      const paragraph = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-      html.push(`<p>${paragraph}</p>`);
-    }
-
-    flushList();
-    return html.join('\n');
-  };
 
   const [topicCompletionStatus, setTopicCompletionStatus] = useState<{
     status: 'completed' | 'in_progress' | 'not_started';
@@ -1759,9 +1848,9 @@ useEffect(() => {
               </div>
             ) : (
               <div className="raw-ai-content">
-                <div
+                <MarkdownRenderer
                   className="ai-rendered"
-                  dangerouslySetInnerHTML={{ __html: formatSimpleMarkdown(topic.aiContent.lessonPlan) }}
+                  content={topic.aiContent.lessonPlan}
                 />
               </div>
             )}
@@ -1794,9 +1883,9 @@ useEffect(() => {
               </div>
             ) : (
               <div className="raw-ai-content">
-                <div
+                <MarkdownRenderer
                   className="ai-rendered"
-                  dangerouslySetInnerHTML={{ __html: formatSimpleMarkdown(topic.aiContent?.teachingGuide || teachingGuide || '') }}
+                  content={topic.aiContent?.teachingGuide || teachingGuide || ''}
                 />
               </div>
             )}
@@ -1829,9 +1918,9 @@ useEffect(() => {
               </div>
             ) : (
               <div className="raw-ai-content">
-                <div
+                <MarkdownRenderer
                   className="ai-rendered"
-                  dangerouslySetInnerHTML={{ __html: formatSimpleMarkdown(topic.aiContent?.groupDiscussion || groupDiscussion || '') }}
+                  content={topic.aiContent?.groupDiscussion || groupDiscussion || ''}
                 />
               </div>
             )}
@@ -1889,16 +1978,16 @@ useEffect(() => {
               </div>
             ) : (
               <div className="raw-ai-content">
-                <div
+                <MarkdownRenderer
                   className="ai-rendered"
-                  dangerouslySetInnerHTML={{ __html: formatSimpleMarkdown(topic.aiContent?.assessmentQuestions || assessmentQuestions || '') }}
+                  content={topic.aiContent?.assessmentQuestions || assessmentQuestions || ''}
                 />
               </div>
             )}
           </div>
         )}
 
-        {activeTab === 'worksheets' && (topic.aiContent?.worksheets || worksheets) && (
+        {activeTab === 'worksheets' && (
           <div className="tab-panel worksheets-panel">
             <div className="ai-tab-actions">
               {isEditingWorksheets ? (
@@ -1910,12 +1999,19 @@ useEffect(() => {
                 </>
               ) : (
                 <>
-                  <button onClick={handleStartEditingWorksheets} className="btn btn-secondary btn-sm">Edit</button>
+                  <button
+                    onClick={handleStartEditingWorksheets}
+                    className="btn btn-secondary btn-sm"
+                    disabled={!hasWorksheetContent}
+                    title={hasWorksheetContent ? 'Edit worksheet content' : 'Generate worksheets before editing'}
+                  >
+                    Edit
+                  </button>
                   <div className="export-buttons">
                     <button 
                       onClick={handleExportWorksheetsPDF} 
                       className="btn btn-outline btn-sm"
-                      disabled={exportingWorksheets}
+                      disabled={exportingWorksheets || !hasWorksheetContent}
                       title="Export as PDF"
                     >
                       <Download size={16} />
@@ -1924,7 +2020,7 @@ useEffect(() => {
                     <button 
                       onClick={handleExportWorksheetsWord} 
                       className="btn btn-outline btn-sm"
-                      disabled={exportingWorksheets}
+                      disabled={exportingWorksheets || !hasWorksheetContent}
                       title="Export as Word"
                     >
                       <FileDown size={16} />
@@ -1933,6 +2029,130 @@ useEffect(() => {
                   </div>
                 </>
               )}
+            </div>
+            <div className="worksheet-options-card">
+              <h4>Worksheet Customization</h4>
+              <div className="worksheet-options-grid">
+                <div className="worksheet-option-group">
+                  <label htmlFor="worksheet-question-count" className="option-label">
+                    Number of Questions: <strong>{worksheetOptions.questionCount}</strong>
+                  </label>
+                  <div className="question-count-controls">
+                    <input
+                      id="worksheet-question-count"
+                      type="range"
+                      min={1}
+                      max={60}
+                      value={worksheetOptions.questionCount}
+                      onChange={e => handleQuestionCountChange(Number(e.target.value))}
+                    />
+                    <input
+                      type="number"
+                      min={1}
+                      max={60}
+                      value={worksheetOptions.questionCount}
+                      onChange={e => handleQuestionCountChange(Number(e.target.value) || 1)}
+                      className="form-input number-input"
+                    />
+                  </div>
+                </div>
+
+                <div className="worksheet-option-group">
+                  <span className="option-label">Question Types</span>
+                  <div className="checkbox-grid">
+                    {(Object.entries(QUESTION_TYPE_LABELS) as [WorksheetQuestionType, string][]).map(([type, label]) => {
+                      const selected = worksheetOptions.questionTypes[type];
+                      const disableUncheck = selected && questionTypeSelectedCount <= 1;
+                      return (
+                        <label key={type} className={`checkbox-option ${disableUncheck ? 'disabled' : ''}`}>
+                          <input
+                            type="checkbox"
+                            checked={selected}
+                            onChange={() => handleQuestionTypeToggle(type)}
+                            disabled={disableUncheck}
+                          />
+                          <span>{label}</span>
+                        </label>
+                      );
+                    })}
+                    <small className="form-help-text">Select at least one type to include in the worksheet.</small>
+                  </div>
+                </div>
+
+                <div className="worksheet-option-group">
+                  <span className="option-label">Difficulty</span>
+                  <div className="radio-group">
+                    {(['easy', 'medium', 'hard'] as WorksheetDifficulty[]).map(level => (
+                      <label key={level} className="radio-option">
+                        <input
+                          type="radio"
+                          name="worksheet-difficulty"
+                          value={level}
+                          checked={worksheetOptions.difficulty === level}
+                          onChange={() => handleDifficultyChange(level)}
+                        />
+                        <span className="capitalize">{level}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="worksheet-option-group">
+                  <span className="option-label">Marking Scheme</span>
+                  <div className="marking-grid">
+                    <label className="marking-field">
+                      <span>Points per Question</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={worksheetOptions.markingScheme.pointsPerQuestion}
+                        onChange={e => handleMarkingSchemeChange('pointsPerQuestion', Math.max(0, Number(e.target.value)))}
+                        className="form-input"
+                      />
+                    </label>
+                    <label className="marking-field">
+                      <span>Total Points</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={worksheetOptions.markingScheme.totalPoints}
+                        onChange={e => handleMarkingSchemeChange('totalPoints', Math.max(0, Number(e.target.value)))}
+                        className="form-input"
+                      />
+                    </label>
+                  </div>
+                  <small className="form-help-text">
+                    Configure how the worksheet should be graded. These details will be included with the generated answer key.
+                  </small>
+                </div>
+
+                <div className="worksheet-option-group">
+                  <label className="toggle-option">
+                    <input
+                      type="checkbox"
+                      checked={worksheetOptions.autoGenerateAnswerKeys}
+                      onChange={e => handleAnswerKeyToggle(e.target.checked)}
+                    />
+                    <span>Auto-generate answer keys</span>
+                  </label>
+                  <small className="form-help-text">
+                    When enabled, the worksheet will include a detailed answer key aligned with your marking scheme.
+                  </small>
+                </div>
+              </div>
+              <div className="worksheet-actions">
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleRequestWorksheetGeneration}
+                  disabled={generatingAI || isGeneratingContent}
+                >
+                  {generatingAI || pendingWorksheetGeneration ? 'Generating...' : 'Generate Worksheets'}
+                </button>
+                <small className="form-help-text">
+                  Worksheets will be regenerated using the settings above. Previous worksheet content will be replaced.
+                </small>
+              </div>
             </div>
             {isEditingWorksheets ? (
               <div className="editable-content">
@@ -1949,10 +2169,16 @@ useEffect(() => {
               </div>
             ) : (
               <div className="raw-ai-content">
-                <div
-                  className="ai-rendered"
-                  dangerouslySetInnerHTML={{ __html: formatSimpleMarkdown(topic.aiContent?.worksheets || worksheets || '') }}
-                />
+                {hasWorksheetContent ? (
+                  <MarkdownRenderer
+                    className="ai-rendered"
+                    content={worksheetContent}
+                  />
+                ) : (
+                  <div className="empty-ai-state">
+                    <p>No worksheet has been generated yet. Adjust the customization settings above and click “Generate Missing AI Content” to create one.</p>
+                  </div>
+                )}
               </div>
             )}
           </div>

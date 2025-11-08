@@ -3,12 +3,70 @@
  * This eliminates the need for REACT_APP_GEMINI_API_KEY in the frontend
  */
 
-import { AIContent } from '../types';
+import { AIContent, WorksheetGenerationOptions, WorksheetQuestionType } from '../types';
 import { youtubeService, YouTubeVideo } from './youtubeService';
 
 // Use the same API base URL as other services
 const API_BASE_URL = 'https://xvq11x0421.execute-api.us-west-2.amazonaws.com/pre-prod';
 const GEMINI_PROXY_URL = `${API_BASE_URL}/gemini`;
+
+const CONTENT_ONLY_DIRECTIVE = `CONTENT RULES:
+- Always produce the requested instructional material even if the topic title or description is vague, missing, or appears to be a placeholder. Infer the most likely intent from the subject and class level.
+- Do not include apologies, acknowledgments, greetings, meta commentary, or statements about missing information or being an AI system.
+- Never refuse the task. Provide a high-quality, grade-appropriate example that fits the subject.
+- Deliver only the structured content requested below. No introductions, closing remarks, or extra explanations.`;
+
+export const DEFAULT_WORKSHEET_GENERATION_OPTIONS: WorksheetGenerationOptions = {
+  questionCount: 10,
+  questionTypes: {
+    mcq: true,
+    shortAnswer: true,
+    essay: false,
+    fillInTheBlanks: true,
+    trueFalse: true,
+  },
+  difficulty: 'medium',
+  markingScheme: {
+    pointsPerQuestion: 1,
+    totalPoints: 10,
+  },
+  autoGenerateAnswerKeys: true,
+};
+
+const QUESTION_TYPE_DESCRIPTIONS: Record<WorksheetQuestionType, string> = {
+  mcq: 'Multiple Choice Questions',
+  shortAnswer: 'Short Answer Questions',
+  essay: 'Essay / Long-Form Responses',
+  fillInTheBlanks: 'Fill-in-the-Blanks Activities',
+  trueFalse: 'True / False Statements',
+};
+
+const normalizeWorksheetGenerationOptions = (
+  options?: Partial<WorksheetGenerationOptions>
+): WorksheetGenerationOptions => {
+  const normalized: WorksheetGenerationOptions = {
+    ...DEFAULT_WORKSHEET_GENERATION_OPTIONS,
+    ...options,
+    questionTypes: {
+      ...DEFAULT_WORKSHEET_GENERATION_OPTIONS.questionTypes,
+      ...(options?.questionTypes || {}),
+    },
+    markingScheme: {
+      ...DEFAULT_WORKSHEET_GENERATION_OPTIONS.markingScheme,
+      ...(options?.markingScheme || {}),
+    },
+  };
+
+  normalized.questionCount = Math.max(1, Math.min(60, normalized.questionCount));
+  normalized.markingScheme.pointsPerQuestion = Math.max(0, normalized.markingScheme.pointsPerQuestion);
+  normalized.markingScheme.totalPoints = Math.max(0, normalized.markingScheme.totalPoints);
+
+  if (!Object.values(normalized.questionTypes).some(Boolean)) {
+    normalized.questionTypes = { ...DEFAULT_WORKSHEET_GENERATION_OPTIONS.questionTypes };
+  }
+
+  return normalized;
+};
 
 export interface ContentType {
   text: string;
@@ -296,7 +354,9 @@ class SecureGeminiService {
     subject: string
   ): Promise<{ success: boolean; concepts?: string[]; error?: string }> {
     
-    const prompt = `Break down "${topicName}" into 3-5 main concepts for ${classLevel} ${subject}.
+    const prompt = `${CONTENT_ONLY_DIRECTIVE}
+
+Break down "${topicName}" into 3-5 main concepts for ${classLevel} ${subject}.
 
 Content: ${description}
 
@@ -333,8 +393,10 @@ Return numbered list only:
         return { success: false, error: 'No concepts extracted' };
       }
 
+      const sanitized = this.sanitizeModelOutput(generatedText);
+
       // Parse the numbered list to extract concepts
-      const concepts = generatedText
+      const concepts = sanitized
         .split('\n')
         .filter((line: string) => line.trim().match(/^\d+\./))
         .map((line: string) => line.replace(/^\d+\.\s*/, '').trim())
@@ -362,7 +424,9 @@ Return numbered list only:
     subject: string
   ): Promise<{ success: boolean; guidance?: string; error?: string }> {
     
-    const prompt = `You are an expert ${subject} teacher. Provide focused teaching guidance for this specific concept within the topic "${topicName}" for ${classLevel} students.
+    const prompt = `${CONTENT_ONLY_DIRECTIVE}
+
+You are an expert ${subject} teacher. Provide focused teaching guidance for this specific concept within the topic "${topicName}" for ${classLevel} students.
 
 CONCEPT TO TEACH: ${concept}
 
@@ -414,7 +478,8 @@ Keep it focused and practical. This is just for the "${concept}" part of the les
       if (!generatedText) {
         return { success: false, error: 'No guidance generated for concept' };
       }
-      return { success: true, guidance: generatedText };
+      const cleaned = this.sanitizeModelOutput(generatedText);
+      return { success: true, guidance: cleaned };
       
     } catch (error) {
       return { 
@@ -504,7 +569,8 @@ ${guidance}
       if (!generatedText) {
         return { success: false, error: 'No group discussion generated' };
       }
-      return { success: true, groupDiscussion: generatedText };
+      const cleaned = this.sanitizeModelOutput(generatedText);
+      return { success: true, groupDiscussion: cleaned };
       
     } catch (error) {
       return { 
@@ -571,7 +637,8 @@ ${guidance}
         return { success: false, error: 'No suggestions generated' };
       }
 
-      const suggestions = this.parseDocumentSuggestions(generatedText);
+      const cleaned = this.sanitizeModelOutput(generatedText);
+      const suggestions = this.parseDocumentSuggestions(cleaned);
       return { success: true, suggestions };
       
     } catch (error) {
@@ -668,12 +735,13 @@ ${guidance}
       if (!enhancedContent) {
         return { success: false, error: 'No enhanced content generated' };
       }
+      const cleanedContent = this.sanitizeModelOutput(enhancedContent);
 
       // Only add additional resources and teaching activities, not videos
       // since video buttons are shown at the top of the section
       const additionalContent = `\n\n**📚 ADDITIONAL RESOURCES:**\n\nSearch YouTube for "${request.topicName}" educational videos for ${request.classLevel} students\n\n**Suggested search terms:**\n- "${request.topicName} for kids"\n- "${request.topicName} ${request.classLevel} lesson"\n- "${request.topicName} educational video"\n\n**🎯 TEACHING ACTIVITIES:**\n\n- Use the video buttons above to access educational content\n- Pause videos at key moments for discussion\n- Have students take notes on important concepts\n- Follow up with hands-on activities related to the videos\n\n`;
       
-      return { success: true, enhancedContent: request.content + additionalContent };
+      return { success: true, enhancedContent: cleanedContent + additionalContent };
       
     } catch (error) {
       return { 
@@ -687,7 +755,9 @@ ${guidance}
   private buildTopicPrompt(topicName: string, description: string, documentUrls: string[], classLevel: string, subject: string): string {
     const isPDFContent = description && description.length > 500;
     
-    return `Create a simple 40-minute lesson plan for ${classLevel} ${subject}.
+    return `${CONTENT_ONLY_DIRECTIVE}
+
+Create a simple 40-minute lesson plan for ${classLevel} ${subject}.
 
 Topic: ${topicName}
 ${isPDFContent ? `Textbook Content: ${description}` : `Description: ${description || 'No description provided'}`}
@@ -746,6 +816,8 @@ IMPORTANT: Base your entire teaching approach on the specific content provided a
 
     return `${basePrompt}
 ${descriptionSection}
+
+${CONTENT_ONLY_DIRECTIVE}
 
 TEACHING SCENARIO:
 Imagine you are the actual teacher in the classroom right now. The students are sitting in front of you, and you need to teach this topic in a 40-minute class period. You must:
@@ -818,6 +890,8 @@ IMPORTANT: Base your discussion ideas on the specific content provided above. Re
 
     return `${basePrompt}
 ${descriptionSection}
+
+${CONTENT_ONLY_DIRECTIVE}
 
 GROUP DISCUSSION OBJECTIVES:
 Create engaging group discussion activities that help students:
@@ -906,7 +980,9 @@ Make these activities fast-paced, engaging, and suitable for ${classLevel} stude
   // Image discovery prompt removed - now using imageSearchService
 
   private buildDocumentDiscoveryPrompt(request: DocumentDiscoveryRequest): string {
-    return `Suggest educational documents and resources for ${request.classLevel} ${request.subject} students.
+    return `${CONTENT_ONLY_DIRECTIVE}
+
+Suggest educational documents and resources for ${request.classLevel} ${request.subject} students.
 
 Topic/Query: ${request.prompt}
 Current Documents: ${request.documentUrls.length > 0 ? request.documentUrls.join(', ') : 'None'}
@@ -929,7 +1005,9 @@ Focus on reputable educational sources, age-appropriate content, and curriculum 
     const topicContext = request.topicName ? `**Topic**: ${request.topicName}\n` : '';
     const sectionTypeContext = request.sectionType ? `**Section Type**: ${request.sectionType}\n` : '';
     
-    return `You are an expert educational content curator. Enhance this lesson plan section with SPECIFIC, FREELY AVAILABLE teaching resources, focusing heavily on YouTube videos.
+    return `${CONTENT_ONLY_DIRECTIVE}
+
+You are an expert educational content curator. Enhance this lesson plan section with SPECIFIC, FREELY AVAILABLE teaching resources, focusing heavily on YouTube videos.
 
 **Section**: ${request.section}${durationText}
 ${topicContext}**Class Level**: ${request.classLevel}
@@ -1006,10 +1084,57 @@ Then "**🎯 TEACHING ACTIVITIES:**" with specific classroom activities
 Return only the enhanced content with specific, working links.`;
   }
 
+  private sanitizeModelOutput(text: string | undefined | null): string {
+    if (!text) {
+      return '';
+    }
+
+    let cleaned = text.trim();
+    if (!cleaned) {
+      return '';
+    }
+
+    const sentencePatterns = [
+      /^i\s+apologize[^.]*\.\s*/i,
+      /^i'?m\s+sorr?y[^.]*\.\s*/i,
+      /^sorry[^.]*\.\s*/i,
+      /^as\s+an\s+ai[^.]*\.\s*/i,
+      /^please\s+note[^.]*\.\s*/i,
+      /^note:[^.]*\.\s*/i,
+      /^for\s+context[^.]*\.\s*/i,
+      /^here'?s\s+(?:an|the)\s+/i,
+    ];
+
+    let updated = true;
+    while (updated) {
+      updated = false;
+      for (const pattern of sentencePatterns) {
+        if (pattern.test(cleaned)) {
+          cleaned = cleaned.replace(pattern, '').trimStart();
+          updated = true;
+        }
+      }
+    }
+
+    const leadPatterns = [
+      /^(?:sure|certainly|of\s+course|absolutely|definitely)[,!\.]?\s+/i,
+      /^(?:hi|hello|hey)[,!\.]?\s+/i,
+      /^thank\s+you[,!\.]?\s+/i,
+    ];
+
+    for (const pattern of leadPatterns) {
+      if (pattern.test(cleaned)) {
+        cleaned = cleaned.replace(pattern, '').trimStart();
+      }
+    }
+
+    return cleaned.trim();
+  }
+
   private parseGeneratedContent(generatedText: string, classLevel: string): AIContent {
-    // Store raw plain text lesson plan as-is (no JSON transformation)
+    const cleanedText = this.sanitizeModelOutput(generatedText);
     return {
-      lessonPlan: generatedText,
+      lessonPlan: cleanedText,
       generatedAt: new Date(),
       classLevel
     };
@@ -1039,7 +1164,9 @@ Return only the enhanced content with specific, working links.`;
     subject: string
   ): Promise<{ success: boolean; assessmentQuestions?: string; error?: string }> {
     try {
-      const prompt = `Generate comprehensive assessment questions for the topic "${topicName}" for ${classLevel} students studying ${subject}.
+      const prompt = `${CONTENT_ONLY_DIRECTIVE}
+
+Generate comprehensive assessment questions for the topic "${topicName}" for ${classLevel} students studying ${subject}.
 
 Topic Description: ${description}
 
@@ -1101,7 +1228,8 @@ Return only valid JSON in this format:
       const response = await this.makeSecureRequest('generate-content', payload);
       
       if (response.success && response.data?.candidates?.[0]?.content?.parts?.[0]?.text) {
-        const content = response.data.candidates[0].content.parts[0].text;
+        let content = response.data.candidates[0].content.parts[0].text;
+        content = this.sanitizeModelOutput(content);
         
         // Try to extract JSON from the response (handle markdown code blocks)
         let jsonText = content;
@@ -1161,12 +1289,38 @@ Return only valid JSON in this format:
     description: string,
     documentUrls: string[],
     classLevel: string,
-    subject: string
+    subject: string,
+    customization?: WorksheetGenerationOptions
   ): Promise<{ success: boolean; worksheets?: string; error?: string }> {
     try {
-      const prompt = `Generate creative and engaging worksheets for the topic "${topicName}" for ${classLevel} students studying ${subject}.
+      const options = normalizeWorksheetGenerationOptions(customization);
+      const enabledQuestionTypes = (Object.entries(options.questionTypes) as [WorksheetQuestionType, boolean][])
+        .filter(([, enabled]) => enabled)
+        .map(([type]) => `- ${QUESTION_TYPE_DESCRIPTIONS[type]}`);
+
+      const answerKeyInstruction = options.autoGenerateAnswerKeys
+        ? 'Include a detailed, clearly formatted answer key that aligns with the marking scheme.'
+        : 'Do NOT include an answer key. Instead, provide concise teacher guidance for checking responses.';
+
+      const customizationInstructions = `
+WORKSHEET CUSTOMIZATION REQUIREMENTS:
+- Total number of questions across all worksheets: approximately ${options.questionCount}. Distribute them evenly so each worksheet contributes to this total.
+- Difficulty level: ${options.difficulty.toUpperCase()} — ensure every activity reflects this level of challenge.
+- Allowed question formats ONLY (mix these types creatively):
+${enabledQuestionTypes.join('\n')}
+- Marking scheme guidance:
+  • Points per question: ${options.markingScheme.pointsPerQuestion}
+  • Total points across the worksheets: ${options.markingScheme.totalPoints}
+- Answer key requirement: ${answerKeyInstruction}
+`.trim();
+
+      const prompt = `${CONTENT_ONLY_DIRECTIVE}
+
+Generate creative and engaging worksheets for the topic "${topicName}" for ${classLevel} students studying ${subject}.
 
 Topic Description: ${description}
+
+${customizationInstructions}
 
 Create innovative worksheets inspired by NCERT's approach (referencing [https://ncert.nic.in/cncl/worksheet.php](https://ncert.nic.in/cncl/worksheet.php)) with the following creative structure:
 
@@ -1250,7 +1404,8 @@ Return only valid JSON in this format:
       const response = await this.makeSecureRequest('generate-content', payload);
       
       if (response.success && response.data?.candidates?.[0]?.content?.parts?.[0]?.text) {
-        const content = response.data.candidates[0].content.parts[0].text;
+        let content = response.data.candidates[0].content.parts[0].text;
+        content = this.sanitizeModelOutput(content);
         
         // Try to extract JSON from the response (handle markdown code blocks)
         let jsonText = content;
