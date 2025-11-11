@@ -19,7 +19,7 @@ The image search functionality uses real image APIs to find educational images, 
    ```
 
 ### 2. Pexels (Backup)
-- **Free tier**: 200 requests per hour
+- **Free tier**: 200 requests per ho ur
 - **Quality**: Good variety of educational content
 - **Best for**: Additional image variety
 
@@ -27,6 +27,7 @@ The image search functionality uses real image APIs to find educational images, 
 1. Go to [Pexels API](https://www.pexels.com/api/)
 2. Create an account and get API key
 3. Add to `.env.local`:
+
    ```
    REACT_APP_PEXELS_API_KEY=your_api_key_here
    ```

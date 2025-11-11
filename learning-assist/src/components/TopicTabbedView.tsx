@@ -22,7 +22,7 @@ type TabType = 'details' | 'lesson-plan' | 'teaching-guide' | 'group-discussion'
 const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted }) => {
   const { updateTopic, deleteTopic, loading, error, clearError, currentPath } = useApp();
   const { user } = useAuth();
-  
+
   // Use a more persistent approach for activeTab - store it per topic ID
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     // Try to get the last active tab for this topic from localStorage
@@ -32,6 +32,7 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
   const [generatingAI, setGeneratingAI] = useState(false);
   const [findingVideos, setFindingVideos] = useState(false);
   const [aiGenerationStatus, setAiGenerationStatus] = useState<string>('');
+  
   const [aiError, setAiError] = useState<string | null>(null);
   const [enhancedLessonPlan, setEnhancedLessonPlan] = useState<string | null>(null);
   const [teachingGuide, setTeachingGuide] = useState<string | null>(null);
@@ -656,10 +657,9 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
 
       // Step 2: Generate Teaching Guide (if needed)
       if (needsTeachingGuide) {
-        setAiGenerationStatus('Generating teaching guide... (this may take 1-2 minutes for complex topics)');
+        setAiGenerationStatus('Generating teaching guide... (this may take up to 2 minutes)');
         
-        // No timeout - let it complete naturally
-        // Each API call takes 30-60s, total for all content: 3-5 minutes
+        // No timeout - API Gateway now supports 120 seconds
         const teachingGuideResult = await secureGeminiService.generateTeachingGuide(
           formData.name,
           formData.description || '',
@@ -688,20 +688,14 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
       if (needsGroupDiscussion) {
         setAiGenerationStatus('Generating group discussion activities...');
         
-        // Add timeout to group discussion generation
-        const groupDiscussionPromise = secureGeminiService.generateGroupDiscussion(
+        // No timeout - API Gateway now supports 120 seconds
+        const groupDiscussionResult = await secureGeminiService.generateGroupDiscussion(
           formData.name,
           formData.description || '',
           documentUrls,
           classLevel,
           subject
         );
-        
-        const groupDiscussionTimeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Group discussion generation timeout after 180 seconds')), 180000)
-        );
-        
-        const groupDiscussionResult = await Promise.race([groupDiscussionPromise, groupDiscussionTimeoutPromise]) as any;
 
         if (groupDiscussionResult.success && groupDiscussionResult.groupDiscussion) {
           // Update local state immediately for UI feedback
@@ -723,19 +717,14 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
       if (needsAssessment) {
         setAiGenerationStatus('Generating assessment questions...');
         
-        const assessmentPromise = secureGeminiService.generateAssessmentQuestions(
+        // No timeout - API Gateway now supports 120 seconds
+        const assessmentResult = await secureGeminiService.generateAssessmentQuestions(
           formData.name,
           formData.description || '',
           documentUrls,
           classLevel,
           subject
         );
-        
-        const assessmentTimeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Assessment generation timeout after 180 seconds')), 180000)
-        );
-        
-        const assessmentResult = await Promise.race([assessmentPromise, assessmentTimeoutPromise]) as any;
 
         if (assessmentResult.success && assessmentResult.assessmentQuestions) {
           // Update local state immediately for UI feedback
@@ -756,19 +745,14 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
       if (needsWorksheets) {
         setAiGenerationStatus('Generating worksheets...');
         
-        const worksheetsPromise = secureGeminiService.generateWorksheets(
+        // No timeout - API Gateway now supports 120 seconds
+        const worksheetsResult = await secureGeminiService.generateWorksheets(
           formData.name,
           formData.description || '',
           documentUrls,
           classLevel,
           subject
         );
-        
-        const worksheetsTimeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Worksheets generation timeout after 180 seconds')), 180000)
-        );
-        
-        const worksheetsResult = await Promise.race([worksheetsPromise, worksheetsTimeoutPromise]) as any;
 
         if (worksheetsResult.success && worksheetsResult.worksheets) {
           // Update local state immediately for UI feedback
