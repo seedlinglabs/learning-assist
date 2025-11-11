@@ -7,6 +7,7 @@ export type WorksheetQuestionType = 'mcq' | 'shortAnswer' | 'essay' | 'fillInThe
 
 export interface WorksheetGenerationOptions {
   questionCount: number;
+  worksheetCount: number;
   questionTypes: Record<WorksheetQuestionType, boolean>;
   difficulty: 'easy' | 'medium' | 'hard';
   markingScheme: {

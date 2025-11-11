@@ -18,6 +18,7 @@ const CONTENT_ONLY_DIRECTIVE = `CONTENT RULES:
 
 export const DEFAULT_WORKSHEET_GENERATION_OPTIONS: WorksheetGenerationOptions = {
   questionCount: 10,
+  worksheetCount: 3,
   questionTypes: {
     mcq: true,
     shortAnswer: true,
@@ -58,6 +59,7 @@ const normalizeWorksheetGenerationOptions = (
   };
 
   normalized.questionCount = Math.max(1, Math.min(60, normalized.questionCount));
+  normalized.worksheetCount = Math.max(1, Math.min(10, normalized.worksheetCount || DEFAULT_WORKSHEET_GENERATION_OPTIONS.worksheetCount));
   normalized.markingScheme.pointsPerQuestion = Math.max(0, normalized.markingScheme.pointsPerQuestion);
   normalized.markingScheme.totalPoints = Math.max(0, normalized.markingScheme.totalPoints);
 
@@ -1294,20 +1296,72 @@ Return only valid JSON in this format:
   ): Promise<{ success: boolean; worksheets?: string; error?: string }> {
     try {
       const options = normalizeWorksheetGenerationOptions(customization);
-      const enabledQuestionTypes = (Object.entries(options.questionTypes) as [WorksheetQuestionType, boolean][])
+      const selectedTypes = (Object.entries(options.questionTypes) as [WorksheetQuestionType, boolean][])
         .filter(([, enabled]) => enabled)
-        .map(([type]) => `- ${QUESTION_TYPE_DESCRIPTIONS[type]}`);
+        .map(([type]) => type);
+
+      const enabledQuestionTypes = selectedTypes.map(type => `- ${QUESTION_TYPE_DESCRIPTIONS[type]}`);
 
       const answerKeyInstruction = options.autoGenerateAnswerKeys
         ? 'Include a detailed, clearly formatted answer key that aligns with the marking scheme.'
-        : 'Do NOT include an answer key. Instead, provide concise teacher guidance for checking responses.';
+        : 'Exclude answer keys. Instead, provide concise facilitator guidance for checking responses using the marking scheme.';
+
+      const typeAllocation: Record<WorksheetQuestionType, number> = {
+        mcq: 0,
+        shortAnswer: 0,
+        essay: 0,
+        fillInTheBlanks: 0,
+        trueFalse: 0,
+      };
+
+      if (selectedTypes.length > 0) {
+        const baseAmount = Math.floor(options.questionCount / selectedTypes.length);
+        let remainder = options.questionCount % selectedTypes.length;
+        selectedTypes.forEach(type => {
+          typeAllocation[type] = baseAmount;
+          if (remainder > 0) {
+            typeAllocation[type] += 1;
+            remainder -= 1;
+          }
+        });
+      }
+
+      const allocationDetails = selectedTypes.length
+        ? selectedTypes
+            .map(type => `  • ${QUESTION_TYPE_DESCRIPTIONS[type]}: ${typeAllocation[type]} question${typeAllocation[type] === 1 ? '' : 's'}`)
+            .join('\n')
+        : '  • Distribute the total question count evenly across creative, age-appropriate formats.';
+
+      const questionsPerWorksheet = Array.from({ length: options.worksheetCount }, (_, idx) => {
+        const base = Math.floor(options.questionCount / options.worksheetCount);
+        const remainder = options.questionCount % options.worksheetCount;
+        return idx < remainder ? base + 1 : base;
+      });
+
+      const worksheetDistributionDetails = questionsPerWorksheet
+        .map((count, idx) => `  • Worksheet ${idx + 1}: ${count} question${count === 1 ? '' : 's'}`)
+        .join('\n');
+
+      const worksheetNamingGuidance = Array.from({ length: options.worksheetCount }, (_, idx) =>
+        `- Worksheet ${idx + 1}: Provide a descriptive subtitle that highlights its focus area (e.g., concept emphasis, real-world application, innovation challenge).`
+      ).join('\n');
+
+      const disallowedInstruction = selectedTypes.length
+        ? 'Do not introduce any question formats beyond the ones listed above. If a format is not listed, it must not appear anywhere in the worksheets.'
+        : 'No specific formats were selected. Choose varied, age-appropriate formats while maintaining consistency and clarity.';
 
       const customizationInstructions = `
 WORKSHEET CUSTOMIZATION REQUIREMENTS:
-- Total number of questions across all worksheets: approximately ${options.questionCount}. Distribute them evenly so each worksheet contributes to this total.
-- Difficulty level: ${options.difficulty.toUpperCase()} — ensure every activity reflects this level of challenge.
+- Total number of worksheets: ${options.worksheetCount}. Divide the roadmap into exactly this many worksheets (e.g., Worksheet 1, Worksheet 2, ...).
+- Total number of questions across all worksheets: EXACTLY ${options.questionCount}. Balance them across the worksheets.
+- Question allocation per worksheet:
+${worksheetDistributionDetails}
+- Difficulty level: ${options.difficulty.toUpperCase()} — ensure every activity reflects this level of challenge with consistent scaffolding.
 - Allowed question formats ONLY (mix these types creatively):
-${enabledQuestionTypes.join('\n')}
+${enabledQuestionTypes.join('\n') || '- (No specific formats were selected; choose varied age-appropriate formats.)'}
+${disallowedInstruction}
+- Question type allocation (strictly follow this distribution):
+${allocationDetails}
 - Marking scheme guidance:
   • Points per question: ${options.markingScheme.pointsPerQuestion}
   • Total points across the worksheets: ${options.markingScheme.totalPoints}
@@ -1322,11 +1376,9 @@ Topic Description: ${description}
 
 ${customizationInstructions}
 
-Create innovative worksheets inspired by NCERT's approach (referencing [https://ncert.nic.in/cncl/worksheet.php](https://ncert.nic.in/cncl/worksheet.php)) with the following creative structure:
+Create innovative worksheets inspired by NCERT's approach (referencing [https://ncert.nic.in/cncl/worksheet.php](https://ncert.nic.in/cncl/worksheet.php)). Follow this structure:
 
-1. **Worksheet 1: Creative Foundation** - Fun, imaginative activities that build basic concepts through storytelling, games, and interactive elements
-2. **Worksheet 2: Real-World Adventures** - Problem-solving scenarios, case studies, and hands-on applications that connect learning to everyday life
-3. **Worksheet 3: Innovation Lab** - Creative challenges, design thinking activities, and open-ended projects that encourage critical thinking
+${worksheetNamingGuidance}
 
 Each worksheet should be CREATIVE and include:
 - Engaging storylines, characters, or scenarios that make learning fun
@@ -1358,31 +1410,31 @@ ${documentUrls.length > 0 ? `Reference these documents: ${documentUrls.join(', '
 
 **IMPORTANT:** All fields (type, question, answer, etc.) must have actual content. Never leave fields empty or undefined.
 
-Return only valid JSON in this format:
+Return only valid JSON with this shape (include entries for Worksheet 1 through Worksheet ${options.worksheetCount}):
 {
   "worksheets": [
     {
-      "title": "Worksheet 1: Creative Foundation",
+      "title": "Worksheet 1: [Subtitle describing focus]",
       "instructions": "Engaging, story-based instructions that capture student interest",
       "activities": [
         {
           "type": "fill_in_the_blanks",
-          "question": "Complete the following sentences:\n1. The _____ is the powerhouse of the cell.\n2. Plants make their food through _____.",
-          "answer": "1. mitochondria, 2. photosynthesis"
+          "question": "Activity prompt here",
+          "answer": "Answer key or expected response"
         },
         {
           "type": "match_the_following",
-          "question": "Match the following terms with their definitions:\n\nColumn A (Terms)    |    Column B (Definitions)\n-------------------|-------------------------\n1. Photosynthesis  |    A. Process of water vapor turning to liquid\n2. Respiration     |    B. Process plants use to make food\n3. Condensation    |    C. Process of breaking down food for energy\n4. Evaporation     |    D. Process of liquid turning to water vapor",
-          "answer": "1-B, 2-C, 3-A, 4-D"
+          "question": "Match-the-following table content",
+          "answer": "Correct matches (e.g., 1-B, 2-C, ...)"
         },
         {
           "type": "true_or_false",
-          "question": "Mark the following statements as True or False:\n1. The sun is a star. _____\n2. Water boils at 50°C. _____\n3. Mammals are warm-blooded. _____",
-          "answer": "1. True, 2. False, 3. True"
+          "question": "True/False statements",
+          "answer": "Answers with brief rationale"
         }
       ],
-      "answerKey": "Detailed answer key with explanations for each activity and teaching tips",
-      "parentTips": "Fun ways parents can engage with creative learning at home"
+      "answerKey": "Detailed answer key and marking guidance",
+      "parentTips": "Ideas for family engagement"
     }
   ]
 }`;

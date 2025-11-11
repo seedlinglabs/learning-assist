@@ -41,6 +41,7 @@ const normalizeWorksheetOptions = (
 
   // Ensure numeric values stay within reasonable bounds
   result.questionCount = Math.max(1, Math.min(60, result.questionCount || DEFAULT_WORKSHEET_GENERATION_OPTIONS.questionCount));
+  result.worksheetCount = Math.max(1, Math.min(10, result.worksheetCount || DEFAULT_WORKSHEET_GENERATION_OPTIONS.worksheetCount));
   result.markingScheme.pointsPerQuestion = Math.max(0, result.markingScheme.pointsPerQuestion || DEFAULT_WORKSHEET_GENERATION_OPTIONS.markingScheme.pointsPerQuestion);
   result.markingScheme.totalPoints = Math.max(0, result.markingScheme.totalPoints || DEFAULT_WORKSHEET_GENERATION_OPTIONS.markingScheme.totalPoints);
 
@@ -128,6 +129,13 @@ const TopicTabbedView: React.FC<TopicTabbedViewProps> = ({ topic, onTopicDeleted
     updater: (prev: WorksheetGenerationOptions) => WorksheetGenerationOptions
   ) => {
     setWorksheetOptions(prev => normalizeWorksheetOptions(updater(prev)));
+  };
+
+  const handleWorksheetCountChange = (value: number) => {
+    updateWorksheetOptionsState(prev => ({
+      ...prev,
+      worksheetCount: value,
+    }));
   };
 
   const handleQuestionCountChange = (value: number) => {
@@ -2033,6 +2041,33 @@ useEffect(() => {
             <div className="worksheet-options-card">
               <h4>Worksheet Customization</h4>
               <div className="worksheet-options-grid">
+                <div className="worksheet-option-group">
+                  <label htmlFor="worksheet-count" className="option-label">
+                    Number of Worksheets: <strong>{worksheetOptions.worksheetCount}</strong>
+                  </label>
+                  <div className="question-count-controls">
+                    <input
+                      id="worksheet-count"
+                      type="range"
+                      min={1}
+                      max={8}
+                      value={worksheetOptions.worksheetCount}
+                      onChange={e => handleWorksheetCountChange(Number(e.target.value))}
+                    />
+                    <input
+                      type="number"
+                      min={1}
+                      max={8}
+                      value={worksheetOptions.worksheetCount}
+                      onChange={e => handleWorksheetCountChange(Math.min(8, Math.max(1, Number(e.target.value) || 1)))}
+                      className="form-input number-input"
+                    />
+                  </div>
+                  <small className="form-help-text">
+                    Choose how many separate worksheets should be generated. Content and question distribution will be balanced across them.
+                  </small>
+                </div>
+
                 <div className="worksheet-option-group">
                   <label htmlFor="worksheet-question-count" className="option-label">
                     Number of Questions: <strong>{worksheetOptions.questionCount}</strong>
