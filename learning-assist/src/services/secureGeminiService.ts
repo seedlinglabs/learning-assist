@@ -45,7 +45,7 @@ export interface GeminiResponse {
 }
 
 class SecureGeminiService {
-  private selectedModel: string = 'deepseek-chat'; // DeepSeek is primary model
+  private selectedModel: string = 'deepseek-chat'; // DeepSeek is primary model (API key: aischool)
   private readonly MAX_RETRIES = 3;
   private readonly RETRY_DELAY_MS = 1000; // 1 second base delay
 
@@ -59,9 +59,9 @@ class SecureGeminiService {
 
   getAvailableModels(): { id: string; name: string; provider: string }[] {
     return [
-      { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', provider: 'Anthropic' },
       { id: 'deepseek-chat', name: 'DeepSeek Chat', provider: 'DeepSeek' },
-      { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'Google' }
+      { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'Google' },
+      { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', provider: 'Anthropic' }
     ];
   }
 
@@ -837,7 +837,7 @@ DISCUSSION ACTIVITY STRUCTURE:
 
 DISCUSSION ACTIVITY TYPES TO INCLUDE:
 
-1. **Case Study Discussions**
+1. **Case Study Discussions** 
    - Real-world scenarios related to the topic
    - Problem-solving situations
    - Ethical dilemmas or decision-making

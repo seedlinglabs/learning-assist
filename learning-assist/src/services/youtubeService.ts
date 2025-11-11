@@ -34,7 +34,7 @@ class YouTubeService {
     this.apiKey = process.env.REACT_APP_YOUTUBE_API_KEY || '';
     
     if (!this.apiKey) {
-      console.warn('YouTube API key not configured. YouTube search will not work.');
+      console.warn('YouTube API key not configured. Video search will return empty results.');
     }
   }
 
@@ -43,7 +43,7 @@ class YouTubeService {
    */
   async searchEducationalVideos(params: YouTubeSearchParams): Promise<YouTubeSearchResult> {
     if (!this.apiKey) {
-      console.warn('YouTube API key not configured, returning empty results');
+      console.warn('YouTube API key not configured, returning empty video results');
       return { videos: [], totalResults: 0 };
     }
 
@@ -90,7 +90,10 @@ class YouTubeService {
       const response = await fetch(`${this.baseUrl}/search?${searchParams}`);
       
       if (!response.ok) {
-        throw new Error(`YouTube API error: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error?.message || `HTTP ${response.status}`;
+        console.error(`YouTube API error (${response.status}):`, errorMessage);
+        throw new Error(`YouTube API error: ${errorMessage}`);
       }
 
       const data = await response.json();
