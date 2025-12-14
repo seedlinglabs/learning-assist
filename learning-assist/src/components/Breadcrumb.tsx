@@ -7,28 +7,42 @@ const Breadcrumb: React.FC = () => {
   const { school, class: cls, subject, topic } = currentPath;
 
   const handleNavigate = (level: 'home' | 'school' | 'class' | 'subject') => {
+    console.log('Breadcrumb navigation:', level, 'Current path:', currentPath);
+    
     switch (level) {
       case 'home':
         setCurrentPath({});
         break;
       case 'school':
-        setCurrentPath({ school });
+        if (school) {
+          setCurrentPath({ school });
+        }
         break;
       case 'class':
-        setCurrentPath({ school, class: cls });
+        if (school && cls) {
+          setCurrentPath({ school, class: cls });
+        }
         break;
       case 'subject':
-        setCurrentPath({ school, class: cls, subject });
+        if (school && cls && subject) {
+          setCurrentPath({ school, class: cls, subject });
+        }
         break;
     }
   };
 
   return (
-    <nav className="breadcrumb">
-      <div className="breadcrumb-container">
+    <nav className="py-3 overflow-x-auto scrollbar-thin" aria-label="Breadcrumb">
+      <div className="flex items-center gap-2 min-w-max">
         <button
+          type="button"
           onClick={() => handleNavigate('home')}
-          className={`breadcrumb-item ${!school ? 'active' : ''}`}
+          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer ${
+            !school
+              ? 'bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300'
+              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200'
+          }`}
+          aria-current={!school ? 'page' : undefined}
         >
           <Home size={16} />
           <span>Home</span>
@@ -36,10 +50,16 @@ const Breadcrumb: React.FC = () => {
 
         {school && (
           <>
-            <ChevronRight size={16} className="breadcrumb-separator" />
+            <ChevronRight size={16} className="text-gray-400 dark:text-gray-600 flex-shrink-0" />
             <button
+              type="button"
               onClick={() => handleNavigate('school')}
-              className={`breadcrumb-item ${!cls ? 'active' : ''}`}
+              className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer ${
+                !cls
+                  ? 'bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
+              aria-current={!cls ? 'page' : undefined}
             >
               {school.name}
             </button>
@@ -48,10 +68,16 @@ const Breadcrumb: React.FC = () => {
 
         {cls && (
           <>
-            <ChevronRight size={16} className="breadcrumb-separator" />
+            <ChevronRight size={16} className="text-gray-400 dark:text-gray-600 flex-shrink-0" />
             <button
+              type="button"
               onClick={() => handleNavigate('class')}
-              className={`breadcrumb-item ${!subject ? 'active' : ''}`}
+              className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer ${
+                !subject
+                  ? 'bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
+              aria-current={!subject ? 'page' : undefined}
             >
               {cls.name}
             </button>
@@ -60,10 +86,16 @@ const Breadcrumb: React.FC = () => {
 
         {subject && (
           <>
-            <ChevronRight size={16} className="breadcrumb-separator" />
+            <ChevronRight size={16} className="text-gray-400 dark:text-gray-600 flex-shrink-0" />
             <button
+              type="button"
               onClick={() => handleNavigate('subject')}
-              className={`breadcrumb-item ${!topic ? 'active' : ''}`}
+              className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer ${
+                !topic
+                  ? 'bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
+              aria-current={!topic ? 'page' : undefined}
             >
               {subject.name}
             </button>
@@ -72,8 +104,8 @@ const Breadcrumb: React.FC = () => {
 
         {topic && (
           <>
-            <ChevronRight size={16} className="breadcrumb-separator" />
-            <span className="breadcrumb-item active">
+            <ChevronRight size={16} className="text-gray-400 dark:text-gray-600 flex-shrink-0" />
+            <span className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300" aria-current="page">
               {topic.name}
             </span>
           </>

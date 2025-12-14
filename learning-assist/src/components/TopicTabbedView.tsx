@@ -1501,110 +1501,163 @@ useEffect(() => {
 }, [topic.id]);
 
   return (
-    <div className="topic-tabbed-view">
-      <div className="topic-detail-header">
-        <div className="topic-name-row">
-          <FileText size={24} />
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Modern Topic Header */}
+      <div className="px-8 py-6 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <div className="flex items-center gap-4 mb-5">
+          <div className="flex items-center justify-center w-10 h-10 rounded-lg border border-primary-200 bg-primary-50 text-primary-600 shadow-sm">
+            <FileText size={20} />
+          </div>
           <input
             type="text"
             name="name"
             value={formData.name}
             onChange={handleChange}
-            className="topic-name-input"
+            className="flex-1 text-2xl font-bold text-gray-900 dark:text-gray-100 bg-transparent border-0 border-b-2 border-transparent hover:border-gray-300 dark:hover:border-gray-600 focus:border-primary-500 dark:focus:border-primary-400 focus:outline-none transition-colors px-2 py-1"
             placeholder="Topic name"
           />
         </div>
-        <div className="topic-detail-actions">
+        
+        {/* Action Buttons */}
+        <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={generateAllAIContent}
             disabled={generatingAI || loading || (allAIContentExists && user?.email !== 's.p@seedlinglabs.com')}
-            className={`btn btn-sm ${allAIContentExists && user?.email !== 's.p@seedlinglabs.com' ? 'btn-success' : 'btn-primary'}`}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed ${
+              allAIContentExists && user?.email !== 's.p@seedlinglabs.com'
+                ? 'bg-success-500 text-white hover:bg-success-600 focus:ring-success-400'
+                : 'bg-primary-500 text-white hover:bg-primary-600 focus:ring-primary-400'
+            }`}
             title={allAIContentExists && user?.email !== 's.p@seedlinglabs.com' ? 'All AI content has been generated' : anyAIContentExists ? 'Generate missing AI content for this topic' : 'Generate AI content for this topic'}
           >
             <Sparkles size={16} />
-            {generatingAI 
-              ? (aiGenerationStatus || 'Generating AI Content...') 
-              : allAIContentExists && user?.email !== 's.p@seedlinglabs.com'
-                ? 'All AI Content Generated' 
-                : anyAIContentExists
-                  ? 'Generate Missing AI Content'
-                  : 'Generate AI Content'
-            }
+            <span className="hidden sm:inline">
+              {generatingAI 
+                ? (aiGenerationStatus || 'Generating...') 
+                : allAIContentExists && user?.email !== 's.p@seedlinglabs.com'
+                  ? 'All AI Content Generated' 
+                  : anyAIContentExists
+                    ? 'Generate Missing Content'
+                    : 'Generate AI Content'
+              }
+            </span>
+            <span className="sm:hidden">
+              {generatingAI ? 'Generating...' : 'AI Content'}
+            </span>
           </button>
+          
           <button
             onClick={handleMarkCompleteClick}
-            className="btn btn-success btn-sm"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-success-500 text-white rounded-lg font-medium text-sm hover:bg-success-600 transition-all shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-success-400 disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={loading}
             title="Mark this topic as complete for specific sections"
           >
             <CheckCircle size={16} />
-            Mark Complete
+            <span className="hidden sm:inline">Mark Complete</span>
           </button>
-          <button onClick={handleSave} className="btn btn-secondary btn-sm" disabled={loading}>
+          
+          <button
+            onClick={handleSave}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 rounded-lg font-medium text-sm hover:border-primary-500 hover:text-primary-600 dark:hover:text-primary-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={loading}
+          >
             <Save size={16} />
-            {loading ? 'Saving...' : 'Save Changes'}
+            <span className="hidden sm:inline">{loading ? 'Saving...' : 'Save Changes'}</span>
+            <span className="sm:hidden">Save</span>
           </button>
         </div>
       </div>
 
+      {/* Error Messages */}
       {error && (
-        <div className="error-message">
-          <span>{error}</span>
-          <button onClick={clearError}>×</button>
+        <div className="mx-8 mt-6 p-4 bg-error-50 dark:bg-error-900/30 border border-error-200 dark:border-error-800 rounded-lg flex items-start gap-3 animate-slide-in">
+          <span className="flex-1 text-sm text-error-800 dark:text-error-300">{error}</span>
+          <button 
+            onClick={clearError}
+            className="text-error-600 dark:text-error-400 hover:text-error-800 dark:hover:text-error-200 transition-colors text-xl"
+          >
+            ×
+          </button>
         </div>
       )}
 
       {aiError && (
-        <div className="error-message">
-          <span>{aiError}</span>
-          <button onClick={() => setAiError(null)}>×</button>
+        <div className="mx-8 mt-6 p-4 bg-error-50 dark:bg-error-900/30 border border-error-200 dark:border-error-800 rounded-lg flex items-start gap-3 animate-slide-in">
+          <span className="flex-1 text-sm text-error-800 dark:text-error-300">{aiError}</span>
+          <button 
+            onClick={() => setAiError(null)}
+            className="text-error-600 dark:text-error-400 hover:text-error-800 dark:hover:text-error-200 transition-colors text-xl"
+          >
+            ×
+          </button>
         </div>
       )}
 
-      <div className="topic-tabs">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as TabType)}
-              className={`tab-button ${activeTab === tab.id ? 'active' : ''} ${tab.disabled ? 'disabled' : ''}`}
-              disabled={tab.disabled}
-            >
-              <Icon size={16} />
-              {tab.label}
-            </button>
-          );
-        })}
+      {/* Modern Tabs */}
+      <div className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 overflow-x-auto scrollbar-thin">
+        <div className="flex gap-2 px-8 min-w-max">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => !tab.disabled && setActiveTab(tab.id as TabType)}
+                className={`relative inline-flex items-center gap-2 px-4 py-3 text-sm font-medium transition-all border-b-2 ${
+                  activeTab === tab.id
+                    ? 'text-primary-600 dark:text-primary-400 border-primary-600 dark:border-primary-400 bg-white dark:bg-gray-900'
+                    : tab.disabled
+                    ? 'text-gray-400 dark:text-gray-600 border-transparent cursor-not-allowed'
+                    : 'text-gray-600 dark:text-gray-400 border-transparent hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+                disabled={tab.disabled}
+              >
+                <Icon size={16} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      <div className="topic-tab-content">
+      {/* Tab Content */}
+      <div className="flex-1 overflow-y-auto bg-white dark:bg-gray-900 scrollbar-thin">
         {activeTab === 'details' && (
-          <div className="tab-panel">
-            <div className="topic-detail-section">
-              <h3>Textbook Content</h3>
+          <div className="p-8 space-y-6 w-full">
+            {/* Textbook Content Section - Card Style */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-md">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 rounded-lg border border-primary-200 bg-primary-50 text-primary-600">
+                  <FileText size={18} />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Textbook Content</h3>
+              </div>
               
               {!formData.description ? (
-                <div className="pdf-upload-section">
+                <div>
                   <PDFUpload
                     onTextExtracted={handlePDFTextExtracted}
                     onError={handlePDFError}
                     disabled={false}
                   />
                   {pdfError && (
-                    <div className="error-message">
-                      <span>{pdfError}</span>
-                      <button onClick={() => setPdfError(null)}>×</button>
+                    <div className="mt-4 p-4 bg-error-50 dark:bg-error-900/30 border border-error-200 dark:border-error-800 rounded-lg flex items-start gap-3">
+                      <span className="flex-1 text-sm text-error-800 dark:text-error-300">{pdfError}</span>
+                      <button 
+                        onClick={() => setPdfError(null)}
+                        className="text-error-600 dark:text-error-400 hover:text-error-800 dark:hover:text-error-200 transition-colors text-xl"
+                      >
+                        ×
+                      </button>
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="textbook-content-display">
-                  <div className="textbook-content-header">
-                    <span className="content-label">Textbook Content (from PDF)</span>
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Extracted from PDF</span>
                     <button
                       type="button"
-                      className="btn btn-ghost btn-sm"
+                      className="inline-flex items-center gap-2 px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors text-sm font-medium"
                       onClick={() => setFormData(prev => ({ ...prev, description: '' }))}
                     >
                       Replace Content
@@ -1615,36 +1668,45 @@ useEffect(() => {
                     value={formData.description}
                     onChange={handleChange}
                     placeholder="Textbook content will appear here after uploading a PDF or can be entered manually"
-                    rows={6}
-                    className="textbook-content-textarea"
+                    rows={8}
+                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all resize-y"
                   />
-                  <p className="form-help-text">
-                    This content is used by AI to generate lesson plans and teaching guides. 
-                    Click "Replace Content" to upload a new PDF.
+                  <p className="mt-2 text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+                    💡 This content is used by AI to generate lesson plans and teaching guides. Click "Replace Content" to upload a new PDF.
                   </p>
                 </div>
               )}
             </div>
 
-            <div className="topic-detail-section">
-              <div className="document-section-header">
-                <h3>Document Links</h3>
+            {/* Document Links Section - Card Style */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-md">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg border border-success-200 bg-success-50 text-success-600">
+                    <ExternalLink size={18} />
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Document Links</h3>
+                </div>
                 <button
                   type="button"
                   onClick={() => setShowDiscoveryModal(true)}
-                  className="btn btn-primary btn-sm"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg font-medium text-sm hover:bg-primary-600 transition-all shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-primary-400"
                 >
                   <Search size={14} />
-                  Discover More Documents
+                  <span className="hidden sm:inline">Discover Documents</span>
+                  <span className="sm:hidden">Discover</span>
                 </button>
               </div>
-              <div className="document-link-form">
+              
+              {/* Add Document Form */}
+              <div className="flex gap-3 mb-4 flex-wrap sm:flex-nowrap">
                 <input
                   type="url"
                   name="documentLinkInput"
                   value={formData.documentLinkInput}
                   onChange={handleChange}
                   placeholder="https://example.com/document.pdf"
+                  className="flex-1 min-w-[200px] px-4 py-2.5 bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
                 />
                 <input
                   type="text"
@@ -1652,99 +1714,174 @@ useEffect(() => {
                   value={formData.documentLinkNameInput}
                   onChange={handleChange}
                   placeholder="Optional name"
+                  className="w-full sm:w-48 px-4 py-2.5 bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
                 />
-                <button type="button" className="btn btn-secondary" onClick={addDocumentLink}>
+                <button 
+                  type="button" 
+                  onClick={addDocumentLink}
+                  className="px-4 py-2.5 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 rounded-lg font-medium text-sm hover:border-success-500 hover:text-success-600 dark:hover:text-success-400 transition-all"
+                >
                   Add
                 </button>
               </div>
+              {/* Document Links List */}
               {formData.documentLinks.length > 0 ? (
-                <div className="document-links-list">
-                  {formData.documentLinks.map((link) => (
-                    <div key={link.url} className="document-link-item">
-                      <a href={link.url} target="_blank" rel="noreferrer">
-                        <ExternalLink size={14} />
-                        {link.name}
+                <div className="space-y-2">
+                  {formData.documentLinks.map((link, index) => (
+                    <div key={link.url} className="group flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-primary-300 dark:hover:border-primary-600 hover:shadow-sm transition-all">
+                      <a 
+                        href={link.url} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="flex items-center gap-2.5 text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors flex-1 min-w-0"
+                      >
+                        <ExternalLink size={16} className="flex-shrink-0" />
+                        <span className="text-sm font-medium truncate">{link.name}</span>
                       </a>
                       <button
                         type="button"
-                        className="btn btn-ghost btn-sm"
                         onClick={() => removeDocumentLink(link.url)}
+                        className="p-2 text-gray-400 dark:text-gray-500 hover:text-error-600 dark:hover:text-error-400 hover:bg-error-50 dark:hover:bg-error-900/20 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                        title="Remove link"
                       >
-                        Remove
+                        <Trash2 size={14} />
                       </button>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="no-links">No document links added yet.</p>
+                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                  <ExternalLink size={32} className="mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">No document links added yet</p>
+                </div>
               )}
             </div>
 
-            <div className="topic-detail-section">
-              <h3>Details</h3>
-              <div className="topic-metadata">
-                <div className="metadata-item">
-                  <Calendar size={16} />
-                  <span>Created: {formatDate(topic.createdAt)}</span>
+            {/* Details Section - Card Style */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-md">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                  <Calendar size={18} />
                 </div>
-                <div className="metadata-item">
-                  <Calendar size={16} />
-                  <span>Last Updated: {formatDate(topic.updatedAt)}</span>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Details</h3>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                  <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
+                    <Calendar size={16} className="text-primary-600 dark:text-primary-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Created</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{formatDate(topic.createdAt)}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                  <div className="p-2 bg-success-100 dark:bg-success-900/30 rounded-lg">
+                    <Calendar size={16} className="text-success-600 dark:text-success-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Last Updated</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{formatDate(topic.updatedAt)}</p>
+                  </div>
                 </div>
                 {topic.aiContent?.generatedAt && (
-                  <div className="metadata-item">
-                    <Sparkles size={16} />
-                    <span>AI Content Generated: {formatDate(topic.aiContent.generatedAt)}</span>
+                  <div className="flex items-center gap-3 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+                    <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                      <Sparkles size={16} className="text-purple-600 dark:text-purple-400" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">AI Content Generated</p>
+                      <p className="text-sm font-semibold text-purple-900 dark:text-purple-100">{formatDate(topic.aiContent.generatedAt)}</p>
+                    </div>
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="topic-detail-section">
-              <div className="delete-section">
-                <h3>Danger Zone</h3>
-                <p>Permanently delete this topic and all its content. This action cannot be undone.</p>
-                <button onClick={handleDelete} className="btn btn-danger" disabled={loading}>
-                  <Trash2 size={16} />
-                  Delete Topic
-                </button>
+            {/* Danger Zone - Card Style */}
+            <div className="bg-gradient-to-br from-error-50 to-error-100 dark:from-error-900/20 dark:to-error-900/40 rounded-xl border-2 border-error-200 dark:border-error-800 p-6 shadow-md">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 bg-error-600 rounded-lg">
+                  <AlertTriangle size={18} className="text-white" />
+                </div>
+                <h3 className="text-lg font-bold text-error-900 dark:text-error-100">Danger Zone</h3>
               </div>
+              <p className="text-sm text-error-800 dark:text-error-200 mb-4 leading-relaxed">
+                ⚠️ Permanently delete this topic and all its content. This action cannot be undone.
+              </p>
+              <button 
+                onClick={handleDelete} 
+                disabled={loading}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-error-600 text-white rounded-lg font-medium text-sm hover:bg-error-700 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Trash2 size={16} />
+                Delete Topic
+              </button>
             </div>
           </div>
         )}
 
 
         {activeTab === 'lesson-plan' && topic.aiContent?.lessonPlan && (
-          <div className="tab-panel lesson-plan-panel">
-            <div className="ai-tab-actions">
-              {isEditingLessonPlan ? (
-                <>
-                  <button onClick={handleSaveLessonPlan} className="btn btn-primary btn-sm" disabled={savingContent === 'lesson-plan'}>
-                    {savingContent === 'lesson-plan' ? 'Saving...' : 'Save'}
+          <div className="p-8">
+            {/* Action Bar */}
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg border border-primary-200 bg-primary-50 text-primary-600 shadow-sm">
+                  <GraduationCap size={20} />
+                </div>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Lesson Plan</h2>
+              </div>
+              <div className="flex items-center gap-2">
+                {isEditingLessonPlan ? (
+                  <>
+                    <button 
+                      onClick={handleSaveLessonPlan} 
+                      disabled={savingContent === 'lesson-plan'}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg font-medium text-sm hover:bg-primary-600 transition-all shadow-sm hover:shadow-md disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-primary-400"
+                    >
+                      <Save size={14} />
+                      {savingContent === 'lesson-plan' ? 'Saving...' : 'Save'}
+                    </button>
+                    <button 
+                      onClick={handleCancelEditingLessonPlan}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 rounded-lg font-medium text-sm hover:border-gray-400 transition-all"
+                    >
+                      <X size={14} />
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <button 
+                    onClick={handleStartEditingLessonPlan}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 rounded-lg font-medium text-sm hover:border-primary-500 hover:text-primary-600 dark:hover:text-primary-400 transition-all"
+                  >
+                    <Edit3 size={14} />
+                    Edit
                   </button>
-                  <button onClick={handleCancelEditingLessonPlan} className="btn btn-secondary btn-sm">Cancel</button>
-                </>
-              ) : (
-                <button onClick={handleStartEditingLessonPlan} className="btn btn-secondary btn-sm">Edit</button>
-              )}
+                )}
+              </div>
             </div>
+            
+            {/* Content */}
             {isEditingLessonPlan ? (
-              <div className="editable-content">
-                <div className="editing-help">
-                  <p>💡 <strong>Keyboard shortcuts:</strong> Ctrl+S to save, Esc to cancel</p>
+              <div>
+                <div className="mb-4 p-3 bg-primary-50 dark:bg-primary-900/20 border-l-4 border-primary-500 dark:border-primary-400 rounded-lg">
+                  <p className="text-sm text-primary-800 dark:text-primary-300">
+                    💡 <strong>Keyboard shortcuts:</strong> Ctrl+S to save, Esc to cancel
+                  </p>
                 </div>
                 <textarea
                   value={editingLessonPlan}
                   onChange={(e) => setEditingLessonPlan(e.target.value)}
-                  className="content-textarea"
                   rows={20}
                   placeholder="Enter your lesson plan content..."
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all resize-y font-mono"
                 />
               </div>
             ) : (
-              <div className="raw-ai-content">
+              <div className="prose prose-sm dark:prose-invert max-w-none bg-gray-50 dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
                 <div
-                  className="ai-rendered"
                   dangerouslySetInnerHTML={{ __html: formatSimpleMarkdown(topic.aiContent.lessonPlan) }}
                 />
               </div>
@@ -1753,33 +1890,58 @@ useEffect(() => {
         )}
 
         {activeTab === 'teaching-guide' && (topic.aiContent?.teachingGuide || teachingGuide) && (
-          <div className="tab-panel teaching-guide-panel">
-            <div className="ai-tab-actions">
-              {isEditingTeachingGuide ? (
-                <>
-                  <button onClick={handleSaveTeachingGuide} className="btn btn-primary btn-sm" disabled={savingContent === 'teaching-guide'}>
-                    {savingContent === 'teaching-guide' ? 'Saving...' : 'Save'}
-                  </button>
-                  <button onClick={handleCancelEditingTeachingGuide} className="btn btn-secondary btn-sm">Cancel</button>
-                </>
-              ) : (
-                <button onClick={handleStartEditingTeachingGuide} className="btn btn-secondary btn-sm">Edit</button>
-              )}
-            </div>
-            {isEditingTeachingGuide ? (
-              <div className="editable-content">
-                <textarea
-                  value={editingTeachingGuide}
-                  onChange={(e) => setEditingTeachingGuide(e.target.value)}
-                  className="content-textarea"
-                  rows={20}
-                  placeholder="Enter your teaching guide content..."
-                />
+          <div className="p-8">
+            {/* Action Bar */}
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg border border-success-200 bg-success-50 text-success-600 shadow-sm">
+                  <User size={20} />
+                </div>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Teaching Guide</h2>
               </div>
+              <div className="flex items-center gap-2">
+                {isEditingTeachingGuide ? (
+                  <>
+                    <button 
+                      onClick={handleSaveTeachingGuide} 
+                      disabled={savingContent === 'teaching-guide'}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg font-medium text-sm hover:bg-primary-600 transition-all shadow-sm hover:shadow-md disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-primary-400"
+                    >
+                      <Save size={14} />
+                      {savingContent === 'teaching-guide' ? 'Saving...' : 'Save'}
+                    </button>
+                    <button 
+                      onClick={handleCancelEditingTeachingGuide}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 rounded-lg font-medium text-sm hover:border-gray-400 transition-all"
+                    >
+                      <X size={14} />
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <button 
+                    onClick={handleStartEditingTeachingGuide}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 rounded-lg font-medium text-sm hover:border-primary-500 hover:text-primary-600 dark:hover:text-primary-400 transition-all"
+                  >
+                    <Edit3 size={14} />
+                    Edit
+                  </button>
+                )}
+              </div>
+            </div>
+            
+            {/* Content */}
+            {isEditingTeachingGuide ? (
+              <textarea
+                value={editingTeachingGuide}
+                onChange={(e) => setEditingTeachingGuide(e.target.value)}
+                rows={20}
+                placeholder="Enter your teaching guide content..."
+                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all resize-y font-mono"
+              />
             ) : (
-              <div className="raw-ai-content">
+              <div className="prose prose-sm dark:prose-invert max-w-none bg-gray-50 dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
                 <div
-                  className="ai-rendered"
                   dangerouslySetInnerHTML={{ __html: formatSimpleMarkdown(topic.aiContent?.teachingGuide || teachingGuide || '') }}
                 />
               </div>
@@ -1788,33 +1950,58 @@ useEffect(() => {
         )}
 
         {activeTab === 'group-discussion' && (topic.aiContent?.groupDiscussion || groupDiscussion) && (
-          <div className="tab-panel group-discussion-panel">
-            <div className="ai-tab-actions">
-              {isEditingGroupDiscussion ? (
-                <>
-                  <button onClick={handleSaveGroupDiscussion} className="btn btn-primary btn-sm" disabled={savingContent === 'group-discussion'}>
-                    {savingContent === 'group-discussion' ? 'Saving...' : 'Save'}
-                  </button>
-                  <button onClick={handleCancelEditingGroupDiscussion} className="btn btn-secondary btn-sm">Cancel</button>
-                </>
-              ) : (
-                <button onClick={handleStartEditingGroupDiscussion} className="btn btn-secondary btn-sm">Edit</button>
-              )}
-            </div>
-            {isEditingGroupDiscussion ? (
-              <div className="editable-content">
-                <textarea
-                  value={editingGroupDiscussion}
-                  onChange={(e) => setEditingGroupDiscussion(e.target.value)}
-                  className="content-textarea"
-                  rows={20}
-                  placeholder="Enter your group discussion content..."
-                />
+          <div className="p-8">
+            {/* Action Bar */}
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg border border-purple-200 bg-purple-50 text-purple-600 shadow-sm">
+                  <Users size={20} />
+                </div>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Group Discussion</h2>
               </div>
+              <div className="flex items-center gap-2">
+                {isEditingGroupDiscussion ? (
+                  <>
+                    <button 
+                      onClick={handleSaveGroupDiscussion} 
+                      disabled={savingContent === 'group-discussion'}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg font-medium text-sm hover:bg-primary-600 transition-all shadow-sm hover:shadow-md disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-primary-400"
+                    >
+                      <Save size={14} />
+                      {savingContent === 'group-discussion' ? 'Saving...' : 'Save'}
+                    </button>
+                    <button 
+                      onClick={handleCancelEditingGroupDiscussion}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 rounded-lg font-medium text-sm hover:border-gray-400 transition-all"
+                    >
+                      <X size={14} />
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <button 
+                    onClick={handleStartEditingGroupDiscussion}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 rounded-lg font-medium text-sm hover:border-primary-500 hover:text-primary-600 dark:hover:text-primary-400 transition-all"
+                  >
+                    <Edit3 size={14} />
+                    Edit
+                  </button>
+                )}
+              </div>
+            </div>
+            
+            {/* Content */}
+            {isEditingGroupDiscussion ? (
+              <textarea
+                value={editingGroupDiscussion}
+                onChange={(e) => setEditingGroupDiscussion(e.target.value)}
+                rows={20}
+                placeholder="Enter your group discussion content..."
+                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all resize-y font-mono"
+              />
             ) : (
-              <div className="raw-ai-content">
+              <div className="prose prose-sm dark:prose-invert max-w-none bg-gray-50 dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
                 <div
-                  className="ai-rendered"
                   dangerouslySetInnerHTML={{ __html: formatSimpleMarkdown(topic.aiContent?.groupDiscussion || groupDiscussion || '') }}
                 />
               </div>
@@ -1823,58 +2010,84 @@ useEffect(() => {
         )}
 
         {activeTab === 'assessment' && (topic.aiContent?.assessmentQuestions || assessmentQuestions) && (
-          <div className="tab-panel assessment-panel">
-            <div className="ai-tab-actions">
-              {isEditingAssessmentQuestions ? (
-                <>
-                  <button onClick={handleSaveAssessmentQuestions} className="btn btn-primary btn-sm" disabled={savingContent === 'assessment-questions'}>
-                    {savingContent === 'assessment-questions' ? 'Saving...' : 'Save'}
-                  </button>
-                  <button onClick={handleCancelEditingAssessmentQuestions} className="btn btn-secondary btn-sm">Cancel</button>
-                </>
-              ) : (
-                <>
-                  <button onClick={handleStartEditingAssessmentQuestions} className="btn btn-secondary btn-sm">Edit</button>
-                  <div className="export-buttons">
+          <div className="p-8">
+            {/* Action Bar */}
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg border border-warning-200 bg-warning-50 text-warning-700 shadow-sm">
+                  <ClipboardList size={20} />
+                </div>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Assessment Questions</h2>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {isEditingAssessmentQuestions ? (
+                  <>
+                    <button 
+                      onClick={handleSaveAssessmentQuestions} 
+                      disabled={savingContent === 'assessment-questions'}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg font-medium text-sm hover:bg-primary-600 transition-all shadow-sm hover:shadow-md disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-primary-400"
+                    >
+                      <Save size={14} />
+                      {savingContent === 'assessment-questions' ? 'Saving...' : 'Save'}
+                    </button>
+                    <button 
+                      onClick={handleCancelEditingAssessmentQuestions}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 rounded-lg font-medium text-sm hover:border-gray-400 transition-all"
+                    >
+                      <X size={14} />
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button 
+                      onClick={handleStartEditingAssessmentQuestions}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 rounded-lg font-medium text-sm hover:border-primary-500 hover:text-primary-600 dark:hover:text-primary-400 transition-all"
+                    >
+                      <Edit3 size={14} />
+                      Edit
+                    </button>
                     <button 
                       onClick={handleExportAssessmentPDF} 
-                      className="btn btn-outline btn-sm"
                       disabled={exportingAssessment}
+                      className="inline-flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 rounded-lg font-medium text-sm hover:border-error-500 hover:text-error-600 dark:hover:text-error-400 transition-all disabled:opacity-50"
                       title="Export as PDF"
                     >
-                      <Download size={16} />
-                      {exportingAssessment ? 'Exporting...' : 'PDF'}
+                      <Download size={14} />
+                      PDF
                     </button>
                     <button 
                       onClick={handleExportAssessmentWord} 
-                      className="btn btn-outline btn-sm"
                       disabled={exportingAssessment}
+                      className="inline-flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 rounded-lg font-medium text-sm hover:border-primary-500 hover:text-primary-600 dark:hover:text-primary-400 transition-all disabled:opacity-50"
                       title="Export as Word"
                     >
-                      <FileDown size={16} />
-                      {exportingAssessment ? 'Exporting...' : 'Word'}
+                      <FileDown size={14} />
+                      Word
                     </button>
-                  </div>
-                </>
-              )}
+                  </>
+                )}
+              </div>
             </div>
+            {/* Content */}
             {isEditingAssessmentQuestions ? (
-              <div className="editable-content">
-                <div className="editing-help">
-                  <p>💡 <strong>Keyboard shortcuts:</strong> Ctrl+S to save, Esc to cancel</p>
+              <div>
+                <div className="mb-4 p-3 bg-primary-50 dark:bg-primary-900/20 border-l-4 border-primary-500 dark:border-primary-400 rounded-lg">
+                  <p className="text-sm text-primary-800 dark:text-primary-300">
+                    💡 <strong>Keyboard shortcuts:</strong> Ctrl+S to save, Esc to cancel
+                  </p>
                 </div>
                 <textarea
                   value={editingAssessmentQuestions}
                   onChange={(e) => setEditingAssessmentQuestions(e.target.value)}
-                  className="content-textarea"
                   rows={20}
                   placeholder="Enter your assessment questions content..."
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all resize-y font-mono"
                 />
               </div>
             ) : (
-              <div className="raw-ai-content">
+              <div className="prose prose-sm dark:prose-invert max-w-none bg-gray-50 dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
                 <div
-                  className="ai-rendered"
                   dangerouslySetInnerHTML={{ __html: formatSimpleMarkdown(topic.aiContent?.assessmentQuestions || assessmentQuestions || '') }}
                 />
               </div>
@@ -1883,58 +2096,85 @@ useEffect(() => {
         )}
 
         {activeTab === 'worksheets' && (topic.aiContent?.worksheets || worksheets) && (
-          <div className="tab-panel worksheets-panel">
-            <div className="ai-tab-actions">
-              {isEditingWorksheets ? (
-                <>
-                  <button onClick={handleSaveWorksheets} className="btn btn-primary btn-sm" disabled={savingContent === 'worksheets'}>
-                    {savingContent === 'worksheets' ? 'Saving...' : 'Save'}
-                  </button>
-                  <button onClick={handleCancelEditingWorksheets} className="btn btn-secondary btn-sm">Cancel</button>
-                </>
-              ) : (
-                <>
-                  <button onClick={handleStartEditingWorksheets} className="btn btn-secondary btn-sm">Edit</button>
-                  <div className="export-buttons">
+          <div className="p-8">
+            {/* Action Bar */}
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg border border-primary-200 bg-primary-50 text-primary-600 shadow-sm">
+                  <BookOpen size={20} />
+                </div>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Worksheets</h2>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {isEditingWorksheets ? (
+                  <>
+                    <button 
+                      onClick={handleSaveWorksheets} 
+                      disabled={savingContent === 'worksheets'}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg font-medium text-sm hover:bg-primary-600 transition-all shadow-sm hover:shadow-md disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-primary-400"
+                    >
+                      <Save size={14} />
+                      {savingContent === 'worksheets' ? 'Saving...' : 'Save'}
+                    </button>
+                    <button 
+                      onClick={handleCancelEditingWorksheets}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 rounded-lg font-medium text-sm hover:border-gray-400 transition-all"
+                    >
+                      <X size={14} />
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button 
+                      onClick={handleStartEditingWorksheets}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 rounded-lg font-medium text-sm hover:border-primary-500 hover:text-primary-600 dark:hover:text-primary-400 transition-all"
+                    >
+                      <Edit3 size={14} />
+                      Edit
+                    </button>
                     <button 
                       onClick={handleExportWorksheetsPDF} 
-                      className="btn btn-outline btn-sm"
                       disabled={exportingWorksheets}
+                      className="inline-flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 rounded-lg font-medium text-sm hover:border-error-500 hover:text-error-600 dark:hover:text-error-400 transition-all disabled:opacity-50"
                       title="Export as PDF"
                     >
-                      <Download size={16} />
-                      {exportingWorksheets ? 'Exporting...' : 'PDF'}
+                      <Download size={14} />
+                      PDF
                     </button>
                     <button 
                       onClick={handleExportWorksheetsWord} 
-                      className="btn btn-outline btn-sm"
                       disabled={exportingWorksheets}
+                      className="inline-flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 rounded-lg font-medium text-sm hover:border-primary-500 hover:text-primary-600 dark:hover:text-primary-400 transition-all disabled:opacity-50"
                       title="Export as Word"
                     >
-                      <FileDown size={16} />
-                      {exportingWorksheets ? 'Exporting...' : 'Word'}
+                      <FileDown size={14} />
+                      Word
                     </button>
-                  </div>
-                </>
-              )}
+                  </>
+                )}
+              </div>
             </div>
+            
+            {/* Content */}
             {isEditingWorksheets ? (
-              <div className="editable-content">
-                <div className="editing-help">
-                  <p>💡 <strong>Keyboard shortcuts:</strong> Ctrl+S to save, Esc to cancel</p>
+              <div>
+                <div className="mb-4 p-3 bg-primary-50 dark:bg-primary-900/20 border-l-4 border-primary-500 dark:border-primary-400 rounded-lg">
+                  <p className="text-sm text-primary-800 dark:text-primary-300">
+                    💡 <strong>Keyboard shortcuts:</strong> Ctrl+S to save, Esc to cancel
+                  </p>
                 </div>
                 <textarea
                   value={editingWorksheets}
                   onChange={(e) => setEditingWorksheets(e.target.value)}
-                  className="content-textarea"
                   rows={20}
                   placeholder="Enter your worksheets content..."
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all resize-y font-mono"
                 />
               </div>
             ) : (
-              <div className="raw-ai-content">
+              <div className="prose prose-sm dark:prose-invert max-w-none bg-gray-50 dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
                 <div
-                  className="ai-rendered"
                   dangerouslySetInnerHTML={{ __html: formatSimpleMarkdown(topic.aiContent?.worksheets || worksheets || '') }}
                 />
               </div>
@@ -1943,22 +2183,26 @@ useEffect(() => {
         )}
 
         {activeTab === 'videos' && (
-          <div className="tab-panel videos-panel">
+          <div className="p-8">
             {/* Video Management Header */}
-            <div className="video-management-header">
-              <div className="video-header-content">
-                <h4>Video Resources</h4>
-                <p>Teacher videos and AI-recommended content</p>
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg border border-error-200 bg-error-50 text-error-600 shadow-sm">
+                  <Youtube size={20} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Video Resources</h2>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Teacher videos and AI-recommended content</p>
+                </div>
               </div>
-              <div className="video-header-actions">
-                <button
-                  onClick={() => setIsAddingVideo(true)}
-                  className="btn btn-primary"
-                >
-                  <Plus size={16} />
-                  Add Video Link
-                </button>
-              </div>
+              <button
+                onClick={() => setIsAddingVideo(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg font-medium text-sm hover:bg-primary-600 transition-all shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-primary-400"
+              >
+                <Plus size={16} />
+                <span className="hidden sm:inline">Add Video Link</span>
+                <span className="sm:hidden">Add</span>
+              </button>
             </div>
 
             {/* Add Video Form */}
@@ -2046,57 +2290,60 @@ useEffect(() => {
                   )}
                   
                   {hasVideos && (
-                    <div className="videos-section">
-                      <div className="videos-grid">
+                    <div className="mt-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {/* Teacher YouTube Videos with Embedded Player */}
                         {youtubeTeacherVideos.map((video, index) => {
                           const videoId = extractYouTubeID(video.url);
                           if (!videoId) return null;
                           
                           return (
-                            <div key={`custom-${index}`} className="video-card custom-video-card">
+                            <div key={`custom-${index}`} className="group bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-all duration-200 hover:-translate-y-1">
                               <div 
-                                className="video-player-preview"
+                                className="cursor-pointer relative"
                                 onClick={() => setPlayingVideo({ id: videoId, title: video.name })}
                               >
-                                <div className="video-thumbnail">
+                                <div className="relative w-full aspect-video bg-gray-900">
                                   <img 
                                     src={`https://img.youtube.com/vi/${videoId}/mqdefault.jpg`}
                                     alt={video.name}
-                                    className="thumbnail-image"
+                                    className="w-full h-full object-cover"
                                   />
-                                  <div className="play-overlay">
-                                    <div className="play-button">
-                                      <Youtube size={32} />
-                                      <span>Play</span>
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <div className="text-white flex flex-col items-center gap-2">
+                                      <Youtube size={40} />
+                                      <span className="text-sm font-semibold">Play Video</span>
                                     </div>
                                   </div>
                                 </div>
-                                <div className="video-info">
-                                  <h4 className="video-title">{video.name}</h4>
-                                  <p className="video-channel">
-                                    <span className="badge badge-teacher">Teacher Added</span>
-                                  </p>
-                                  <div className="video-actions">
+                                <div className="p-3">
+                                  <h4 className="font-semibold text-sm text-gray-900 dark:text-gray-100 mb-2 line-clamp-2 leading-tight">{video.name}</h4>
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <span className="inline-flex items-center px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 rounded text-xs font-medium">
+                                      <User size={10} className="mr-1" />
+                                      Teacher Added
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         handleEditVideo(video.url);
                                       }}
-                                      className="btn btn-sm btn-outline"
+                                      className="p-1.5 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded transition-colors"
                                       title="Edit video"
                                     >
-                                      <Edit3 size={16} />
+                                      <Edit3 size={14} />
                                     </button>
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         handleDeleteVideo(video.url);
                                       }}
-                                      className="btn btn-sm btn-danger"
+                                      className="p-1.5 text-gray-600 dark:text-gray-400 hover:text-error-600 dark:hover:text-error-400 hover:bg-error-50 dark:hover:bg-error-900/20 rounded transition-colors"
                                       title="Delete video"
                                     >
-                                      <Trash2 size={16} />
+                                      <Trash2 size={14} />
                                     </button>
                                     <a
                                       href={video.url}
@@ -2117,44 +2364,49 @@ useEffect(() => {
 
                         {/* AI-Generated Videos with Embedded Player */}
                         {aiVideos.map((video) => (
-                          <div key={video.id} className="video-card ai-video-card">
+                          <div key={video.id} className="group bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-all duration-200 hover:-translate-y-1 relative">
+                            <div className="absolute top-2 left-2 z-10">
+                              <span className="inline-flex items-center px-2 py-1 bg-gradient-to-r from-purple-600 to-purple-500 text-white rounded text-xs font-bold shadow-md">
+                                <Sparkles size={10} className="mr-1" />
+                                AI
+                              </span>
+                            </div>
                             <div 
-                              className="video-player-preview"
+                              className="cursor-pointer relative"
                               onClick={() => setPlayingVideo({ id: video.id, title: video.title })}
                             >
-                              <div className="video-thumbnail">
+                              <div className="relative w-full aspect-video bg-gray-900">
                                 <img 
                                   src={video.thumbnail} 
                                   alt={video.title}
-                                  className="thumbnail-image"
+                                  className="w-full h-full object-cover"
                                 />
-                                <div className="play-overlay">
-                                  <div className="play-button">
-                                    <Youtube size={32} />
-                                    <span>Play</span>
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                  <div className="text-white flex flex-col items-center gap-2">
+                                    <Youtube size={40} />
+                                    <span className="text-sm font-semibold">Play Video</span>
                                   </div>
                                 </div>
                               </div>
-                              <div className="video-info">
-                                <h4 className="video-title">{video.title}</h4>
-                                <p className="video-channel">
-                                  <span className="badge badge-ai">AI Recommended</span>
-                                  {video.channelTitle}
-                                </p>
-                                <p className="video-duration">{video.duration}</p>
-                                <p className="video-description">
-                                  {video.description.substring(0, 100)}...
-                                </p>
-                                <div className="video-actions">
+                              <div className="p-3">
+                                <h4 className="font-semibold text-sm text-gray-900 dark:text-gray-100 mb-1 line-clamp-2 leading-tight">{video.title}</h4>
+                                <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">{video.channelTitle}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-500 mb-2">{video.duration}</p>
+                                {video.description && (
+                                  <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 leading-relaxed mb-2">
+                                    {video.description}
+                                  </p>
+                                )}
+                                <div className="flex items-center gap-1.5">
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handleDeleteAIVideo(video.id);
                                     }}
-                                    className="btn btn-sm btn-danger"
+                                    className="p-1.5 text-gray-600 dark:text-gray-400 hover:text-error-600 dark:hover:text-error-400 hover:bg-error-50 dark:hover:bg-error-900/20 rounded transition-colors"
                                     title="Delete AI video"
                                   >
-                                    <Trash2 size={16} />
+                                    <Trash2 size={14} />
                                   </button>
                                   <a
                                     href={video.url}
@@ -2202,60 +2454,202 @@ useEffect(() => {
         />
       )}
 
-      {/* Full-page loading overlay during AI content generation */}
+      {/* Full-page loading overlay during AI content generation - MODERN DESIGN */}
       {generatingAI && (
-        <div className="ai-generation-overlay">
-          <div className="ai-generation-modal">
-            <div className="ai-generation-content">
-              <div className="ai-generation-icon">
-                <Loader2 size={48} className="spinning-loader" />
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md animate-fade-in">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-8 max-w-2xl w-[90%] animate-scale-in">
+            <div className="text-center">
+              {/* Spinner */}
+              <div className="mb-6">
+                <Loader2 size={56} className="mx-auto text-primary-600 dark:text-primary-400 animate-spin" />
               </div>
-              <h2>Generating AI Content</h2>
-              <p className="ai-generation-status">
+              
+              {/* Title */}
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3">
+                Generating AI Content
+              </h2>
+              
+              {/* Current Status */}
+              <p className="text-base text-gray-600 dark:text-gray-400 mb-8">
                 {aiGenerationStatus || 'Please wait while we generate comprehensive educational content...'}
               </p>
-              <div className="ai-generation-progress">
-                <div className="progress-steps">
-                  {!topic.aiContent?.lessonPlan && (
-                    <div className={`progress-step ${aiGenerationStatus.includes('lesson plan') ? 'active' : ''}`}>
-                      <GraduationCap size={20} />
-                      <span>Lesson Plan</span>
-                    </div>
-                  )}
-                  {!topic.aiContent?.teachingGuide && (
-                    <div className={`progress-step ${aiGenerationStatus.includes('teaching guide') ? 'active' : ''}`}>
-                      <User size={20} />
-                      <span>Teaching Guide</span>
-                    </div>
-                  )}
-                  {!topic.aiContent?.groupDiscussion && (
-                    <div className={`progress-step ${aiGenerationStatus.includes('group discussion') ? 'active' : ''}`}>
-                      <Users size={20} />
-                      <span>Group Discussion</span>
-                    </div>
-                  )}
-                  {!topic.aiContent?.assessmentQuestions && (
-                    <div className={`progress-step ${aiGenerationStatus.includes('assessment') ? 'active' : ''}`}>
-                      <ClipboardList size={20} />
-                      <span>Assessment</span>
-                    </div>
-                  )}
-                  {!topic.aiContent?.worksheets && (
-                    <div className={`progress-step ${aiGenerationStatus.includes('worksheets') ? 'active' : ''}`}>
-                      <BookOpen size={20} />
-                      <span>Worksheets</span>
-                    </div>
-                  )}
-                  {(!topic.aiContent?.videos || topic.aiContent.videos.length === 0) && (
-                    <div className={`progress-step ${aiGenerationStatus.includes('videos') ? 'active' : ''}`}>
-                      <Youtube size={20} />
-                      <span>Videos</span>
-                    </div>
-                  )}
-                </div>
+              
+              {/* Progress Steps - Grid Layout */}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+                {!topic.aiContent?.lessonPlan && (
+                  <div className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all duration-300 ${
+                    aiGenerationStatus.toLowerCase().includes('lesson plan')
+                      ? 'bg-primary-100 dark:bg-primary-900/40 border-primary-500 dark:border-primary-400 shadow-lg scale-105'
+                      : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 opacity-60'
+                  }`}>
+                    <GraduationCap size={28} className={
+                      aiGenerationStatus.toLowerCase().includes('lesson plan')
+                        ? 'text-primary-600 dark:text-primary-400 mb-2'
+                        : 'text-gray-400 dark:text-gray-500 mb-2'
+                    } />
+                    <span className={`text-sm font-semibold text-center ${
+                      aiGenerationStatus.toLowerCase().includes('lesson plan')
+                        ? 'text-primary-700 dark:text-primary-300'
+                        : 'text-gray-600 dark:text-gray-400'
+                    }`}>
+                      Lesson Plan
+                    </span>
+                    {aiGenerationStatus.toLowerCase().includes('lesson plan') && (
+                      <div className="mt-2 flex gap-1">
+                        <div className="w-1.5 h-1.5 bg-primary-600 dark:bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <div className="w-1.5 h-1.5 bg-primary-600 dark:bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <div className="w-1.5 h-1.5 bg-primary-600 dark:bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {!topic.aiContent?.teachingGuide && (
+                  <div className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all duration-300 ${
+                    aiGenerationStatus.toLowerCase().includes('teaching guide')
+                      ? 'bg-primary-100 dark:bg-primary-900/40 border-primary-500 dark:border-primary-400 shadow-lg scale-105'
+                      : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 opacity-60'
+                  }`}>
+                    <User size={28} className={
+                      aiGenerationStatus.toLowerCase().includes('teaching guide')
+                        ? 'text-primary-600 dark:text-primary-400 mb-2'
+                        : 'text-gray-400 dark:text-gray-500 mb-2'
+                    } />
+                    <span className={`text-sm font-semibold text-center ${
+                      aiGenerationStatus.toLowerCase().includes('teaching guide')
+                        ? 'text-primary-700 dark:text-primary-300'
+                        : 'text-gray-600 dark:text-gray-400'
+                    }`}>
+                      Teaching Guide
+                    </span>
+                    {aiGenerationStatus.toLowerCase().includes('teaching guide') && (
+                      <div className="mt-2 flex gap-1">
+                        <div className="w-1.5 h-1.5 bg-primary-600 dark:bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <div className="w-1.5 h-1.5 bg-primary-600 dark:bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <div className="w-1.5 h-1.5 bg-primary-600 dark:bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {!topic.aiContent?.groupDiscussion && (
+                  <div className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all duration-300 ${
+                    aiGenerationStatus.toLowerCase().includes('group discussion')
+                      ? 'bg-primary-100 dark:bg-primary-900/40 border-primary-500 dark:border-primary-400 shadow-lg scale-105'
+                      : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 opacity-60'
+                  }`}>
+                    <Users size={28} className={
+                      aiGenerationStatus.toLowerCase().includes('group discussion')
+                        ? 'text-primary-600 dark:text-primary-400 mb-2'
+                        : 'text-gray-400 dark:text-gray-500 mb-2'
+                    } />
+                    <span className={`text-sm font-semibold text-center ${
+                      aiGenerationStatus.toLowerCase().includes('group discussion')
+                        ? 'text-primary-700 dark:text-primary-300'
+                        : 'text-gray-600 dark:text-gray-400'
+                    }`}>
+                      Group Discussion
+                    </span>
+                    {aiGenerationStatus.toLowerCase().includes('group discussion') && (
+                      <div className="mt-2 flex gap-1">
+                        <div className="w-1.5 h-1.5 bg-primary-600 dark:bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <div className="w-1.5 h-1.5 bg-primary-600 dark:bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <div className="w-1.5 h-1.5 bg-primary-600 dark:bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {!topic.aiContent?.assessmentQuestions && (
+                  <div className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all duration-300 ${
+                    aiGenerationStatus.toLowerCase().includes('assessment')
+                      ? 'bg-primary-100 dark:bg-primary-900/40 border-primary-500 dark:border-primary-400 shadow-lg scale-105'
+                      : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 opacity-60'
+                  }`}>
+                    <ClipboardList size={28} className={
+                      aiGenerationStatus.toLowerCase().includes('assessment')
+                        ? 'text-primary-600 dark:text-primary-400 mb-2'
+                        : 'text-gray-400 dark:text-gray-500 mb-2'
+                    } />
+                    <span className={`text-sm font-semibold text-center ${
+                      aiGenerationStatus.toLowerCase().includes('assessment')
+                        ? 'text-primary-700 dark:text-primary-300'
+                        : 'text-gray-600 dark:text-gray-400'
+                    }`}>
+                      Assessment
+                    </span>
+                    {aiGenerationStatus.toLowerCase().includes('assessment') && (
+                      <div className="mt-2 flex gap-1">
+                        <div className="w-1.5 h-1.5 bg-primary-600 dark:bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <div className="w-1.5 h-1.5 bg-primary-600 dark:bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <div className="w-1.5 h-1.5 bg-primary-600 dark:bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {!topic.aiContent?.worksheets && (
+                  <div className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all duration-300 ${
+                    aiGenerationStatus.toLowerCase().includes('worksheets')
+                      ? 'bg-primary-100 dark:bg-primary-900/40 border-primary-500 dark:border-primary-400 shadow-lg scale-105'
+                      : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 opacity-60'
+                  }`}>
+                    <BookOpen size={28} className={
+                      aiGenerationStatus.toLowerCase().includes('worksheets')
+                        ? 'text-primary-600 dark:text-primary-400 mb-2'
+                        : 'text-gray-400 dark:text-gray-500 mb-2'
+                    } />
+                    <span className={`text-sm font-semibold text-center ${
+                      aiGenerationStatus.toLowerCase().includes('worksheets')
+                        ? 'text-primary-700 dark:text-primary-300'
+                        : 'text-gray-600 dark:text-gray-400'
+                    }`}>
+                      Worksheets
+                    </span>
+                    {aiGenerationStatus.toLowerCase().includes('worksheets') && (
+                      <div className="mt-2 flex gap-1">
+                        <div className="w-1.5 h-1.5 bg-primary-600 dark:bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <div className="w-1.5 h-1.5 bg-primary-600 dark:bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <div className="w-1.5 h-1.5 bg-primary-600 dark:bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {(!topic.aiContent?.videos || topic.aiContent.videos.length === 0) && (
+                  <div className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all duration-300 ${
+                    aiGenerationStatus.toLowerCase().includes('videos')
+                      ? 'bg-primary-100 dark:bg-primary-900/40 border-primary-500 dark:border-primary-400 shadow-lg scale-105'
+                      : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 opacity-60'
+                  }`}>
+                    <Youtube size={28} className={
+                      aiGenerationStatus.toLowerCase().includes('videos')
+                        ? 'text-primary-600 dark:text-primary-400 mb-2'
+                        : 'text-gray-400 dark:text-gray-500 mb-2'
+                    } />
+                    <span className={`text-sm font-semibold text-center ${
+                      aiGenerationStatus.toLowerCase().includes('videos')
+                        ? 'text-primary-700 dark:text-primary-300'
+                        : 'text-gray-600 dark:text-gray-400'
+                    }`}>
+                      Videos
+                    </span>
+                    {aiGenerationStatus.toLowerCase().includes('videos') && (
+                      <div className="mt-2 flex gap-1">
+                        <div className="w-1.5 h-1.5 bg-primary-600 dark:bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <div className="w-1.5 h-1.5 bg-primary-600 dark:bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <div className="w-1.5 h-1.5 bg-primary-600 dark:bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-              <div className="ai-generation-note">
-                <p>This may take a few minutes. Please don't close this page.</p>
+              
+              {/* Help Note */}
+              <div className="mt-6 p-4 bg-primary-50 dark:bg-primary-900/20 border-l-4 border-primary-500 dark:border-primary-400 rounded-lg">
+                <p className="text-sm text-primary-800 dark:text-primary-300 font-medium">
+                  ⏱️ This may take a few minutes. Please don't close this page.
+                </p>
               </div>
             </div>
           </div>
@@ -2391,3 +2785,4 @@ useEffect(() => {
 };
 
 export default TopicTabbedView;
+

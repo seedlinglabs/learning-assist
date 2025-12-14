@@ -4,6 +4,8 @@ import TopicSidebar from './TopicSidebar';
 import TopicTabbedView from './TopicTabbedView';
 import NewTopicPanel from './NewTopicPanel';
 import { Topic } from '../types';
+import { FileText } from 'lucide-react';
+import { EmptyState } from './common';
 import '../styles/TopicSplitView.css';
 
 const TopicSplitView: React.FC = () => {
@@ -28,14 +30,16 @@ const TopicSplitView: React.FC = () => {
     }
   }, [currentPath.topic, topics, selectedTopicId]);
 
-  // Auto-select first topic if no topic is selected and topics are available
+  // Auto-select first topic only if coming from a direct link with a topic in path
+  // Do NOT auto-select when just navigating to the subject
   useEffect(() => {
-    if (!selectedTopicId && !isCreatingNewTopic && topics.length > 0) {
-      const firstTopic = topics[0];
-      setSelectedTopicId(firstTopic.id);
-      setCurrentPath({ ...currentPath, topic: firstTopic });
+    if (currentPath.topic && !selectedTopicId && topics.length > 0) {
+      const topicExists = topics.find(t => t.id === currentPath.topic?.id);
+      if (topicExists) {
+        setSelectedTopicId(topicExists.id);
+      }
     }
-  }, [topics, selectedTopicId, isCreatingNewTopic, currentPath, setCurrentPath]);
+  }, [currentPath.topic, selectedTopicId, topics]);
 
   // Update selectedTopic when currentPath.topic changes (for updates)
   useEffect(() => {
@@ -89,8 +93,9 @@ const TopicSplitView: React.FC = () => {
   };
 
   return (
-    <div className="topic-split-view">
-      <div className="split-sidebar">
+    <div className="flex h-[calc(100vh-9rem)] bg-white dark:bg-gray-900 rounded-xl shadow-xl overflow-hidden border border-gray-200 dark:border-gray-700">
+      {/* Sidebar - Better proportioned */}
+      <div className="w-[340px] min-w-[300px] max-w-[420px] border-r border-gray-200 dark:border-gray-700 bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 flex flex-col overflow-hidden resize-x shadow-inner">
         <TopicSidebar
           topics={topics}
           selectedTopic={selectedTopic}
@@ -107,7 +112,8 @@ const TopicSplitView: React.FC = () => {
         />
       </div>
       
-      <div className="split-main">
+      {/* Main Content */}
+      <div className="flex-1 bg-white dark:bg-gray-900 overflow-hidden">
         {isCreatingNewTopic ? (
           <NewTopicPanel
             subjectId={subject.id}
@@ -122,9 +128,16 @@ const TopicSplitView: React.FC = () => {
             onTopicDeleted={handleTopicDeleted}
           />
         ) : (
-          <div className="empty-main-content">
-            <h3>No Topics Available</h3>
-            <p>Create your first topic to get started.</p>
+          <div className="flex items-center justify-center h-full">
+            <EmptyState
+              icon={FileText}
+              title="No Topics Available"
+              description="Create your first topic to get started with AI-powered learning content."
+              action={{
+                label: 'Create Topic',
+                onClick: handleNewTopicClick
+              }}
+            />
           </div>
         )}
       </div>

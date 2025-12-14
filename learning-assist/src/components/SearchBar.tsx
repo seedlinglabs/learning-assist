@@ -49,43 +49,48 @@ const SearchBar: React.FC = () => {
   };
 
   return (
-    <div className="search-container">
-      <div className="search-input-container">
-        <Search size={20} className="search-icon" />
+    <div className="relative w-full">
+      <div className="relative">
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none">
+          <Search size={18} />
+        </div>
         <input
           type="text"
           placeholder="Search topics, subjects, classes..."
           value={searchQuery}
           onChange={handleSearchChange}
-          className="search-input"
+          className="w-full pl-10 pr-10 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200"
         />
         {searchQuery && (
-          <button onClick={handleClearSearch} className="clear-search">
+          <button
+            onClick={handleClearSearch}
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+          >
             <X size={16} />
           </button>
         )}
       </div>
 
       {isSearchOpen && searchResults.length > 0 && (
-        <div className="search-results">
+        <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 max-h-96 overflow-y-auto scrollbar-thin z-50">
           {searchResults.map((result, index) => (
             <button
               key={index}
               onClick={() => handleResultClick(result)}
-              className="search-result-item"
+              className="w-full flex items-start gap-3 p-4 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150 border-b border-gray-100 dark:border-gray-700/50 last:border-0"
             >
-              <div className="search-result-icon">
+              <div className="text-2xl flex-shrink-0 mt-0.5">
                 {getResultIcon(result.type)}
               </div>
-              <div className="search-result-content">
-                <div className="search-result-title">
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-gray-900 dark:text-gray-100 mb-1">
                   {result.item.name}
                 </div>
-                <div className="search-result-path">
-                  {getResultPath(result)} • {result.type}
+                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                  {getResultPath(result)} • <span className="capitalize">{result.type}</span>
                 </div>
                 {result.item.description && (
-                  <div className="search-result-description">
+                  <div className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">
                     {result.item.description}
                   </div>
                 )}
@@ -96,9 +101,10 @@ const SearchBar: React.FC = () => {
       )}
 
       {isSearchOpen && searchResults.length === 0 && searchQuery.trim() && (
-        <div className="search-results">
-          <div className="search-no-results">
-            No results found for "{searchQuery}"
+        <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 z-50">
+          <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+            <Search size={48} className="mx-auto mb-3 opacity-30" />
+            <p>No results found for <span className="font-semibold">"{searchQuery}"</span></p>
           </div>
         </div>
       )}

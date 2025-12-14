@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, Mail, Lock, LogIn, UserPlus } from 'lucide-react';
+import { Mail, Lock, LogIn, UserPlus, User, Phone, School as SchoolIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { LoginRequest, RegisterRequest } from '../services/authService';
+import { Input, Button, Select } from './common';
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -10,15 +11,14 @@ interface LoginFormProps {
 const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
   const { login, register, isLoading, error, clearError } = useAuth();
   const [isRegistering, setIsRegistering] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     name: '',
     userType: 'teacher' as 'teacher' | 'student' | 'parent',
     phoneNumber: '',
-    selectedGrades: [] as string[], // For building class_access
-    selectedSections: [] as string[], // For building class_access
+    selectedGrades: [] as string[],
+    selectedSections: [] as string[],
     schoolId: ''
   });
   
@@ -51,7 +51,6 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
     }));
   };
 
-  // Build class_access array in format "6A", "7B", etc.
   const buildClassAccess = (): string[] => {
     const classAccess: string[] = [];
     for (const grade of formData.selectedGrades) {
@@ -90,7 +89,6 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
         onSuccess();
       }
     } catch (error) {
-      // Error is handled by the auth context
       console.error('Auth error:', error);
     }
   };
@@ -111,232 +109,209 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
   };
 
   return (
-    <div className="auth-container">
-      <div className="auth-form">
-        <div className="auth-header">
-          <h2>{isRegistering ? 'Create Account' : 'Welcome Back'}</h2>
-          <p>{isRegistering ? 'Join the Learning Assistant platform' : 'Sign in to your account'}</p>
-        </div>
-
-        {error && (
-          <div className="error-message">
-            <span>{error}</span>
-            <button onClick={clearError}>×</button>
+    <div className="min-h-screen flex items-center justify-center px-4 py-8 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
+      <div className="w-full max-w-md">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-8 animate-scale-in">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+              {isRegistering ? 'Create Account' : 'Welcome Back'}
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400">
+              {isRegistering ? 'Join Sprout AI Learning Assistant' : 'Sign in to your account'}
+            </p>
           </div>
-        )}
 
-        <form onSubmit={handleSubmit} className="auth-form-content">
-          {isRegistering && (
-            <div className="form-group">
-              <label htmlFor="name">Full Name</label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                placeholder="Enter your full name"
-                required
-              />
+          {/* Error Message */}
+          {error && (
+            <div className="mb-6 p-4 bg-error-50 dark:bg-error-900/30 border border-error-200 dark:border-error-800 rounded-lg flex items-start gap-3 animate-slide-in">
+              <span className="flex-1 text-sm text-error-800 dark:text-error-300">{error}</span>
+              <button 
+                onClick={clearError}
+                className="text-error-600 dark:text-error-400 hover:text-error-800 dark:hover:text-error-200 transition-colors"
+              >
+                ×
+              </button>
             </div>
           )}
 
-          <div className="form-group">
-            <label htmlFor="email">Email Address</label>
-            <div className="input-with-icon">
-              <Mail size={20} className="input-icon" />
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Name Field - Registration Only */}
+            {isRegistering && (
+              <Input
+                label="Full Name"
+                name="name"
+                value={formData.name}
                 onChange={handleInputChange}
-                placeholder="Enter your email"
+                leftIcon={<User size={18} />}
+                placeholder="Enter your full name"
                 required
+                floating
               />
-            </div>
-          </div>
+            )}
 
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <div className="input-with-icon">
-              <Lock size={20} className="input-icon" />
-              <input
-                type={showPassword ? 'text' : 'password'}
-                id="password"
-                name="password"
-                value={formData.password}
-                onChange={handleInputChange}
-                placeholder="Enter your password"
-                required
-                minLength={6}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="password-toggle"
-              >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
-            </div>
-          </div>
+            {/* Email Field */}
+            <Input
+              label="Email Address"
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleInputChange}
+              leftIcon={<Mail size={18} />}
+              placeholder="Enter your email"
+              required
+              floating
+            />
 
-          {isRegistering && (
-            <>
-              <div className="form-group">
-                <label htmlFor="userType">Account Type</label>
-                <select
-                  id="userType"
+            {/* Password Field */}
+            <Input
+              label="Password"
+              type="password"
+              name="password"
+              value={formData.password}
+              onChange={handleInputChange}
+              leftIcon={<Lock size={18} />}
+              placeholder="Enter your password"
+              required
+              minLength={6}
+              helperText={isRegistering ? "Minimum 6 characters" : undefined}
+              floating
+            />
+
+            {/* Registration Additional Fields */}
+            {isRegistering && (
+              <>
+                {/* User Type */}
+                <Select
+                  label="Account Type"
                   name="userType"
                   value={formData.userType}
                   onChange={handleInputChange}
+                  options={[
+                    { value: 'teacher', label: 'Teacher' },
+                    { value: 'parent', label: 'Parent' },
+                    { value: 'student', label: 'Student' }
+                  ]}
+                  fullWidth
                   required
-                >
-                  <option value="teacher">Teacher</option>
-                  <option value="parent">Parent</option>
-                  <option value="student">Student</option>
-                </select>
-              </div>
+                />
 
-              {formData.userType === 'parent' && (
-                <>
-                  <div className="form-group">
-                    <label htmlFor="phoneNumber">Phone Number * (10 digits)</label>
-                    <input
+                {/* Parent-Specific Fields */}
+                {formData.userType === 'parent' && (
+                  <>
+                    <Input
+                      label="Phone Number"
                       type="tel"
-                      id="phoneNumber"
                       name="phoneNumber"
                       value={formData.phoneNumber}
                       onChange={(e) => {
                         const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
                         setFormData({...formData, phoneNumber: digits});
                       }}
-                      placeholder="9876543210"
+                      leftIcon={<Phone size={18} />}
+                      placeholder="10-digit phone number"
                       required
                       maxLength={10}
                       minLength={10}
                       pattern="[0-9]{10}"
+                      helperText="Required for parent accounts"
+                      floating
                     />
-                  </div>
 
-                  <div className="form-group">
-                    <label>Select Grade(s) *</label>
-                    <div style={{ 
-                      display: 'grid', 
-                      gridTemplateColumns: 'repeat(6, 1fr)', 
-                      gap: '8px', 
-                      marginTop: '8px' 
-                    }}>
-                      {availableGrades.map((grade) => (
-                        <label
-                          key={grade}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            padding: '8px',
-                            border: `2px solid ${formData.selectedGrades.includes(grade) ? 'var(--primary-color)' : 'var(--border-color)'}`,
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            backgroundColor: formData.selectedGrades.includes(grade) ? 'var(--primary-color-light, rgba(76, 175, 80, 0.1))' : 'transparent',
-                            transition: 'all 0.2s',
-                            fontSize: '14px',
-                            fontWeight: '500'
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={formData.selectedGrades.includes(grade)}
-                            onChange={() => handleGradeToggle(grade)}
-                            style={{ display: 'none' }}
-                          />
-                          {grade}
-                        </label>
-                      ))}
+                    {/* Grade Selection */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Select Grade(s) *
+                      </label>
+                      <div className="grid grid-cols-6 gap-2">
+                        {availableGrades.map((grade) => (
+                          <button
+                            key={grade}
+                            type="button"
+                            onClick={() => handleGradeToggle(grade)}
+                            className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                              formData.selectedGrades.includes(grade)
+                                ? 'bg-primary-600 text-white shadow-md'
+                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                            }`}
+                          >
+                            {grade}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="form-group">
-                    <label>Select Section(s) *</label>
-                    <div style={{ 
-                      display: 'grid', 
-                      gridTemplateColumns: 'repeat(6, 1fr)', 
-                      gap: '8px', 
-                      marginTop: '8px' 
-                    }}>
-                      {availableSections.map((section) => (
-                        <label
-                          key={section}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            padding: '8px',
-                            border: `2px solid ${formData.selectedSections.includes(section) ? 'var(--primary-color)' : 'var(--border-color)'}`,
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            backgroundColor: formData.selectedSections.includes(section) ? 'var(--primary-color-light, rgba(76, 175, 80, 0.1))' : 'transparent',
-                            transition: 'all 0.2s',
-                            fontSize: '14px',
-                            fontWeight: '500'
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={formData.selectedSections.includes(section)}
-                            onChange={() => handleSectionToggle(section)}
-                            style={{ display: 'none' }}
-                          />
-                          {section}
-                        </label>
-                      ))}
+                    {/* Section Selection */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Select Section(s) *
+                      </label>
+                      <div className="grid grid-cols-6 gap-2">
+                        {availableSections.map((section) => (
+                          <button
+                            key={section}
+                            type="button"
+                            onClick={() => handleSectionToggle(section)}
+                            className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                              formData.selectedSections.includes(section)
+                                ? 'bg-primary-600 text-white shadow-md'
+                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                            }`}
+                          >
+                            {section}
+                          </button>
+                        ))}
+                      </div>
+                      {formData.selectedGrades.length > 0 && formData.selectedSections.length > 0 && (
+                        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                          Selected: {buildClassAccess().join(', ')}
+                        </p>
+                      )}
                     </div>
-                    {formData.selectedGrades.length > 0 && formData.selectedSections.length > 0 && (
-                      <small className="form-help" style={{ marginTop: '8px', display: 'block' }}>
-                        Selected: {buildClassAccess().join(', ')}
-                      </small>
-                    )}
-                  </div>
-                </>
-              )}
+                  </>
+                )}
 
-              <div className="form-group">
-                <label htmlFor="schoolId">School ID (Optional)</label>
-                <input
-                  type="text"
-                  id="schoolId"
+                {/* School ID - Optional */}
+                <Input
+                  label="School ID (Optional)"
                   name="schoolId"
                   value={formData.schoolId}
                   onChange={handleInputChange}
-                  placeholder="Enter school ID (optional)"
+                  leftIcon={<SchoolIcon size={18} />}
+                  placeholder="Enter school ID"
+                  floating
                 />
-              </div>
-            </>
-          )}
-
-          <button
-            type="submit"
-            className="auth-submit-btn"
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <span>Processing...</span>
-            ) : (
-              <>
-                {isRegistering ? <UserPlus size={20} /> : <LogIn size={20} />}
-                <span>{isRegistering ? 'Create Account' : 'Sign In'}</span>
               </>
             )}
-          </button>
-        </form>
 
-        <div className="auth-footer">
-          <p>
-            {isRegistering ? 'Already have an account?' : "Don't have an account?"}
-            <button onClick={toggleMode} className="auth-toggle-btn">
-              {isRegistering ? 'Sign In' : 'Create Account'}
-            </button>
-          </p>
+            {/* Submit Button */}
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              fullWidth
+              isLoading={isLoading}
+              leftIcon={isLoading ? undefined : (isRegistering ? <UserPlus size={20} /> : <LogIn size={20} />)}
+            >
+              {isRegistering ? 'Create Account' : 'Sign In'}
+            </Button>
+          </form>
+
+          {/* Toggle Mode */}
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              {isRegistering ? 'Already have an account?' : "Don't have an account?"}
+              {' '}
+              <button
+                type="button"
+                onClick={toggleMode}
+                className="font-semibold text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
+              >
+                {isRegistering ? 'Sign In' : 'Create Account'}
+              </button>
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -344,3 +319,4 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
 };
 
 export default LoginForm;
+
